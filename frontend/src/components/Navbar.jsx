@@ -23,7 +23,7 @@ const Navbar = () => {
 
     return (
         <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
-            <h1 className="text-xl font-bold tracking-wide">Event Sys</h1>
+            <h1 className="text-xl font-bold tracking-wide">Eventflow</h1>
             <div>
                 {user ? (
                     <div className="flex gap-4 items-center">
