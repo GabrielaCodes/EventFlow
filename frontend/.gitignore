@@ -1,24 +1,36 @@
-# Logs
-logs
-*.log
+# --- Dependencies ---
+node_modules/
+.pnp
+.pnp.js
+
+# --- Environment Variables (Security) ---
+# Ignores .env in root, backend/, and frontend/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.*
+
+# Allow the example templates so teammates can see them
+!.env.example
+
+# --- Build Outputs (Frontend) ---
+dist/
+build/
+coverage/
+
+# --- Logs ---
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+logs/
+*.log
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# --- System & Editor Files ---
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+.vscode/
+.idea/
+*.swp
