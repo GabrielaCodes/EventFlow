@@ -10,12 +10,26 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const getSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                setUser(session.user);
-                await fetchRole(session.user.id);
+            try {
+                console.log("1. Starting Session Check...");
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) throw error;
+
+                if (session?.user) {
+                    console.log("2. User found:", session.user.email);
+                    setUser(session.user);
+                    await fetchRole(session.user.id);
+                } else {
+                    console.log("2. No active session found.");
+                }
+            } catch (err) {
+                console.error("CRITICAL ERROR in Auth:", err.message);
+            } finally {
+                // This MUST run, or the screen stays on "Loading..."
+                console.log("4. Loading set to false.");
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         getSession();
@@ -28,18 +42,34 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
                 setRole(null);
             }
+            setLoading(false);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
     const fetchRole = async (userId) => {
-        const { data } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', userId)
-            .single();
-        if (data) setRole(data.role);
+        try {
+            console.log("3. Fetching Role for:", userId);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', userId)
+                .single();
+            
+            if (error) {
+                console.error("Error fetching role (RLS?):", error.message);
+            }
+
+            if (data) {
+                console.log("Role found:", data.role);
+                setRole(data.role);
+            } else {
+                console.warn("User has no profile row!");
+            }
+        } catch (err) {
+            console.error("FetchRole crash:", err);
+        }
     };
 
     const login = async (email, password) => {
