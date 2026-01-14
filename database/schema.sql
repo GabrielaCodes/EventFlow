@@ -1,48 +1,53 @@
--- Enable UUID extension
+-- =============================================
+-- 1. EXTENSIONS & CONFIG
+-- =============================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ENUMS for fixed statuses
--- We use DO blocks to prevent errors if types already exist when re-running
+-- =============================================
+-- 2. ENUMS (Idempotent)
+-- =============================================
 DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM ('client', 'employee', 'manager', 'sponsor');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+    CREATE TYPE user_role AS ENUM ('client', 'manager', 'sponsor', 'employee');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE event_status AS ENUM ('consideration', 'in_progress', 'completed', 'cancelled');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE sponsorship_status AS ENUM ('pending', 'accepted', 'rejected', 'paid');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- 1. PROFILES (Extends Supabase auth.users)
+DO $$ BEGIN
+    CREATE TYPE assignment_status AS ENUM ('pending', 'accepted', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- =============================================
+-- 3. TABLES
+-- =============================================
+
+-- PROFILES
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
     role user_role NOT NULL DEFAULT 'client',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. VENUES
+-- VENUES
 CREATE TABLE IF NOT EXISTS public.venues (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     capacity INT NOT NULL,
     location TEXT,
     is_available BOOLEAN DEFAULT TRUE
 );
 
--- 3. EVENTS
+-- EVENTS
 CREATE TABLE IF NOT EXISTS public.events (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    client_id UUID REFERENCES public.profiles(id) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    client_id UUID NOT NULL REFERENCES public.profiles(id),
     title TEXT NOT NULL,
     description TEXT,
     event_type TEXT NOT NULL,
@@ -53,132 +58,182 @@ CREATE TABLE IF NOT EXISTS public.events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. STAFF ASSIGNMENTS
+-- STAFF ASSIGNMENTS (With Workflow Columns)
 CREATE TABLE IF NOT EXISTS public.assignments (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
     employee_id UUID REFERENCES public.profiles(id),
+    role_description TEXT DEFAULT 'General Staff',
+    status assignment_status DEFAULT 'pending',
     assigned_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(event_id, employee_id)
+    UNIQUE (event_id, employee_id)
 );
 
--- 5. ATTENDANCE LOGS
+-- ATTENDANCE
 CREATE TABLE IF NOT EXISTS public.attendance (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id),
     employee_id UUID REFERENCES public.profiles(id),
     check_in TIMESTAMP DEFAULT NOW(),
     check_out TIMESTAMP
 );
 
--- 6. TERMS & CONDITIONS
-CREATE TABLE IF NOT EXISTS public.terms (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    created_by UUID REFERENCES public.profiles(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 7. EVENT MODIFICATION REQUESTS
-CREATE TABLE IF NOT EXISTS public.modification_requests (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    event_id UUID REFERENCES public.events(id),
-    requested_by UUID REFERENCES public.profiles(id),
-    request_details TEXT NOT NULL,
-    status TEXT DEFAULT 'pending', 
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 8. SPONSORSHIPS
+-- SPONSORSHIPS
 CREATE TABLE IF NOT EXISTS public.sponsorships (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id),
     sponsor_id UUID REFERENCES public.profiles(id),
-    amount DECIMAL(10, 2),
+    amount DECIMAL(10,2),
     status sponsorship_status DEFAULT 'pending',
     request_note TEXT,
     payment_reference TEXT,
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 9. TICKETS
+-- OTHER TABLES (Terms, Requests, Tickets)
+CREATE TABLE IF NOT EXISTS public.terms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_by UUID REFERENCES public.profiles(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.modification_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID REFERENCES public.events(id),
+    requested_by UUID REFERENCES public.profiles(id),
+    request_details TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS public.tickets (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id),
     type_name TEXT NOT NULL,
-    price DECIMAL(10, 2) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
     quantity_available INT NOT NULL,
     quantity_sold INT DEFAULT 0
 );
 
 -- =============================================
--- FIXED TRIGGER LOGIC (Run this part!)
+-- 4. LOGIC TRIGGERS (Security & Automation)
 -- =============================================
 
--- 1. Drop old function to ensure we replace it
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user();
-
--- 2. Create the SAFER function that handles missing data
+-- A. USER CREATION (Auth -> Profile)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, role)
   VALUES (
-    new.id, 
-    new.email, 
-    -- Default to 'User' if name is null
-    COALESCE(new.raw_user_meta_data->>'full_name', 'User'),
-    -- Default to 'client' if role is null or invalid
-    COALESCE((new.raw_user_meta_data->>'role')::user_role, 'client')
-  );
-  RETURN new;
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Log error but allow signup to proceed (prevents "Database Error" on frontend)
-    RAISE LOG 'Profile creation failed for %: %', new.id, SQLERRM;
-    RETURN new;
+    NEW.id, NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
+    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'client')
+  ) ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NEW; -- Fail safe
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Attach Trigger
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- B. ASSIGNMENT SECURITY (Prevent Employees changing Event/Time)
+CREATE OR REPLACE FUNCTION public.check_assignment_update()
+RETURNS TRIGGER AS $$
+DECLARE user_role public.user_role;
+BEGIN
+  SELECT role INTO user_role FROM public.profiles WHERE id = auth.uid();
+  
+  -- Managers can do anything
+  IF user_role = 'manager' THEN RETURN NEW; END IF;
+
+  -- Employees are RESTRICTED
+  IF user_role = 'employee' THEN
+    IF NEW.event_id <> OLD.event_id THEN RAISE EXCEPTION 'Cannot change Event ID'; END IF;
+    IF NEW.assigned_at <> OLD.assigned_at THEN RAISE EXCEPTION 'Cannot change Assignment Date'; END IF;
+    IF NEW.role_description IS DISTINCT FROM OLD.role_description THEN RAISE EXCEPTION 'Cannot change Role Description'; END IF;
+    RETURN NEW; -- Status change allowed
+  END IF;
+
+  RETURN NEW; 
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS check_assignment_update_trigger ON public.assignments;
+CREATE TRIGGER check_assignment_update_trigger
+BEFORE UPDATE ON public.assignments FOR EACH ROW EXECUTE PROCEDURE public.check_assignment_update();
 
 -- =============================================
--- SECURITY POLICIES (RLS) - Vital for Login
+-- 5. ROW LEVEL SECURITY (The Rules)
 -- =============================================
 
--- Enable Security on Profiles
+-- Enable RLS Globally
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.venues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sponsorships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.terms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.modification_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 
--- Allow users to read their own profile (Fixes "Error fetching role")
-DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
-CREATE POLICY "Users can read own profile"
-ON public.profiles FOR SELECT
-TO authenticated
-USING ( auth.uid() = id );
+-- --- PROFILES ---
+-- Everyone (Authenticated) can read names/roles (for search/collaboration)
+CREATE POLICY "Public Read Profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
+-- Users update only themselves
+CREATE POLICY "Update Own Profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- Allow users to update their own profile
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-CREATE POLICY "Users can update own profile"
-ON public.profiles FOR UPDATE
-TO authenticated
-USING ( auth.uid() = id );
+-- --- EVENTS ---
+-- Everyone can read (to see dashboard info)
+CREATE POLICY "Read Events" ON public.events FOR SELECT TO authenticated USING (true);
+-- Managers: Full Access
+CREATE POLICY "Manager Full Event Access" ON public.events FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+-- Clients: Manage OWN events only
+CREATE POLICY "Client Manage Own Events" ON public.events FOR ALL TO authenticated 
+USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid());
+
+-- --- VENUES ---
+CREATE POLICY "Read Venues" ON public.venues FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Manager Manage Venues" ON public.venues FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+
+-- --- ASSIGNMENTS ---
+-- Managers: Full Access
+CREATE POLICY "Manager Manage Assignments" ON public.assignments FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+-- Employees: View their own
+CREATE POLICY "Employee View Assignments" ON public.assignments FOR SELECT TO authenticated 
+USING (employee_id = auth.uid());
+-- Employees: Update their own (Restricted by Trigger above)
+CREATE POLICY "Employee Update Assignments" ON public.assignments FOR UPDATE TO authenticated 
+USING (employee_id = auth.uid());
+
+-- --- ATTENDANCE ---
+CREATE POLICY "Manager View Attendance" ON public.attendance FOR SELECT TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+CREATE POLICY "Employee View Own Attendance" ON public.attendance FOR SELECT TO authenticated 
+USING (employee_id = auth.uid());
+CREATE POLICY "Employee Clock In" ON public.attendance FOR INSERT TO authenticated 
+WITH CHECK (employee_id = auth.uid());
+CREATE POLICY "Employee Clock Out" ON public.attendance FOR UPDATE TO authenticated 
+USING (employee_id = auth.uid());
+
+-- --- SPONSORSHIPS ---
+CREATE POLICY "Manager Manage Sponsorships" ON public.sponsorships FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+CREATE POLICY "Sponsor Manage Own" ON public.sponsorships FOR ALL TO authenticated 
+USING (sponsor_id = auth.uid()) WITH CHECK (sponsor_id = auth.uid());
 
 -- =============================================
--- ANALYTICS VIEWS (For Manager Dashboard)
+-- 6. GRANTS
 -- =============================================
-CREATE OR REPLACE VIEW analytics_monthly_activity AS
-    SELECT TO_CHAR(event_date, 'Month') AS month, COUNT(*) as event_count
-    FROM public.events
-    GROUP BY month
-    ORDER BY event_count DESC;
-
-CREATE OR REPLACE VIEW analytics_popular_types AS
-    SELECT event_type, COUNT(*) as count
-    FROM public.events
-    GROUP BY event_type
-    ORDER BY count DESC;
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+-- Note: 'anon' grants are removed for safety. 
+-- If you need a public landing page (without login), grant specific SELECTs to anon here.
