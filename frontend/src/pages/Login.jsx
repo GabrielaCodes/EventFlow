@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../services/api'; // Import supabase directly for the role check
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -10,23 +11,44 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("1. Button clicked"); // Debug Log
 
         try {
-            console.log("2. Attempting Supabase login..."); // Debug Log
-            const { data, error } = await login(email, password);
-            
-            if (error) {
-                console.error("Login Failed:", error.message); // Debug Log
-                throw error;
+            // 1. Perform the Auth Login
+            const { user } = await login(email, password);
+
+            if (!user) throw new Error("Login failed");
+
+            // 2. Fetch the role manually (to avoid waiting for Context sync)
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (error) throw error;
+
+            // 3. Dynamic Redirect
+            switch (profile.role) {
+                case 'manager':
+                    navigate('/manager-dashboard');
+                    break;
+                case 'sponsor':
+                    navigate('/sponsor-dashboard');
+                    break;
+                case 'client':
+                    navigate('/client-dashboard');
+                    break;
+                // Add this if you enabled 'employee' in the DB
+                case 'employee': 
+                    navigate('/employee-dashboard'); 
+                    break;
+                default:
+                    navigate('/'); // Fallback
             }
 
-            console.log("3. Login Success! Redirecting..."); // Debug Log
-            navigate('/dashboard'); 
-            
         } catch (err) {
-            console.error("4. Catch Error:", err); // Debug Log
-            alert("Login failed: " + err.message);
+            console.error('Login error:', err.message);
+            alert(err.message);
         }
     };
 
@@ -50,8 +72,8 @@ const Login = () => {
                     Sign In
                 </button>
                 <p className="mt-4 text-center text-sm">
-    Don't have an account? <Link to="/register" className="text-blue-600 underline">Sign Up</Link>
-</p>
+                    Don't have an account? <Link to="/register" className="text-blue-600 underline">Sign Up</Link>
+                </p>
             </form>
         </div>
     );

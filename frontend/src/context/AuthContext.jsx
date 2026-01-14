@@ -70,19 +70,30 @@ export const AuthProvider = ({ children }) => {
         await delay(500);
         return fetchRole(userId, retries - 1);
       } else {
-        console.warn("User has no profile row! Defaulting to 'client'.");
-        setRole('client');
+        console.warn("User has no profile row! Defaulting to null");
+        setRole(null);
+
       }
     } catch (err) {
       console.error("FetchRole Error:", err.message);
-      setRole('client');
+      setRole(null);
     }
   };
 
   // 🔑 REQUIRED by Login / Navbar
   const login = async (email, password) => {
-    return supabase.auth.signInWithPassword({ email, password });
-  };
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw error; // 🔥 force it to bubble
+  }
+
+  return data;
+};
+
 
   const logout = async () => {
     return supabase.auth.signOut();
