@@ -1,83 +1,251 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api';
+import { supabase } from '../../services/api'; // ✅ Use direct Supabase client
 
 const ManagerDashboard = () => {
-    const [stats, setStats] = useState({ totalEvents: 0, mostBookedType: 'None' });
+    // Data State
+    const [employees, setEmployees] = useState([]);
+    const [events, setEvents] = useState([]);
     const [attendance, setAttendance] = useState([]);
+    const [assignments, setAssignments] = useState([]);
+    
+    // UI State
     const [loading, setLoading] = useState(true);
+    const [formData, setFormData] = useState({
+        employee_id: '',
+        event_id: '',
+        role_description: ''
+    });
 
+    // 1. Fetch Data on Load
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                // We use Promise.allSettled so one error doesn't kill the whole page
-                const [statsRes, attRes] = await Promise.allSettled([
-                    api.get('/admin/analytics'),
-                    api.get('/admin/attendance')
-                ]);
-
-                if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
-                if (attRes.status === 'fulfilled') setAttendance(attRes.value.data);
-                
-            } catch (err) {
-                console.error("Dashboard Error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
+        fetchDashboardData();
     }, []);
 
-    if (loading) return <div className="p-10">Loading Dashboard...</div>;
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            
+            // A. Fetch Employees (for dropdown)
+            const { data: empData } = await supabase
+                .from('profiles')
+                .select('id, full_name, email')
+                .eq('role', 'employee');
+
+          
+            // B. Fetch Events (for dropdown)
+const { data: eventData, error: eventError } = await supabase // 👈 Capture error
+    .from('events')
+    .select('id, title, event_date')
+    .order('event_date', { ascending: true });
+
+if (eventError) {
+    console.error("CRITICAL SUPABASE ERROR:", eventError.message, eventError.details);
+    alert("Error fetching events: " + eventError.message);
+} else {
+    console.log("Events Fetched:", eventData); 
+    setEvents(eventData);
+}
+
+            // C. Fetch Recent Attendance Logs
+            const { data: attData } = await supabase
+                .from('attendance')
+                .select(`
+                    id, check_in, check_out,
+                    profiles(full_name),
+                    events(title)
+                `)
+                .order('check_in', { ascending: false })
+                .limit(20);
+
+            // D. Fetch Existing Assignments (History)
+            const { data: assignData } = await supabase
+                .from('assignments')
+                .select(`
+                    id, status, role_description,
+                    profiles(full_name),
+                    events(title)
+                `)
+                .order('assigned_at', { ascending: false });
+
+            if (empData) setEmployees(empData);
+            if (eventData) setEvents(eventData);
+            if (attData) setAttendance(attData);
+            if (assignData) setAssignments(assignData);
+
+        } catch (error) {
+            console.error("Error loading dashboard:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 2. Handle Form Input
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // 3. Submit Assignment
+    const handleAssign = async (e) => {
+        e.preventDefault();
+        if (!formData.employee_id || !formData.event_id) {
+            alert("Please select both an employee and an event.");
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('assignments')
+                .insert([{
+                    employee_id: formData.employee_id,
+                    event_id: formData.event_id,
+                    role_description: formData.role_description || "General Staff"
+                }]);
+
+            if (error) throw error;
+
+            alert("Task Assigned Successfully!");
+            setFormData({ employee_id: '', event_id: '', role_description: '' });
+            fetchDashboardData(); // Refresh list
+        } catch (err) {
+            alert("Error assigning task: " + err.message);
+        }
+    };
+
+    if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-2xl font-bold mb-6">Manager Dashboard</h1>
-            
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded shadow border-l-4 border-blue-500">
-                    <h3 className="text-gray-500 text-sm font-medium">Total Events</h3>
-                    <p className="text-3xl font-bold text-gray-800">{stats?.totalEvents || 0}</p>
-                </div>
-                <div className="bg-white p-6 rounded shadow border-l-4 border-green-500">
-                    <h3 className="text-gray-500 text-sm font-medium">Top Event Type</h3>
-                    <p className="text-3xl font-bold text-gray-800">{stats?.mostBookedType || 'N/A'}</p>
-                </div>
+        <div className="p-8 bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold text-gray-800 mb-8">Manager Dashboard</h1>
+
+            {/* --- TOP SECTION: TASK ASSIGNMENT PANEL --- */}
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200">
+                <h2 className="text-xl font-bold text-blue-700 mb-4">📢 Assign New Task</h2>
+                <form onSubmit={handleAssign} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    
+                    {/* Select Event */}
+                    <select 
+                        name="event_id" 
+                        value={formData.event_id} 
+                        onChange={handleChange}
+                        className="p-2 border rounded bg-gray-50"
+                    >
+                        <option value="">-- Select Event --</option>
+                        {events.map(ev => (
+                            <option key={ev.id} value={ev.id}>
+                                {ev.title} ({new Date(ev.event_date).toLocaleDateString()})
+                            </option>
+                        ))}
+                    </select>
+
+                    {/* Select Employee */}
+                    <select 
+                        name="employee_id" 
+                        value={formData.employee_id} 
+                        onChange={handleChange}
+                        className="p-2 border rounded bg-gray-50"
+                    >
+                        <option value="">-- Select Employee --</option>
+                        {employees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                                {emp.full_name || emp.email}
+                            </option>
+                        ))}
+                    </select>
+
+                    {/* Role Description */}
+                    <input 
+                        name="role_description" 
+                        placeholder="Role (e.g. Security, Catering)" 
+                        value={formData.role_description} 
+                        onChange={handleChange}
+                        className="p-2 border rounded"
+                    />
+
+                    <button 
+                        type="submit" 
+                        className="bg-blue-600 text-white font-semibold p-2 rounded hover:bg-blue-700 transition"
+                    >
+                        Assign Task
+                    </button>
+                </form>
             </div>
 
-            {/* Attendance Table */}
-            <div className="bg-white rounded shadow overflow-hidden">
-                <div className="p-4 border-b">
-                    <h2 className="text-lg font-bold">Recent Staff Logs</h2>
-                </div>
-                <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Employee</th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Event</th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {attendance.length > 0 ? (
-                            attendance.map((log) => (
-                                <tr key={log.id} className="border-t">
-                                    <td className="py-3 px-4">{log.profiles?.full_name || 'Unknown'}</td>
-                                    <td className="py-3 px-4">{log.events?.title || 'Unknown'}</td>
-                                    <td className="py-3 px-4 text-gray-500">
-                                        {new Date(log.check_in).toLocaleString()}
-                                    </td>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* --- LEFT: RECENT ASSIGNMENTS --- */}
+                <div className="bg-white rounded shadow overflow-hidden">
+                    <div className="p-4 bg-gray-100 border-b">
+                        <h3 className="font-bold text-gray-700">📋 Task Status</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-left">
+                                <tr>
+                                    <th className="p-3">Employee</th>
+                                    <th className="p-3">Task</th>
+                                    <th className="p-3">Status</th>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="3" className="p-4 text-center text-gray-500">
-                                    No attendance records found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody>
+                                {assignments.map((task) => (
+                                    <tr key={task.id} className="border-t hover:bg-gray-50">
+                                        <td className="p-3">{task.profiles?.full_name}</td>
+                                        <td className="p-3">
+                                            <div className="font-medium">{task.events?.title}</div>
+                                            <div className="text-xs text-gray-500">{task.role_description}</div>
+                                        </td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                                task.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                                task.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                                {task.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* --- RIGHT: LIVE ATTENDANCE --- */}
+                <div className="bg-white rounded shadow overflow-hidden">
+                    <div className="p-4 bg-gray-100 border-b">
+                        <h3 className="font-bold text-gray-700">⏱ Recent Attendance Logs</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-left">
+                                <tr>
+                                    <th className="p-3">Staff</th>
+                                    <th className="p-3">Event</th>
+                                    <th className="p-3">Time In/Out</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendance.length === 0 ? (
+                                    <tr><td colSpan="3" className="p-4 text-center text-gray-400">No active logs</td></tr>
+                                ) : attendance.map((log) => (
+                                    <tr key={log.id} className="border-t hover:bg-gray-50">
+                                        <td className="p-3 font-medium">{log.profiles?.full_name}</td>
+                                        <td className="p-3">{log.events?.title}</td>
+                                        <td className="p-3">
+                                            <div className="text-green-600">IN: {new Date(log.check_in).toLocaleTimeString()}</div>
+                                            {log.check_out ? (
+                                                <div className="text-red-500">OUT: {new Date(log.check_out).toLocaleTimeString()}</div>
+                                            ) : (
+                                                <span className="text-xs bg-green-100 text-green-800 px-2 rounded animate-pulse">Active</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

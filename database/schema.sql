@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- STAFF ASSIGNMENTS (With Workflow Columns)
+-- STAFF ASSIGNMENTS
 CREATE TABLE IF NOT EXISTS public.assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS public.sponsorships (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- OTHER TABLES (Terms, Requests, Tickets)
+-- OTHER TABLES
 CREATE TABLE IF NOT EXISTS public.terms (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
@@ -118,10 +118,10 @@ CREATE TABLE IF NOT EXISTS public.tickets (
 );
 
 -- =============================================
--- 4. LOGIC TRIGGERS (Security & Automation)
+-- 4. HELPER FUNCTIONS (The Key Fixes)
 -- =============================================
 
--- A. USER CREATION (Auth -> Profile)
+-- A. USER CREATION TRIGGER (Secure)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -137,38 +137,55 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Secure the trigger function ownership and path
+ALTER FUNCTION public.handle_new_user() OWNER TO postgres;
+ALTER FUNCTION public.handle_new_user() SET search_path = public;
+
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- B. ASSIGNMENT SECURITY (Prevent Employees changing Event/Time)
+-- B. MANAGER CHECK (The "Dropdown Fix")
+-- This function allows policies to check role without triggering infinite recursion.
+CREATE OR REPLACE FUNCTION public.is_manager()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role = 'manager'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
+
+-- C. ASSIGNMENT SECURITY (Stateless Column Protection)
+-- Removes dependency on auth.uid(), makes logic robust.
 CREATE OR REPLACE FUNCTION public.check_assignment_update()
 RETURNS TRIGGER AS $$
-DECLARE user_role public.user_role;
 BEGIN
-  SELECT role INTO user_role FROM public.profiles WHERE id = auth.uid();
-  
-  -- Managers can do anything
-  IF user_role = 'manager' THEN RETURN NEW; END IF;
-
-  -- Employees are RESTRICTED
-  IF user_role = 'employee' THEN
-    IF NEW.event_id <> OLD.event_id THEN RAISE EXCEPTION 'Cannot change Event ID'; END IF;
-    IF NEW.assigned_at <> OLD.assigned_at THEN RAISE EXCEPTION 'Cannot change Assignment Date'; END IF;
-    IF NEW.role_description IS DISTINCT FROM OLD.role_description THEN RAISE EXCEPTION 'Cannot change Role Description'; END IF;
-    RETURN NEW; -- Status change allowed
+  -- Strict Immutability: Prevent ANYONE (Manager or Employee) from changing core fields on update.
+  -- To "re-assign", delete the row and create a new one.
+  IF NEW.event_id IS DISTINCT FROM OLD.event_id THEN 
+    RAISE EXCEPTION 'Event ID cannot be modified.'; 
   END IF;
 
-  RETURN NEW; 
+  IF NEW.assigned_at IS DISTINCT FROM OLD.assigned_at THEN 
+    RAISE EXCEPTION 'Assignment Date cannot be modified.'; 
+  END IF;
+
+  IF NEW.role_description IS DISTINCT FROM OLD.role_description THEN 
+    RAISE EXCEPTION 'Role Description cannot be modified.'; 
+  END IF;
+
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS check_assignment_update_trigger ON public.assignments;
 CREATE TRIGGER check_assignment_update_trigger
 BEFORE UPDATE ON public.assignments FOR EACH ROW EXECUTE PROCEDURE public.check_assignment_update();
 
 -- =============================================
--- 5. ROW LEVEL SECURITY (The Rules)
+-- 5. ROW LEVEL SECURITY (Corrected Logic)
 -- =============================================
 
 -- Enable RLS Globally
@@ -191,9 +208,11 @@ CREATE POLICY "Update Own Profile" ON public.profiles FOR UPDATE TO authenticate
 -- --- EVENTS ---
 -- Everyone can read (to see dashboard info)
 CREATE POLICY "Read Events" ON public.events FOR SELECT TO authenticated USING (true);
--- Managers: Full Access
+
+-- Managers: Full Access (Uses helper function to fix recursion)
 CREATE POLICY "Manager Full Event Access" ON public.events FOR ALL TO authenticated 
-USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+USING ( public.is_manager() );
+
 -- Clients: Manage OWN events only
 CREATE POLICY "Client Manage Own Events" ON public.events FOR ALL TO authenticated 
 USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid());
@@ -201,22 +220,24 @@ USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid());
 -- --- VENUES ---
 CREATE POLICY "Read Venues" ON public.venues FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Manager Manage Venues" ON public.venues FOR ALL TO authenticated 
-USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+USING ( public.is_manager() );
 
 -- --- ASSIGNMENTS ---
 -- Managers: Full Access
 CREATE POLICY "Manager Manage Assignments" ON public.assignments FOR ALL TO authenticated 
-USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+USING ( public.is_manager() );
+
 -- Employees: View their own
 CREATE POLICY "Employee View Assignments" ON public.assignments FOR SELECT TO authenticated 
 USING (employee_id = auth.uid());
--- Employees: Update their own (Restricted by Trigger above)
+
+-- Employees: Update their own (Restricted by Trigger)
 CREATE POLICY "Employee Update Assignments" ON public.assignments FOR UPDATE TO authenticated 
 USING (employee_id = auth.uid());
 
 -- --- ATTENDANCE ---
 CREATE POLICY "Manager View Attendance" ON public.attendance FOR SELECT TO authenticated 
-USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+USING ( public.is_manager() );
 CREATE POLICY "Employee View Own Attendance" ON public.attendance FOR SELECT TO authenticated 
 USING (employee_id = auth.uid());
 CREATE POLICY "Employee Clock In" ON public.attendance FOR INSERT TO authenticated 
@@ -226,7 +247,7 @@ USING (employee_id = auth.uid());
 
 -- --- SPONSORSHIPS ---
 CREATE POLICY "Manager Manage Sponsorships" ON public.sponsorships FOR ALL TO authenticated 
-USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager'));
+USING ( public.is_manager() );
 CREATE POLICY "Sponsor Manage Own" ON public.sponsorships FOR ALL TO authenticated 
 USING (sponsor_id = auth.uid()) WITH CHECK (sponsor_id = auth.uid());
 
@@ -235,5 +256,3 @@ USING (sponsor_id = auth.uid()) WITH CHECK (sponsor_id = auth.uid());
 -- =============================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
--- Note: 'anon' grants are removed for safety. 
--- If you need a public landing page (without login), grant specific SELECTs to anon here.
