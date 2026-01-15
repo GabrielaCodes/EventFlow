@@ -256,3 +256,4 @@ USING (sponsor_id = auth.uid()) WITH CHECK (sponsor_id = auth.uid());
 -- =============================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON public.assignments TO authenticated;

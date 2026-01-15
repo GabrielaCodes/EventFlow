@@ -136,8 +136,11 @@ const EmployeeDashboard = () => {
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {pendingTasks.map((task) => (
                             <div key={task.id} className="bg-white p-5 rounded-lg shadow-md border-l-4 border-orange-400">
-                                <h3 className="font-bold text-lg">{task.event.title}</h3>
-                                <p className="text-sm text-gray-500 mb-2">{new Date(task.event.event_date).toDateString()}</p>
+                                {/* NEW SAFE CODE */}
+<h3 className="font-bold text-lg">{task.event?.title || 'Unknown Event'}</h3>
+<p className="text-sm text-gray-500 mb-2">
+    {task.event?.event_date ? new Date(task.event.event_date).toDateString() : 'Date N/A'}
+</p>
                                 <p className="text-sm bg-gray-100 p-2 rounded mb-4">Role: <strong>{task.role_description}</strong></p>
                                 
                                 <div className="flex gap-2">
@@ -170,10 +173,10 @@ const EmployeeDashboard = () => {
                         {acceptedTasks.map((task) => (
                             <div key={task.id} className="bg-white p-6 rounded-lg shadow border border-gray-200 flex flex-col md:flex-row justify-between items-center">
                                 <div>
-                                    <h3 className="text-xl font-bold text-blue-900">{task.event.title}</h3>
+                                    <h3 className="text-xl font-bold text-blue-900">{task.event?.title || 'Unknown Event'}</h3>
                                     <div className="text-gray-600 mt-1 flex flex-col gap-1">
-                                        <span>📍 {task.event.venue?.name || 'To be decided'}</span>
-                                        <span>📅 {new Date(task.event.event_date).toDateString()}</span>
+                                       <span>📍 {task.event?.venue?.name || 'To be decided'}</span>
+<span>📅 {task.event?.event_date ? new Date(task.event.event_date).toDateString() : 'Date N/A'}</span>
                                         <span>💼 Role: {task.role_description}</span>
                                     </div>
                                 </div>
@@ -182,7 +185,7 @@ const EmployeeDashboard = () => {
                                     {/* Show Check-In Button ONLY if not currently working somewhere else */}
                                     {!activeAttendance && (
                                         <button 
-                                            onClick={() => handleCheckIn(task.event.id)}
+                                            onClick={() => task.event?.id && handleCheckIn(task.event.id)}
                                             className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 transition"
                                         >
                                             📍 Check In Here
