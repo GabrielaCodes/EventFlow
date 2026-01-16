@@ -1,18 +1,25 @@
 import { useEffect, useState } from 'react';
-import api, { supabase } from '../../services/api'; // ✅ Import Supabase for referencing venues
+import api, { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const ClientDashboard = () => {
     const { user, loading } = useAuth();
     const [events, setEvents] = useState([]);
-    const [venues, setVenues] = useState([]); // ✅ Store venues here
+    
+    // Lists
+    const [categories, setCategories] = useState([]);
+    const [subtypes, setSubtypes] = useState([]);
+    const [venues, setVenues] = useState([]);
 
+    // Form State
+    const [selectedCategory, setSelectedCategory] = useState('');
     const [formData, setFormData] = useState({
         title: '',
-        event_type: '',
+        subtype_id: '', // ✅ Changed from event_type
         event_date: '',
-        venue_id: '', // ✅ New Field
-        theme: ''
+        venue_id: '',
+        theme: '',
+        client_notes: ''
     });
 
     useEffect(() => {
@@ -23,166 +30,144 @@ const ClientDashboard = () => {
 
     const fetchData = async () => {
         try {
-            console.log("--- DEBUG START ---");
-            
-            // 1. Check if Supabase client is initialized
-            console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL ? "Exists" : "MISSING!");
+            // 1. Fetch Categories
+            const { data: catData } = await supabase.from('event_categories').select('*');
+            if (catData) setCategories(catData);
 
-            // 2. Try to fetch venues
-            const { data: venueData, error: venueError } = await supabase
-                .from('venues')
-                .select('*');
-            
-            console.log("Venue Data:", venueData);
-            console.log("Venue Error:", venueError);
+            // 2. Fetch Venues
+            const { data: venData } = await supabase.from('venues').select('id, name, capacity');
+            if (venData) setVenues(venData);
 
-            if (venueData) setVenues(venueData);
-
-            // 3. Fetch Events
-            const { data: eventData } = await api.get('/events/my-events')
+            // 3. Fetch My Events (with joins to show names)
+            // Note: You might need to adjust your RLS or Select query to include foreign key data
+            const { data: eventData } = await api.get('/events/my-events');
             setEvents(eventData || []);
-            
-            console.log("--- DEBUG END ---");
-
         } catch (err) {
-            console.error('client dashboard CRITICAL ERROR:', err);
+            console.error(err);
+        }
+    };
+
+    // ✅ Dynamic Fetch: When Category Changes, fetch Subtypes
+    const handleCategoryChange = async (e) => {
+        const catId = e.target.value;
+        setSelectedCategory(catId);
+        setFormData({ ...formData, subtype_id: '' }); // Reset subtype
+
+        if (catId) {
+            const { data } = await supabase
+                .from('event_subtypes')
+                .select('*')
+                .eq('category_id', catId);
+            setSubtypes(data || []);
+        } else {
+            setSubtypes([]);
         }
     };
 
     const handleCreate = async (e) => {
         e.preventDefault();
-
-        if (!user?.id) {
-            alert('You must be logged in to book an event.');
-            return;
-        }
-
-        // ✅ Validation: Ensure venue is picked
-        if (!formData.venue_id) {
-            alert("Please select a venue for your event.");
-            return;
-        }
-
         try {
-            const payload = {
+            await api.post('/events', {
                 ...formData,
-                client_id: user.id,
-                status: 'consideration'
-            };
-
-            await api.post('/events', payload);
-
-            alert('Event Created Successfully!');
-            fetchData(); // Refresh list
-
-            setFormData({
-                title: '',
-                event_type: '',
-                event_date: '',
-                venue_id: '', // Reset venue
-                theme: ''
+                client_id: user.id
             });
+            alert('Event Booked!');
+            fetchData();
+            // Reset Form
+            setFormData({ title: '', subtype_id: '', event_date: '', venue_id: '', theme: '', client_notes: '' });
+            setSelectedCategory('');
         } catch (err) {
-            console.error('Creation Error:', err);
-            alert('Error creating event. Check console for details.');
+            alert('Error: ' + err.message);
         }
     };
 
-    if (loading) {
-        return <div className="p-6 text-center text-gray-600">Loading dashboard...</div>;
-    }
+    if (loading) return <div>Loading...</div>;
+const statusStyles = {
+  consideration: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  in_progress: 'bg-green-100 text-green-800 border-green-300',
+  completed: 'bg-green-100 text-green-800 border-green-300',
+  cancelled: 'bg-red-100 text-red-800 border-red-300'
+};
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Client Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-6">Client Dashboard</h1>
+            
+            <div className="bg-white p-6 rounded shadow mb-8">
+                <h3 className="text-xl font-bold mb-4">Book New Event</h3>
+                <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input placeholder="Title" className="border p-2 rounded" required
+                        value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
 
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-100">
-                <h3 className="text-xl font-semibold mb-4 text-blue-600">Book New Event</h3>
+                    {/* ✅ 1. Primary Category Dropdown */}
+                    <select className="border p-2 rounded" value={selectedCategory} onChange={handleCategoryChange} required>
+                        <option value="">-- Select Category --</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
 
-                <form onSubmit={handleCreate}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                            placeholder="Event Title"
-                            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.title}
-                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            required
-                        />
+                    {/* ✅ 2. Dependent Subtype Dropdown */}
+                    <select 
+                        className="border p-2 rounded disabled:bg-gray-100" 
+                        value={formData.subtype_id} 
+                        onChange={e => setFormData({...formData, subtype_id: e.target.value})} 
+                        disabled={!selectedCategory}
+                        required
+                    >
+                        <option value="">-- Select Subtype --</option>
+                        {subtypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
 
-                        <input
-                            placeholder="Type (e.g., Wedding, Corporate)"
-                            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.event_type}
-                            onChange={e => setFormData({ ...formData, event_type: e.target.value })}
-                            required
-                        />
+                    <input type="date" className="border p-2 rounded" required
+                        value={formData.event_date} onChange={e => setFormData({...formData, event_date: e.target.value})} />
 
-                        {/* ✅ VENUE SELECTION DROPDOWN */}
-                        <select
-                            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.venue_id}
-                            onChange={e => setFormData({ ...formData, venue_id: e.target.value })}
-                            required
-                        >
-                            <option value="">-- Select Venue --</option>
-                            {venues.map(v => (
-                                <option key={v.id} value={v.id}>
-                                    {v.name} (Capacity: {v.capacity})
-                                </option>
-                            ))}
-                        </select>
+                    <select className="border p-2 rounded" 
+                        value={formData.venue_id} onChange={e => setFormData({...formData, venue_id: e.target.value})}>
+                        <option value="">-- Select Venue --</option>
+                        {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
 
-                        <input
-                            type="date"
-                            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.event_date}
-                            onChange={e => setFormData({ ...formData, event_date: e.target.value })}
-                            required
-                        />
+                    <textarea placeholder="Additional Notes" className="border p-2 rounded md:col-span-2"
+                        value={formData.client_notes} onChange={e => setFormData({...formData, client_notes: e.target.value})} />
 
-                        <input
-                            placeholder="Theme (Optional)"
-                            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none md:col-span-2"
-                            value={formData.theme}
-                            onChange={e => setFormData({ ...formData, theme: e.target.value })}
-                        />
-                    </div>
-
-                    <button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition-colors w-full md:w-auto">
-                        Book Event
-                    </button>
+                    <button className="bg-blue-600 text-white p-2 rounded col-span-2">Book Event</button>
                 </form>
             </div>
+            <div className="bg-white p-6 rounded shadow">
+  <h3 className="text-xl font-bold mb-4">My Events</h3>
 
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Your Events</h3>
+  {events.length === 0 ? (
+    <p className="text-gray-500">No events booked yet.</p>
+  ) : (
+    <div className="space-y-4">
+      {events.map(ev => (
+        <div
+          key={ev.id}
+          className="border p-4 rounded flex items-start justify-between"
+        >
+          <div>
+            <h4 className="font-semibold text-lg">{ev.title}</h4>
+            <p className="text-sm text-gray-600">
+              Date: {new Date(ev.event_date).toLocaleDateString()}
+            </p>
+          </div>
 
-            {events.length === 0 ? (
-                <p className="text-gray-500 italic">No events booked yet.</p>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {events.map(ev => (
-                        <div key={ev.id} className="bg-white border-l-4 border-blue-500 p-4 rounded shadow-sm hover:shadow-md transition-shadow">
-                            <h3 className="font-bold text-lg text-gray-800">{ev.title}</h3>
-                            <div className="text-sm text-gray-600 mt-1 space-y-1">
-                                <p>📅 {ev.event_date ? new Date(ev.event_date).toLocaleDateString() : '—'}</p>
-                                <p>🏷️ {ev.event_type} {ev.theme && `(${ev.theme})`}</p>
-                                {/* Display Venue Name if available via Supabase joins, or simply the ID for now if join not set up */}
-                                {ev.venue_id && <p>📍 Venue Assigned</p>} 
-                            </div>
-                            <div className="mt-3">
-                                <span className={`px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide ${
-                                    ev.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    ev.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                    {ev.status}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+          {/* ✅ Status Badge */}
+          <span
+            className={`px-3 py-1 text-sm font-semibold rounded border
+              ${statusStyles[ev.status] || 'bg-gray-100 text-gray-700'}
+            `}
+          >
+            {ev.status.replace('_', ' ').toUpperCase()}
+          </span>
         </div>
+      ))}
+    </div>
+  )}
+</div>
+
+
+        </div>
+        
     );
 };
 

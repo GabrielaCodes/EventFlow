@@ -1,33 +1,33 @@
 import supabase from '../config/supabaseClient.js';
 
 // --------------------------------------------------------
-// 1. CLIENT: Create a New Event (✅ UPDATED)
+// 1. CLIENT: Create a New Event 
 // --------------------------------------------------------
 export const createEvent = async (req, res) => {
     try {
-        // ✅ 1. Extract new fields (venue_id, client_notes)
-        const { title, description, event_type, theme, event_date, venue_id, client_notes } = req.body;
+        // ✅ CHANGED: Accept subtype_id instead of event_type
+        const { title, description, subtype_id, theme, event_date, venue_id, client_notes } = req.body;
         
         // Validation
-        if (!title || !event_type || !event_date) {
-            return res.status(400).json({ error: "Title, Type, and Date are required." });
+        if (!title || !subtype_id || !event_date) {
+            return res.status(400).json({ error: "Title, Event Type, and Date are required." });
         }
 
         const { data, error } = await supabase
             .from('events')
             .insert([{
-                client_id: req.user.id, // Comes from auth middleware
+                client_id: req.user.id,
                 title,
                 description,
-                event_type,
+                // We rely on the DB Relation now. 
+                // We store subtype_id. The old 'event_type' column can be ignored or filled with a placeholder.
+                subtype_id, 
+                event_type: 'LEGACY', // Keeping this to satisfy NOT NULL constraint on old column if you didn't remove it
                 theme,
                 event_date,
-                status: 'consideration', // Default status
-                
-                // ✅ 2. Save the Venue and Notes
-                // If venue_id is an empty string, convert to NULL to satisfy UUID type
-                venue_id: venue_id || null,     
-                client_notes: client_notes || "" 
+                venue_id: venue_id || null,
+                client_notes: client_notes || "",
+                status: 'consideration'
             }])
             .select();
 

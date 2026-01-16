@@ -96,6 +96,7 @@ export const AuthProvider = ({ children }) => {
 
 
   const logout = async () => {
+    console.log("1. User clicked logout - Starting process...");
     return supabase.auth.signOut();
   };
 
