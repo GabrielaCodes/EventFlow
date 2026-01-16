@@ -98,7 +98,13 @@ CREATE TABLE IF NOT EXISTS public.modification_requests (
     requested_by UUID REFERENCES public.profiles(id),
     request_details TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    -- 🔽 Integrated from query1
+    proposed_venue_id UUID REFERENCES public.venues(id),
+    proposed_date DATE,
+    proposed_time TIME,
+    rejection_reason TEXT
 );
 
 CREATE TABLE IF NOT EXISTS public.tickets (
@@ -111,7 +117,19 @@ CREATE TABLE IF NOT EXISTS public.tickets (
 );
 
 -- =============================================
--- 4. HELPER FUNCTIONS
+-- 4. CONSTRAINTS (Integrated)
+-- =============================================
+
+DO $$ BEGIN
+    ALTER TABLE public.modification_requests
+    ADD CONSTRAINT check_modification_status
+    CHECK (status IN ('pending', 'accepted', 'rejected'));
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+-- =============================================
+-- 5. HELPER FUNCTIONS
 -- =============================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -119,14 +137,12 @@ RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, role)
   VALUES (
- offer
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
     COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'client')
-  ) ON CONFLICT (id) DO NOTHING;
-  RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -174,7 +190,88 @@ BEFORE UPDATE ON public.assignments
 FOR EACH ROW EXECUTE PROCEDURE public.check_assignment_update();
 
 -- =============================================
--- 5. ROW LEVEL SECURITY
+-- 6. AVAILABILITY & MODIFICATION FUNCTIONS (Integrated)
+-- =============================================
+
+CREATE OR REPLACE FUNCTION public.check_venue_availability(
+    check_venue_id UUID,
+    check_date DATE
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    is_booked BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM public.events
+        WHERE venue_id = check_venue_id
+          AND event_date = check_date
+          AND status NOT IN ('cancelled', 'completed')
+
+        UNION ALL
+
+        SELECT 1 FROM public.modification_requests
+        WHERE proposed_venue_id = check_venue_id
+          AND proposed_date = check_date
+          AND status = 'pending'
+    )
+    INTO is_booked;
+
+    RETURN NOT is_booked;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP FUNCTION IF EXISTS public.apply_modification(UUID);
+
+CREATE OR REPLACE FUNCTION public.apply_modification(mod_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    v_mod_record RECORD;
+    v_event_record RECORD;
+BEGIN
+    SELECT * INTO v_mod_record
+    FROM public.modification_requests
+    WHERE id = mod_id
+    FOR UPDATE;
+
+    IF v_mod_record IS NULL THEN
+        RAISE EXCEPTION 'Modification request not found.';
+    END IF;
+
+    IF v_mod_record.status <> 'pending' THEN
+        RAISE EXCEPTION 'Modification is no longer pending.';
+    END IF;
+
+    SELECT * INTO v_event_record
+    FROM public.events
+    WHERE id = v_mod_record.event_id;
+
+    IF v_event_record.client_id <> auth.uid() THEN
+        RAISE EXCEPTION 'Unauthorized: You do not own this event.';
+    END IF;
+
+    UPDATE public.events
+    SET
+        venue_id = v_mod_record.proposed_venue_id,
+        event_date = v_mod_record.proposed_date,
+        status = 'in_progress'
+    WHERE id = v_mod_record.event_id;
+
+    UPDATE public.modification_requests
+    SET status = 'accepted'
+    WHERE id = mod_id;
+
+    UPDATE public.modification_requests
+    SET
+        status = 'rejected',
+        rejection_reason = 'Another modification was accepted'
+    WHERE event_id = v_mod_record.event_id
+      AND id <> mod_id
+      AND status = 'pending';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================
+-- 7. ROW LEVEL SECURITY
 -- =============================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -196,12 +293,10 @@ CREATE POLICY "Update Own Profile"
 ON public.profiles FOR UPDATE TO authenticated
 USING (auth.uid() = id);
 
--- EVENTS  ✅ UPDATED POLICY (CORRECTLY ADDED)
+-- EVENTS
 DROP POLICY IF EXISTS "Read Events" ON public.events;
 CREATE POLICY "Read Events"
-ON public.events
-FOR SELECT
-TO authenticated
+ON public.events FOR SELECT TO authenticated
 USING (true);
 
 CREATE POLICY "Manager Full Event Access"
@@ -267,8 +362,9 @@ USING (sponsor_id = auth.uid())
 WITH CHECK (sponsor_id = auth.uid());
 
 -- =============================================
--- 6. GRANTS
+-- 8. GRANTS
 -- =============================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON public.assignments TO authenticated;
+GRANT SELECT ON public.venues TO authenticated;

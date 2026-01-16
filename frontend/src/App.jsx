@@ -10,7 +10,7 @@ import ClientDashboard from './pages/dashboards/ClientDashboard';
 import ManagerDashboard from './pages/dashboards/ManagerDashboard';
 import SponsorDashboard from './pages/dashboards/SponsorDashboard';
 import EmployeeDashboard from './pages/dashboards/EmployeeDashboard';
-
+import EventModifications from './pages/dashboards/EventModifications';
 // Helper component to redirect based on Role
 const DashboardRedirect = () => {
     const { user, role, loading } = useAuth();
@@ -80,6 +80,14 @@ function App() {
           />
 
           <Route path="*" element={<div className="p-10">404 - Page Not Found</div>} />
+        <Route 
+  path="/event-modifications/:id" 
+  element={
+    <ProtectedRoute allowedRoles={['manager', 'client']}>
+      <EventModifications />
+    </ProtectedRoute>
+  } 
+/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
