@@ -271,7 +271,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =============================================
--- 7. ROW LEVEL SECURITY
+-- 7. ROW LEVEL SECURITY (FINAL – NO CONFLICTS)
 -- =============================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -284,86 +284,222 @@ ALTER TABLE public.terms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modification_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 
+-- =================================================
 -- PROFILES
+-- =================================================
 CREATE POLICY "Public Read Profiles"
-ON public.profiles FOR SELECT TO authenticated
+ON public.profiles
+FOR SELECT
+TO authenticated
 USING (true);
 
 CREATE POLICY "Update Own Profile"
-ON public.profiles FOR UPDATE TO authenticated
+ON public.profiles
+FOR UPDATE
+TO authenticated
 USING (auth.uid() = id);
 
--- EVENTS
-DROP POLICY IF EXISTS "Read Events" ON public.events;
-CREATE POLICY "Read Events"
-ON public.events FOR SELECT TO authenticated
-USING (true);
+-- =================================================
+-- EVENTS (STRICT, CATEGORY-AWARE)
+-- =================================================
 
-CREATE POLICY "Manager Full Event Access"
-ON public.events FOR ALL TO authenticated
-USING (public.is_manager())
-WITH CHECK (public.is_manager());
-
-CREATE POLICY "Client Manage Own Events"
-ON public.events FOR ALL TO authenticated
+-- CLIENT: full control of own events
+CREATE POLICY "Client Own Events"
+ON public.events
+FOR ALL
+TO authenticated
 USING (client_id = auth.uid())
 WITH CHECK (client_id = auth.uid());
 
+-- MANAGER: full control ONLY within assigned categories
+CREATE POLICY "Manager Category Events"
+ON public.events
+FOR ALL
+TO authenticated
+USING (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.event_subtypes es
+    JOIN public.manager_category_assignments mca
+      ON mca.category_id = es.category_id
+    WHERE es.id = events.subtype_id
+      AND mca.manager_id = auth.uid()
+  )
+)
+WITH CHECK (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.event_subtypes es
+    JOIN public.manager_category_assignments mca
+      ON mca.category_id = es.category_id
+    WHERE es.id = subtype_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+-- EMPLOYEE: read-only assigned events
+CREATE POLICY "Employee Assigned Events"
+ON public.events
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.assignments a
+    WHERE a.event_id = events.id
+      AND a.employee_id = auth.uid()
+  )
+);
+
+-- =================================================
 -- VENUES
+-- =================================================
 CREATE POLICY "Read Venues"
-ON public.venues FOR SELECT TO authenticated
+ON public.venues
+FOR SELECT
+TO authenticated
 USING (true);
 
 CREATE POLICY "Manager Manage Venues"
-ON public.venues FOR ALL TO authenticated
+ON public.venues
+FOR ALL
+TO authenticated
 USING (public.is_manager())
 WITH CHECK (public.is_manager());
 
+-- =================================================
 -- ASSIGNMENTS
+-- =================================================
 CREATE POLICY "Manager Manage Assignments"
-ON public.assignments FOR ALL TO authenticated
+ON public.assignments
+FOR ALL
+TO authenticated
 USING (public.is_manager())
 WITH CHECK (public.is_manager());
 
 CREATE POLICY "Employee View Assignments"
-ON public.assignments FOR SELECT TO authenticated
+ON public.assignments
+FOR SELECT
+TO authenticated
 USING (employee_id = auth.uid());
 
 CREATE POLICY "Employee Update Assignments"
-ON public.assignments FOR UPDATE TO authenticated
+ON public.assignments
+FOR UPDATE
+TO authenticated
 USING (employee_id = auth.uid());
 
+-- =================================================
 -- ATTENDANCE
+-- =================================================
 CREATE POLICY "Manager View Attendance"
-ON public.attendance FOR SELECT TO authenticated
+ON public.attendance
+FOR SELECT
+TO authenticated
 USING (public.is_manager());
 
 CREATE POLICY "Employee View Own Attendance"
-ON public.attendance FOR SELECT TO authenticated
+ON public.attendance
+FOR SELECT
+TO authenticated
 USING (employee_id = auth.uid());
 
 CREATE POLICY "Employee Clock In"
-ON public.attendance FOR INSERT TO authenticated
+ON public.attendance
+FOR INSERT
+TO authenticated
 WITH CHECK (employee_id = auth.uid());
 
 CREATE POLICY "Employee Clock Out"
-ON public.attendance FOR UPDATE TO authenticated
+ON public.attendance
+FOR UPDATE
+TO authenticated
 USING (employee_id = auth.uid());
 
+-- =================================================
+-- MODIFICATION REQUESTS (CATEGORY-SAFE)
+-- =================================================
+
+-- MANAGER: view requests for own category
+CREATE POLICY "Manager View Modification Requests"
+ON public.modification_requests
+FOR SELECT
+TO authenticated
+USING (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON es.id = e.subtype_id
+    JOIN public.manager_category_assignments mca
+      ON mca.category_id = es.category_id
+    WHERE e.id = modification_requests.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+-- MANAGER: create requests for own category
+CREATE POLICY "Manager Create Modification Requests"
+ON public.modification_requests
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON es.id = e.subtype_id
+    JOIN public.manager_category_assignments mca
+      ON mca.category_id = es.category_id
+    WHERE e.id = modification_requests.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+-- CLIENT: view & respond to requests for own events
+CREATE POLICY "Client Manage Own Modification Requests"
+ON public.modification_requests
+FOR SELECT, UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    WHERE e.id = modification_requests.event_id
+      AND e.client_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    WHERE e.id = modification_requests.event_id
+      AND e.client_id = auth.uid()
+  )
+);
+
+-- =================================================
 -- SPONSORSHIPS
+-- =================================================
 CREATE POLICY "Manager Manage Sponsorships"
-ON public.sponsorships FOR ALL TO authenticated
+ON public.sponsorships
+FOR ALL
+TO authenticated
 USING (public.is_manager())
 WITH CHECK (public.is_manager());
 
-CREATE POLICY "Sponsor Manage Own"
-ON public.sponsorships FOR ALL TO authenticated
+CREATE POLICY "Sponsor Manage Own Sponsorships"
+ON public.sponsorships
+FOR ALL
+TO authenticated
 USING (sponsor_id = auth.uid())
 WITH CHECK (sponsor_id = auth.uid());
 
--- =============================================
--- 8. GRANTS
--- =============================================
+-- =================================================
+-- GRANTS
+-- =================================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON public.assignments TO authenticated;
