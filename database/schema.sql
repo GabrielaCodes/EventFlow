@@ -257,7 +257,7 @@ USING (
     SELECT 1
     FROM public.event_subtypes es
     JOIN public.manager_category_assignments mca
-      ON mca.category_id = es.category_id
+      ON es.category_id = mca.category_id
     WHERE es.id = events.subtype_id
       AND mca.manager_id = auth.uid()
   )
@@ -273,7 +273,7 @@ USING (
   )
 );
 
--- Categories & subtypes (PUBLIC for signup dropdown)
+-- Categories & Subtypes (public for signup)
 CREATE POLICY "Public read categories"
 ON public.event_categories FOR SELECT
 TO anon, authenticated
@@ -290,8 +290,84 @@ ON public.manager_category_assignments FOR SELECT
 TO authenticated
 USING (manager_id = auth.uid());
 
+-- ============================
+-- MODIFICATION REQUEST POLICIES
+-- ============================
+
+-- Managers: VIEW requests for events in their category
+CREATE POLICY "Managers view category modification requests"
+ON public.modification_requests
+FOR SELECT
+TO authenticated
+USING (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON e.subtype_id = es.id
+    JOIN public.manager_category_assignments mca
+      ON es.category_id = mca.category_id
+    WHERE e.id = modification_requests.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+-- Managers: CREATE requests for events in their category
+CREATE POLICY "Managers create category modification requests"
+ON public.modification_requests
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  public.is_manager()
+  AND EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON e.subtype_id = es.id
+    JOIN public.manager_category_assignments mca
+      ON es.category_id = mca.category_id
+    WHERE e.id = modification_requests.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+-- Clients: VIEW requests for their own events
+CREATE POLICY "Clients view own modification requests"
+ON public.modification_requests
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    WHERE e.id = modification_requests.event_id
+      AND e.client_id = auth.uid()
+  )
+);
+
+-- Clients: UPDATE (accept/reject) their own requests
+CREATE POLICY "Clients respond to own modification requests"
+ON public.modification_requests
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    WHERE e.id = modification_requests.event_id
+      AND e.client_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    WHERE e.id = modification_requests.event_id
+      AND e.client_id = auth.uid()
+  )
+);
+
 -- =================================================
--- 12. SEED DATA (OPTIONAL)
+-- 12. OPTIONAL SEED DATA
 -- =================================================
 
 INSERT INTO public.event_categories (name)

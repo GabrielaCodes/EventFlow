@@ -107,10 +107,51 @@ export const requestModification = async (req, res) => {
 // --------------------------------------------------------
 // 6. CLIENT: Respond to Modification
 // --------------------------------------------------------
+// --------------------------------------------------------
+// 6. CLIENT: Respond to Modification (Accepted/Rejected)
+// --------------------------------------------------------
 export const respondToModification = async (req, res) => {
     try {
-        res.status(200).json({ message: "Respond to modification working" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        const { modification_id, action } = req.body; // action = 'accept' or 'reject'
+        const clientId = req.user.id;
+
+        // 1. Verify Ownership (Security)
+        const { data: request, error: fetchError } = await supabase
+            .from('modification_requests')
+            .select('*, events!inner(client_id)')
+            .eq('id', modification_id)
+            .single();
+
+        if (fetchError || !request) return res.status(404).json({ error: "Request not found" });
+        if (request.events.client_id !== clientId) return res.status(403).json({ error: "Unauthorized" });
+
+        // 2. Handle Rejection
+        if (action === 'reject') {
+            const { error } = await supabase
+                .from('modification_requests')
+                .update({ status: 'rejected' })
+                .eq('id', modification_id);
+
+            if (error) throw error;
+            return res.status(200).json({ message: "Request rejected" });
+        }
+
+        // 3. Handle Acceptance (Call the SQL Function)
+        if (action === 'accept') {
+            // This calls the "apply_modification" function you created in SQL
+            // It atomically updates the event AND the request status
+            const { error: rpcError } = await supabase.rpc('apply_modification', {
+                mod_id: modification_id
+            });
+
+            if (rpcError) throw rpcError;
+            return res.status(200).json({ message: "Modification accepted and applied!" });
+        }
+
+        return res.status(400).json({ error: "Invalid action" });
+
+    } catch (err) {
+        console.error("Response Error:", err);
+        res.status(500).json({ error: err.message });
     }
 };

@@ -73,13 +73,34 @@ const EventModifications = () => {
     }
 };
     // Client: Respond
+    // Client: Respond (Accept/Reject)
     const handleResponse = async (reqId, action) => {
-        const res = await fetch('http://localhost:5000/api/events/respond', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ modification_id: reqId, action })
-        });
-        if (res.ok) fetchAllData();
+        try {
+            // Get Token
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+
+            const res = await fetch('http://localhost:5000/api/events/respond', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // ✅ Add Token
+                },
+                body: JSON.stringify({ modification_id: reqId, action })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(action === 'accept' ? "Changes applied!" : "Request rejected.");
+                fetchAllData(); // Refresh UI
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network Error");
+        }
     };
 
     if (!event) return <div className="p-10">Loading...</div>;
