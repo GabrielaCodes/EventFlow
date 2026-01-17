@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -7,9 +7,22 @@ const Register = () => {
         email: '',
         password: '',
         fullName: '',
-        role: 'client' // Default role
+        role: 'client',
+        category_id: '' 
     });
+    
+    const [categories, setCategories] = useState([]); 
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
+    // 1. Fetch Categories for the dropdown
+    useEffect(() => {
+        const fetchCats = async () => {
+            const { data } = await supabase.from('event_categories').select('*');
+            if (data) setCategories(data);
+        };
+        fetchCats();
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -17,26 +30,39 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+
         try {
-            // 1. Sign up with Supabase Auth
-            // We pass "data" so the SQL Trigger automatically creates the Profile
-            const { data, error } = await supabase.auth.signUp({
+            // Validate Manager Selection
+            if (formData.role === 'manager' && !formData.category_id) {
+                alert("Please select a Department/Category.");
+                setLoading(false);
+                return;
+            }
+
+            // 2. Sign Up (Send category_id in metadata)
+            const { error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
                     data: {
                         full_name: formData.fullName,
                         role: formData.role,
+                        category_id: formData.role === 'manager' ? formData.category_id : null
                     },
                 },
             });
 
-            if (error) throw error;
+            if (authError) throw authError;
 
-            alert("Registration Successful! Please Log In.");
+            alert("Registration Successful!");
             navigate('/');
+
         } catch (err) {
+            console.error("Registration Error:", err);
             alert(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -61,15 +87,43 @@ const Register = () => {
                     onChange={handleChange} 
                 />
                 
-                <select name="role" className="w-full mb-3 p-2 border rounded" onChange={handleChange}>
+                <select 
+                    name="role" 
+                    className="w-full mb-3 p-2 border rounded" 
+                    onChange={handleChange}
+                    value={formData.role}
+                >
                     <option value="client">Client</option>
                     <option value="employee">Employee</option>
                     <option value="manager">Manager</option>
                     <option value="sponsor">Sponsor</option>
                 </select>
 
-                <button className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">
-                    Sign Up
+                {/* Manager Category Selector */}
+                {formData.role === 'manager' && (
+                    <div className="mb-3 animate-fade-in">
+                        <label className="block text-sm text-gray-600 mb-1">
+                            Select Department:
+                        </label>
+                        <select 
+                            name="category_id" 
+                            className="w-full p-2 border rounded border-blue-400 bg-blue-50" 
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="">-- Select Category --</option>
+                            {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                <button 
+                    disabled={loading}
+                    className="w-full text-white p-2 rounded bg-green-600 hover:bg-green-700"
+                >
+                    {loading ? "Creating Account..." : "Sign Up"}
                 </button>
                 
                 <p className="mt-4 text-center text-sm">

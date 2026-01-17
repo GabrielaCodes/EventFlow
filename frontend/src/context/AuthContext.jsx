@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -7,114 +7,111 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const lastCheckedUserId = useRef(null);
 
-  useEffect(() => {
-    const getSession = async () => {
-      try {
-        console.log("1. Starting Session Check...");
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+  // ✅ FIXED: This function ONLY READS. It never INSERTS.
+  // ✅ COPY THIS EXACT FUNCTION
+  const ensureProfileExists = async (sessionUser) => {
+    // Optimization: Don't fetch if we already have it
+    if (lastCheckedUserId.current === sessionUser.id && role !== null) {
+        return { role }; 
+    }
+    
+    lastCheckedUserId.current = sessionUser.id;
 
-        if (session?.user) {
-          console.log("2. User found:", session.user.email);
-          setUser(session.user);
-          await fetchRole(session.user.id);
-        } else {
-          console.log("2. No active session found.");
-        }
-      } catch (err) {
-        console.error("CRITICAL ERROR in Auth:", err.message);
-      } finally {
-        console.log("4. Loading set to false.");
-        setLoading(false);
-      }
-    };
-
-    getSession();
-
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await fetchRole(session.user.id);
-        } else {
-          setUser(null);
-          setRole(null);
-        }
-        setLoading(false);
-      });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Delay helper
-  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const fetchRole = async (userId, retries = 3) => {
     try {
-      console.log(`Fetching role... Attempts left: ${retries}`);
+      let attempts = 0;
+      let existingProfile = null;
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
+      // 🔄 RETRY LOOP: Wait for the Database Trigger to finish creating the profile
+      while (attempts < 5 && !existingProfile) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .maybeSingle(); // 👈 IMPORTANT: Use 'maybeSingle', NOT 'single'
 
-      if (error) throw error;
-
-      if (data?.role) {
-        console.log("Role found:", data.role);
-        setRole(data.role);
-      } else if (retries > 0) {
-        console.log("Profile missing. Retrying in 500ms...");
-        await delay(500);
-        return fetchRole(userId, retries - 1);
-      } else {
-        console.warn("User has no profile row! Defaulting to null");
-        setRole(null);
-
+          if (!error && data) {
+              existingProfile = data;
+          } else {
+              // Wait 500ms before checking again
+              console.log(`⏳ Profile not ready yet. Retrying (${attempts + 1}/5)...`);
+              await new Promise(r => setTimeout(r, 500));
+              attempts++;
+          }
       }
+
+      if (existingProfile) {
+        return existingProfile;
+      }
+
+      console.error("❌ Profile missing. The database trigger may have failed.");
+      return null;
+
     } catch (err) {
-      console.error("FetchRole Error:", err.message);
-      setRole(null);
+      console.error("Profile Fetch Error:", err.message);
+      return null;
     }
   };
 
-  // 🔑 REQUIRED by Login / Navbar
+  useEffect(() => {
+    let mounted = true;
+
+    const handleSession = async (session) => {
+        if (session?.user) {
+            setUser(session.user);
+            const profile = await ensureProfileExists(session.user);
+            if (mounted) setRole(profile?.role || 'client');
+        } else {
+            if (mounted) {
+                setUser(null);
+                setRole(null);
+                lastCheckedUserId.current = null; 
+            }
+        }
+        if (mounted) setLoading(false);
+    };
+
+    // 1. Initial Check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        handleSession(session);
+    });
+
+    // 2. Listen for Changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        handleSession(session);
+    });
+
+    return () => {
+        mounted = false;
+        subscription.unsubscribe();
+    };
+  }, []);
+
   const login = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    throw error; // 🔥 force it to bubble
-  }
-
-  return data;
-};
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  };
 
   const logout = async () => {
-    console.log("1. User clicked logout - Starting process...");
-    return supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
+    lastCheckedUserId.current = null;
+    localStorage.clear();
+    try {
+        await supabase.auth.signOut();
+    } catch (err) {
+        console.warn("Logout warning:", err);
+    }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        role,
-        loading,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

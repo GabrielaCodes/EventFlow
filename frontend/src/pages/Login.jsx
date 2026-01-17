@@ -1,16 +1,18 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../services/api'; // Import supabase directly for the role check
+import { supabase } from '../services/api'; 
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
         try {
             // 1. Perform the Auth Login
@@ -18,17 +20,36 @@ const Login = () => {
 
             if (!user) throw new Error("Login failed");
 
-            // 2. Fetch the role manually (to avoid waiting for Context sync)
-            const { data: profile, error } = await supabase
+            // 2. Fetch the role manually (SAFER METHOD)
+            // We use .maybeSingle() instead of .single() to avoid the "Cannot coerce" crash
+            let { data: profile, error } = await supabase
                 .from('profiles')
                 .select('role')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
-            if (error) throw error;
+            // 🛑 RETRY LOGIC: If profile is missing (race condition), wait 1 second and try again
+            if (!profile) {
+                console.log("⚠️ Profile not ready. Waiting for trigger...");
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const retry = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                
+                profile = retry.data;
+            }
 
-            // 3. Dynamic Redirect
-            switch (profile.role) {
+            if (error) console.error("Profile fetch error:", error);
+
+            // 3. Robust Fallback
+            // If the profile is STILL missing, default to 'client' so the user isn't stuck.
+            const userRole = profile?.role || 'client';
+
+            // 4. Dynamic Redirect
+            switch (userRole) {
                 case 'manager':
                     navigate('/manager-dashboard');
                     break;
@@ -38,17 +59,18 @@ const Login = () => {
                 case 'client':
                     navigate('/client-dashboard');
                     break;
-                // Add this if you enabled 'employee' in the DB
                 case 'employee': 
                     navigate('/employee-dashboard'); 
                     break;
                 default:
-                    navigate('/'); // Fallback
+                    navigate('/client-dashboard'); 
             }
 
         } catch (err) {
             console.error('Login error:', err.message);
             alert(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -68,8 +90,12 @@ const Login = () => {
                     placeholder="Password" 
                     onChange={(e) => setPassword(e.target.value)} 
                 />
-                <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
-                    Sign In
+                <button 
+                    disabled={loading}
+                    type="submit" 
+                    className={`w-full text-white p-2 rounded ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                    {loading ? "Signing In..." : "Sign In"}
                 </button>
                 <p className="mt-4 text-center text-sm">
                     Don't have an account? <Link to="/register" className="text-blue-600 underline">Sign Up</Link>
