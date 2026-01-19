@@ -93,6 +93,68 @@ export const getAttendanceLogs = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+// --------------------------------------------------------
+// 7. MANAGER: Approve Event (Accept As-Is)
+// --------------------------------------------------------
+export const approveEvent = async (req, res) => {
+    try {
+        const { event_id } = req.body;
+
+        if (!event_id) {
+            return res.status(400).json({ error: "Event ID is required." });
+        }
+
+        // 1. Ensure event exists and is in consideration
+        const { data: event, error: eventError } = await supabase
+            .from('events')
+            .select('id, status')
+            .eq('id', event_id)
+            .single();
+
+        if (eventError || !event) {
+            return res.status(404).json({ error: "Event not found." });
+        }
+
+        if (event.status !== 'consideration') {
+            return res.status(400).json({
+                error: "Only events in consideration can be approved."
+            });
+        }
+
+        // 2. Block approval if a modification is pending
+        const { data: pendingReqs, error: pendingError } = await supabase
+            .from('modification_requests')
+            .select('id')
+            .eq('event_id', event_id)
+            .eq('status', 'pending');
+
+        if (pendingError) throw pendingError;
+
+        if (pendingReqs.length > 0) {
+            return res.status(400).json({
+                error: "Cannot approve event while a modification request is pending."
+            });
+        }
+
+        // 3. Approve event
+        const { data, error } = await supabase
+            .from('events')
+            .update({ status: 'in_progress' })
+            .eq('id', event_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({
+            message: "Event approved and moved to In Progress",
+            event: data
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
 
 // --------------------------------------------------------
 // 5. MANAGER: Propose Modification (The New Feature)

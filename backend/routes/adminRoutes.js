@@ -4,7 +4,8 @@ import {
     assignStaff, 
     updateEventStatus, 
     getAttendanceLogs,
-    createModificationRequest // ✅ Ensure this is imported
+    createModificationRequest,
+    approveEvent // ✅ Make sure to import this from controller
 } from '../controllers/adminController.js';
 
 import { authenticate } from '../middleware/authenticate.js';
@@ -12,29 +13,21 @@ import { authorize } from '../middleware/authorize.js';
 
 const router = express.Router();
 
-// --------------------------------------------------------
 // Middleware: Protect ALL routes below for 'manager' role only
-// --------------------------------------------------------
 router.use(authenticate, authorize(['manager']));
 
-// --------------------------------------------------------
 // Dashboard & Analytics
-// --------------------------------------------------------
 router.get('/analytics', getAnalytics);
 
-// --------------------------------------------------------
 // Staff & Assignments
-// --------------------------------------------------------
 router.post('/assign-staff', assignStaff);
 router.get('/attendance', getAttendanceLogs);
 
-// --------------------------------------------------------
-// Event Management (Status & Modifications)
-// --------------------------------------------------------
-router.patch('/event-status', updateEventStatus);
+// Event Management
+// ✅ Added this route so "Option A: Approve Event" works
+router.post('/approve-event', approveEvent); 
 
-// ✅ This enables the Manager to send modification proposals
-// Endpoint: POST /api/admin/modify
+router.patch('/event-status', updateEventStatus);
 router.post('/modify', createModificationRequest); 
 
 export default router;
