@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const EventModifications = () => {
     const { id } = useParams(); // Event ID
-    const { role, user } = useAuth();
+    const { role } = useAuth();
     const navigate = useNavigate();
 
     const [event, setEvent] = useState(null);
@@ -18,10 +18,15 @@ const EventModifications = () => {
     useEffect(() => { fetchAllData(); }, [id]);
 
     const fetchAllData = async () => {
-        // Parallel fetch: Event details, Pending Requests, Available Venues
+        // Parallel fetch: Event details, ALL Requests (History), Available Venues
         const [ev, reqs, vens] = await Promise.all([
             supabase.from('events').select('*, venues(name)').eq('id', id).single(),
-            supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).eq('status', 'pending'),
+            // ✅ CHANGE 1: Removed .eq('status', 'pending') so we see history
+            supabase
+                .from('modification_requests')
+                .select('*, venues:proposed_venue_id(name)')
+                .eq('event_id', id)
+                .order('created_at', { ascending: false }), // Show newest first
             supabase.from('venues').select('id, name')
         ]);
 
@@ -30,14 +35,15 @@ const EventModifications = () => {
         if (vens.data) setVenues(vens.data);
     };
 
-    // Helper to go back to correct dashboard
+    // Helper to check if there is an ACTIVE request (to hide the form)
+    const hasPendingRequest = requests.some(r => r.status === 'pending');
+
     const handleBack = () => {
         if (role === 'manager') navigate('/manager-dashboard');
         else if (role === 'client') navigate('/client-dashboard');
-        else navigate('/'); // Fallback
+        else navigate('/'); 
     };
 
-    // Manager: Send Proposal
     const handleSubmitProposal = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -76,7 +82,6 @@ const EventModifications = () => {
         }
     };
 
-    // Client: Respond (Accept/Reject)
     const handleResponse = async (reqId, action) => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -109,7 +114,6 @@ const EventModifications = () => {
 
     return (
         <div className="p-8 max-w-4xl mx-auto">
-            {/* ✅ NEW: Back Button */}
             <button 
                 onClick={handleBack}
                 className="mb-6 text-gray-500 hover:text-blue-600 flex items-center gap-2 font-medium transition"
@@ -122,36 +126,55 @@ const EventModifications = () => {
                 Current: <strong>{new Date(event.event_date).toDateString()}</strong> at <strong>{event.venues?.name || 'Unassigned'}</strong>
             </div>
 
-            {/* SECTION 1: Pending Modification Requests */}
+            {/* SECTION 1: Modification History (Pending + Past) */}
             {requests.length > 0 ? (
-                <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-8 animate-fade-in">
-                    <h3 className="text-lg font-bold text-yellow-800 mb-2">⚠️ Pending Modification Request</h3>
+                <div className="space-y-4 mb-8">
+                    <h3 className="text-lg font-bold text-gray-800">Modification History</h3>
                     {requests.map(req => (
-                        <div key={req.id} className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded shadow-sm gap-4">
+                        <div 
+                            key={req.id} 
+                            // ✅ CHANGE 2: Dynamic styling based on status
+                            className={`flex flex-col md:flex-row justify-between items-center p-4 rounded shadow-sm gap-4 border-l-4 
+                                ${req.status === 'pending' ? 'bg-yellow-50 border-yellow-400' : 
+                                  req.status === 'accepted' ? 'bg-green-50 border-green-500' : 
+                                  'bg-red-50 border-red-400'}`}
+                        >
                             <div>
                                 <p className="font-semibold text-gray-800">Change to: {req.venues?.name}</p>
                                 <p className="text-sm text-gray-600">New Date: {new Date(req.proposed_date).toDateString()}</p>
                                 <p className="text-xs text-gray-500 italic mt-1">Note: "{req.request_details}"</p>
                             </div>
                             
-                            {role === 'client' && (
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleResponse(req.id, 'accept')} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-medium transition">Accept</button>
-                                    <button onClick={() => handleResponse(req.id, 'reject')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-medium transition">Reject</button>
-                                </div>
+                            {/* Logic for Client buttons vs Status Badges */}
+                            {req.status === 'pending' ? (
+                                <>
+                                    {role === 'client' && (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleResponse(req.id, 'accept')} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-medium transition">Accept</button>
+                                            <button onClick={() => handleResponse(req.id, 'reject')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-medium transition">Reject</button>
+                                        </div>
+                                    )}
+                                    {role === 'manager' && <span className="text-sm text-yellow-600 font-semibold animate-pulse">Waiting for client...</span>}
+                                </>
+                            ) : (
+                                // ✅ CHANGE 3: Show outcome if not pending
+                                <span className={`px-3 py-1 rounded text-sm font-bold uppercase 
+                                    ${req.status === 'accepted' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'}`}>
+                                    {req.status}
+                                </span>
                             )}
-                            {role === 'manager' && <span className="text-sm text-gray-400 italic">Waiting for client response...</span>}
                         </div>
                     ))}
                 </div>
             ) : (
                 <div className="bg-blue-50 border border-blue-100 p-4 rounded mb-8 text-blue-800">
-                    <p className="italic">No pending modifications active.</p>
+                    <p className="italic">No modification history.</p>
                 </div>
             )}
 
             {/* SECTION 2: Manager Proposal Form */}
-            {role === 'manager' && requests.length === 0 && (
+            {/* ✅ CHANGE 4: Only hide form if there is a PENDING request. Allow new proposals if previous were rejected. */}
+            {role === 'manager' && !hasPendingRequest && (
                 <div className="bg-gray-100 p-6 rounded-lg shadow-inner">
                     <h3 className="text-lg font-bold mb-4 text-gray-700">Propose a Change</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,6 +214,11 @@ const EventModifications = () => {
                         Send Proposal
                     </button>
                 </div>
+            )}
+            
+            {/* Helper text if form is hidden */}
+            {role === 'manager' && hasPendingRequest && (
+                <p className="text-center text-gray-400 italic mt-4">You cannot propose a new change while one is still pending.</p>
             )}
         </div>
     );
