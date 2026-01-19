@@ -79,7 +79,7 @@ CREATE TABLE public.events (
 );
 
 -- =================================================
--- 6. MANAGER ↔ CATEGORY ASSIGNMENTS (NO STATUS)
+-- 6. MANAGER ↔ CATEGORY ASSIGNMENTS
 -- =================================================
 
 CREATE TABLE public.manager_category_assignments (
@@ -154,6 +154,40 @@ CREATE TABLE public.modification_requests (
 );
 
 -- =================================================
+-- 7.5 CONSTRAINTS
+-- =================================================
+
+-- Enforce: only ONE pending modification per event
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_pending_mod_per_event
+ON public.modification_requests (event_id)
+WHERE status = 'pending';
+
+-- =================================================
+-- 7.6 VIEWS
+-- =================================================
+
+CREATE OR REPLACE VIEW public.manager_event_overview
+WITH (security_invoker = true)
+AS
+SELECT
+  e.id,
+  e.title,
+  e.event_date,
+  e.status,
+  e.subtype_id,
+  es.name AS subtype_name,
+  ec.name AS category_name,
+  EXISTS (
+    SELECT 1
+    FROM public.modification_requests mr
+    WHERE mr.event_id = e.id
+      AND mr.status = 'pending'
+  ) AS has_pending_request
+FROM public.events e
+LEFT JOIN public.event_subtypes es ON e.subtype_id = es.id
+LEFT JOIN public.event_categories ec ON es.category_id = ec.id;
+
+-- =================================================
 -- 8. FUNCTIONS
 -- =================================================
 
@@ -195,11 +229,9 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   IF v_role_enum = 'manager' AND v_category_id IS NOT NULL THEN
-    IF EXISTS (SELECT 1 FROM public.event_categories WHERE id = v_category_id) THEN
-      INSERT INTO public.manager_category_assignments (manager_id, category_id)
-      VALUES (NEW.id, v_category_id)
-      ON CONFLICT (manager_id, category_id) DO NOTHING;
-    END IF;
+    INSERT INTO public.manager_category_assignments (manager_id, category_id)
+    VALUES (NEW.id, v_category_id)
+    ON CONFLICT (manager_id, category_id) DO NOTHING;
   END IF;
 
   RETURN NEW;
@@ -234,7 +266,6 @@ ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
 -- 11. POLICIES
 -- =================================================
 
--- Profiles
 CREATE POLICY "Profiles read"
 ON public.profiles FOR SELECT TO authenticated
 USING (true);
@@ -243,7 +274,6 @@ CREATE POLICY "Profiles update own"
 ON public.profiles FOR UPDATE TO authenticated
 USING (auth.uid() = id);
 
--- Events
 CREATE POLICY "Client own events"
 ON public.events FOR ALL TO authenticated
 USING (client_id = auth.uid())
@@ -273,7 +303,6 @@ USING (
   )
 );
 
--- Categories & Subtypes (public for signup)
 CREATE POLICY "Public read categories"
 ON public.event_categories FOR SELECT
 TO anon, authenticated
@@ -284,20 +313,13 @@ ON public.event_subtypes FOR SELECT
 TO anon, authenticated
 USING (true);
 
--- Manager assignments (self-view)
-CREATE POLICY "Managers view own assignments"
+CREATE POLICY "Managers view own category assignments"
 ON public.manager_category_assignments FOR SELECT
 TO authenticated
 USING (manager_id = auth.uid());
 
--- ============================
--- MODIFICATION REQUEST POLICIES
--- ============================
-
--- Managers: VIEW requests for events in their category
 CREATE POLICY "Managers view category modification requests"
-ON public.modification_requests
-FOR SELECT
+ON public.modification_requests FOR SELECT
 TO authenticated
 USING (
   public.is_manager()
@@ -312,10 +334,8 @@ USING (
   )
 );
 
--- Managers: CREATE requests for events in their category
 CREATE POLICY "Managers create category modification requests"
-ON public.modification_requests
-FOR INSERT
+ON public.modification_requests FOR INSERT
 TO authenticated
 WITH CHECK (
   public.is_manager()
@@ -330,49 +350,34 @@ WITH CHECK (
   )
 );
 
--- Clients: VIEW requests for their own events
 CREATE POLICY "Clients view own modification requests"
-ON public.modification_requests
-FOR SELECT
+ON public.modification_requests FOR SELECT
 TO authenticated
 USING (
   EXISTS (
-    SELECT 1
-    FROM public.events e
+    SELECT 1 FROM public.events e
     WHERE e.id = modification_requests.event_id
       AND e.client_id = auth.uid()
   )
 );
 
--- Clients: UPDATE (accept/reject) their own requests
 CREATE POLICY "Clients respond to own modification requests"
-ON public.modification_requests
-FOR UPDATE
+ON public.modification_requests FOR UPDATE
 TO authenticated
 USING (
   EXISTS (
-    SELECT 1
-    FROM public.events e
+    SELECT 1 FROM public.events e
     WHERE e.id = modification_requests.event_id
       AND e.client_id = auth.uid()
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1
-    FROM public.events e
+    SELECT 1 FROM public.events e
     WHERE e.id = modification_requests.event_id
       AND e.client_id = auth.uid()
   )
 );
-
--- =================================================
--- 12. OPTIONAL SEED DATA
--- =================================================
-
-INSERT INTO public.event_categories (name)
-VALUES ('Weddings'), ('Corporate'), ('Concerts'), ('Private Parties')
-ON CONFLICT (name) DO NOTHING;
 
 -- =================================================
 -- 13. GRANTS
