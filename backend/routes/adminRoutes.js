@@ -5,7 +5,9 @@ import {
     updateEventStatus, 
     getAttendanceLogs,
     createModificationRequest,
-    approveEvent // ✅ Make sure to import this from controller
+    approveEvent,
+    getPendingEmployees,
+    verifyEmployee
 } from '../controllers/adminController.js';
 
 import { authenticate } from '../middleware/authenticate.js';
@@ -19,14 +21,16 @@ router.use(authenticate, authorize(['manager']));
 // Dashboard & Analytics
 router.get('/analytics', getAnalytics);
 
+// Employee Verification (NEW ✅)
+router.get('/employees/pending', getPendingEmployees);
+router.post('/employees/verify', verifyEmployee);
+
 // Staff & Assignments
 router.post('/assign-staff', assignStaff);
 router.get('/attendance', getAttendanceLogs);
 
 // Event Management
-// ✅ Added this route so "Option A: Approve Event" works
 router.post('/approve-event', approveEvent); 
-
 router.patch('/event-status', updateEventStatus);
 router.post('/modify', createModificationRequest); 
 

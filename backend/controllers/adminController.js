@@ -1,4 +1,5 @@
 import supabase from '../config/supabaseClient.js';
+import { sendEmployeeApprovalEmail } from '../services/emailService.js';
 
 // --------------------------------------------------------
 // 1. MANAGER: Get Dashboard Analytics
@@ -194,6 +195,70 @@ export const createModificationRequest = async (req, res) => {
         res.status(201).json(data[0]);
 
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// --------------------------------------------------------
+// 6. MANAGER: Get Pending Employee Verifications
+// --------------------------------------------------------
+export const getPendingEmployees = async (req, res) => {
+    try {
+        const managerId = req.user.id;
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, created_at')
+            .eq('assigned_manager_id', managerId)
+            .eq('verification_status', 'pending');
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// --------------------------------------------------------
+// 7. MANAGER: Verify/Reject Employee
+// --------------------------------------------------------
+export const verifyEmployee = async (req, res) => {
+    try {
+        const { employee_id, action } = req.body; 
+        const managerId = req.user.id;
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ error: "Invalid action" });
+        }
+
+        const newStatus = action === 'approve' ? 'verified' : 'rejected';
+
+        // Update status in DB
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ verification_status: newStatus })
+            .eq('id', employee_id)
+            .eq('assigned_manager_id', managerId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ error: "Employee not found or not assigned to you." });
+
+        // ✅ SEND EMAIL IF APPROVED
+        if (action === 'approve') {
+            // We don't await this because we don't want to slow down the HTTP response
+            // The email will send in the background
+            sendEmployeeApprovalEmail(data.email, data.full_name);
+        }
+
+        res.json({ 
+            message: `Employee has been ${newStatus}`, 
+            employee: data 
+        });
+
+    } catch (err) {
+        console.error("Verify Error:", err);
         res.status(500).json({ error: err.message });
     }
 };

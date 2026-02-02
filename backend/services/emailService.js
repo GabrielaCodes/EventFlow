@@ -49,3 +49,40 @@ export const sendEventConfirmation = async (userEmail, eventDetails) => {
         return false;
     }
 };
+// ... existing imports and transporter setup ...
+
+// ✅ NEW: Send Approval Email to Employee
+export const sendEmployeeApprovalEmail = async (userEmail, userName) => {
+    try {
+        console.log(`📨 Sending approval email to: ${userEmail}`);
+
+        const mailOptions = {
+            from: `"EventFlow HR" <${process.env.EMAIL_USER}>`, // Uses your env var
+            to: userEmail,
+            subject: '🎉 Account Approved! You can now access the Dashboard',
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px;">
+                    <h2 style="color: #16A34A;">Welcome to the Team!</h2>
+                    <p>Hi <strong>${userName}</strong>,</p>
+                    <p>Good news! Your manager has verified your account.</p>
+                    
+                    <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #16A34A;">
+                        <p><strong>Status:</strong> ✅ Active / Verified</p>
+                        <p>You now have full access to view your schedule and accept tasks.</p>
+                    </div>
+
+                    <a href="http://localhost:5173/" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Login to Dashboard</a>
+
+                    <p style="margin-top: 20px; color: #666; font-size: 12px;">If you did not request this, please ignore this email.</p>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log("✅ Approval email sent: " + info.response);
+        return true;
+    } catch (error) {
+        console.error("❌ Email Error:", error);
+        return false;
+    }
+};

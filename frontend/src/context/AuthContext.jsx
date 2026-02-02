@@ -6,16 +6,18 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  
+  // ✅ NEW: Store the full profile object (which has verification_status)
+  const [profile, setProfile] = useState(null); 
+  
   const [loading, setLoading] = useState(true);
   
   const lastCheckedUserId = useRef(null);
 
-  // ✅ FIXED: This function ONLY READS. It never INSERTS.
-  // ✅ COPY THIS EXACT FUNCTION
   const ensureProfileExists = async (sessionUser) => {
     // Optimization: Don't fetch if we already have it
     if (lastCheckedUserId.current === sessionUser.id && role !== null) {
-        return { role }; 
+        return { role, ...profile }; 
     }
     
     lastCheckedUserId.current = sessionUser.id;
@@ -24,29 +26,26 @@ export const AuthProvider = ({ children }) => {
       let attempts = 0;
       let existingProfile = null;
 
-      // 🔄 RETRY LOOP: Wait for the Database Trigger to finish creating the profile
+      // 🔄 RETRY LOOP
       while (attempts < 5 && !existingProfile) {
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', sessionUser.id)
-            .maybeSingle(); // 👈 IMPORTANT: Use 'maybeSingle', NOT 'single'
+            .maybeSingle();
 
           if (!error && data) {
               existingProfile = data;
           } else {
-              // Wait 500ms before checking again
               console.log(`⏳ Profile not ready yet. Retrying (${attempts + 1}/5)...`);
               await new Promise(r => setTimeout(r, 500));
               attempts++;
           }
       }
 
-      if (existingProfile) {
-        return existingProfile;
-      }
+      if (existingProfile) return existingProfile;
 
-      console.error("❌ Profile missing. The database trigger may have failed.");
+      console.error("❌ Profile missing.");
       return null;
 
     } catch (err) {
@@ -61,12 +60,18 @@ export const AuthProvider = ({ children }) => {
     const handleSession = async (session) => {
         if (session?.user) {
             setUser(session.user);
-            const profile = await ensureProfileExists(session.user);
-            if (mounted) setRole(profile?.role || 'client');
+            const userProfile = await ensureProfileExists(session.user);
+            
+            if (mounted) {
+                setRole(userProfile?.role || 'client');
+                // ✅ NEW: Save the full profile to state
+                setProfile(userProfile); 
+            }
         } else {
             if (mounted) {
                 setUser(null);
                 setRole(null);
+                setProfile(null); // ✅ Reset
                 lastCheckedUserId.current = null; 
             }
         }
@@ -98,6 +103,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setUser(null);
     setRole(null);
+    setProfile(null); // ✅ Reset
     lastCheckedUserId.current = null;
     localStorage.clear();
     try {
@@ -108,7 +114,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    // ✅ NEW: Add 'profile' to the value object
+    <AuthContext.Provider value={{ user, role, profile, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -15,7 +15,6 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    // 1. Fetch Categories for the dropdown
     useEffect(() => {
         const fetchCats = async () => {
             const { data } = await supabase.from('event_categories').select('*');
@@ -33,14 +32,15 @@ const Register = () => {
         setLoading(true);
 
         try {
-            // Validate Manager Selection
-            if (formData.role === 'manager' && !formData.category_id) {
+            // ✅ CHANGE 1: Require Category for both Manager AND Employee
+            const needsCategory = ['manager', 'employee'].includes(formData.role);
+
+            if (needsCategory && !formData.category_id) {
                 alert("Please select a Department/Category.");
                 setLoading(false);
                 return;
             }
 
-            // 2. Sign Up (Send category_id in metadata)
             const { error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
@@ -48,14 +48,15 @@ const Register = () => {
                     data: {
                         full_name: formData.fullName,
                         role: formData.role,
-                        category_id: formData.role === 'manager' ? formData.category_id : null
+                        // ✅ CHANGE 2: Send category_id for both roles
+                        category_id: needsCategory ? formData.category_id : null
                     },
                 },
             });
 
             if (authError) throw authError;
 
-            alert("Registration Successful!");
+            alert("Registration Successful! Please Log In.");
             navigate('/');
 
         } catch (err) {
@@ -99,8 +100,8 @@ const Register = () => {
                     <option value="sponsor">Sponsor</option>
                 </select>
 
-                {/* Manager Category Selector */}
-                {formData.role === 'manager' && (
+                {/* ✅ CHANGE 3: Show dropdown for Manager OR Employee */}
+                {['manager', 'employee'].includes(formData.role) && (
                     <div className="mb-3 animate-fade-in">
                         <label className="block text-sm text-gray-600 mb-1">
                             Select Department:
@@ -116,6 +117,11 @@ const Register = () => {
                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))}
                         </select>
+                        {formData.role === 'employee' && (
+                            <p className="text-xs text-gray-500 mt-1">
+                                You will be assigned to a manager in this department for verification.
+                            </p>
+                        )}
                     </div>
                 )}
 
