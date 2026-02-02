@@ -7,6 +7,7 @@ import {
     createModificationRequest,
     approveEvent,
     getPendingEmployees,
+    getManagedEmployees,
     verifyEmployee
 } from '../controllers/adminController.js';
 
@@ -23,6 +24,7 @@ router.get('/analytics', getAnalytics);
 
 // Employee Verification (NEW ✅)
 router.get('/employees/pending', getPendingEmployees);
+router.get('/employees/managed', getManagedEmployees);
 router.post('/employees/verify', verifyEmployee);
 
 // Staff & Assignments

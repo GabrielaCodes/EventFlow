@@ -3,15 +3,22 @@ import api, { supabase } from '../../services/api';
 import ManagerEvents from './ManagerEvents';
 
 const ManagerDashboard = () => {
-    const [employees, setEmployees] = useState([]);
+    // Events & Core Data
+    const [events, setEvents] = useState([]); // (If used for events list)
     const [assignments, setAssignments] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [activeEventsList, setActiveEventsList] = useState([]);
     
-    // ✅ NEW: State for Pending Employees
-    const [pendingEmployees, setPendingEmployees] = useState([]);
+    // Team State
+    const [teamData, setTeamData] = useState({
+        pending: [],
+        verified: [],
+        rejected: []
+    });
     
+    // UI State
     const [loading, setLoading] = useState(true);
+    const [teamView, setTeamView] = useState('verified'); // 'verified' | 'rejected'
 
     const [formData, setFormData] = useState({
         employee_id: '',
@@ -27,7 +34,7 @@ const ManagerDashboard = () => {
         try {
             setLoading(true);
 
-            // 1. Fetch lightweight event list
+            // 1. Fetch Events & Overview
             const { data: eventData } = await supabase
                 .from('manager_event_overview')
                 .select('id, title, subtype_name')
@@ -35,23 +42,21 @@ const ManagerDashboard = () => {
                 .order('event_date', { ascending: true });
             if (eventData) setActiveEventsList(eventData);
 
-            // 2. Fetch Active Employees (For assignment dropdown)
-            const { data: empData } = await supabase
-                .from('profiles')
-                .select('id, full_name, email')
-                .eq('role', 'employee')
-                .eq('verification_status', 'verified'); // Only show verified
-            if (empData) setEmployees(empData);
-
-            // 3. ✅ NEW: Fetch Pending Employees (For verification)
+            // 2. ✅ NEW: Fetch ALL Managed Employees (Pending, Verified, Rejected)
             try {
-                const res = await api.get('/admin/employees/pending');
-                setPendingEmployees(res.data);
+                const res = await api.get('/admin/employees/managed');
+                const allEmployees = res.data || [];
+                
+                setTeamData({
+                    pending: allEmployees.filter(e => e.verification_status === 'pending'),
+                    verified: allEmployees.filter(e => e.verification_status === 'verified'),
+                    rejected: allEmployees.filter(e => e.verification_status === 'rejected')
+                });
             } catch (err) {
-                console.error("Pending employees fetch error", err);
+                console.error("Team fetch error", err);
             }
 
-            // 4. Fetch Attendance & Assignments (Existing logic)
+            // 3. Fetch Attendance & Assignments
             const { data: attData } = await supabase.from('attendance')
                 .select(`id, check_in, check_out, profiles(full_name), events(title)`)
                 .order('check_in', { ascending: false }).limit(20);
@@ -71,12 +76,14 @@ const ManagerDashboard = () => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // ✅ NEW: Handle Verification
+    // Handle Approve / Reject
     const handleVerify = async (employeeId, action) => {
+        if (!window.confirm(`Are you sure you want to ${action} this employee?`)) return;
+        
         try {
             await api.post('/admin/employees/verify', { employee_id: employeeId, action });
-            alert(`Employee ${action === 'approve' ? 'Approved' : 'Rejected'}`);
-            fetchDashboardData(); // Refresh list
+            // Optimistic Update or Refresh
+            fetchDashboardData(); 
         } catch (err) {
             alert(err.response?.data?.error || "Action failed");
         }
@@ -101,21 +108,22 @@ const ManagerDashboard = () => {
         <div className="p-8 bg-gray-50 min-h-screen">
             <h1 className="text-3xl font-bold mb-8 text-gray-800">Manager Dashboard</h1>
 
-            {/* ✅ NEW: Pending Verifications Section */}
-            {pendingEmployees.length > 0 && (
-                <div className="bg-orange-50 border border-orange-200 p-6 rounded shadow mb-8">
-                    <h2 className="text-xl font-bold text-orange-800 mb-4">🔔 Pending Staff Approvals</h2>
-                    <div className="grid gap-4">
-                        {pendingEmployees.map(emp => (
+            {/* --- SECTION 1: URGENT PENDING APPROVALS --- */}
+            {teamData.pending.length > 0 && (
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded shadow mb-8 animate-fade-in">
+                    <h2 className="text-xl font-bold text-orange-800 mb-4 flex items-center gap-2">
+                        🔔 Pending Approvals ({teamData.pending.length})
+                    </h2>
+                    <div className="grid gap-3">
+                        {teamData.pending.map(emp => (
                             <div key={emp.id} className="flex justify-between items-center bg-white p-4 rounded shadow-sm">
                                 <div>
-                                    <p className="font-bold">{emp.full_name}</p>
-                                    <p className="text-sm text-gray-600">{emp.email}</p>
-                                    <p className="text-xs text-gray-400">Signed up: {new Date(emp.created_at).toLocaleDateString()}</p>
+                                    <p className="font-bold text-gray-800">{emp.full_name}</p>
+                                    <p className="text-sm text-gray-500">{emp.email} • Signed up: {new Date(emp.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700">Approve</button>
-                                    <button onClick={() => handleVerify(emp.id, 'reject')} className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700">Reject</button>
+                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700 shadow">Approve</button>
+                                    <button onClick={() => handleVerify(emp.id, 'reject')} className="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600 shadow">Reject</button>
                                 </div>
                             </div>
                         ))}
@@ -123,9 +131,69 @@ const ManagerDashboard = () => {
                 </div>
             )}
 
+            {/* --- SECTION 2: TEAM MANAGEMENT (Verified / Rejected) --- */}
+            <div className="bg-white rounded shadow mb-8 overflow-hidden">
+                <div className="flex border-b">
+                    <button 
+                        onClick={() => setTeamView('verified')}
+                        className={`flex-1 p-4 font-bold text-center transition ${teamView === 'verified' ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                        ✅ Active Team ({teamData.verified.length})
+                    </button>
+                    <button 
+                        onClick={() => setTeamView('rejected')}
+                        className={`flex-1 p-4 font-bold text-center transition ${teamView === 'rejected' ? 'bg-red-50 text-red-700 border-b-2 border-red-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                        🚫 Rejected Applicants ({teamData.rejected.length})
+                    </button>
+                </div>
+
+                <div className="p-6 max-h-64 overflow-y-auto">
+                    {teamView === 'verified' ? (
+                        teamData.verified.length === 0 ? <p className="text-gray-400 italic text-center">No active team members.</p> :
+                        <table className="w-full text-sm">
+                            <thead><tr className="text-left text-gray-500"><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+                            <tbody className="divide-y">
+                                {teamData.verified.map(emp => (
+                                    <tr key={emp.id} className="hover:bg-gray-50">
+                                        <td className="py-3 font-medium">{emp.full_name}</td>
+                                        <td className="py-3 text-gray-500">{emp.email}</td>
+                                        <td className="py-3">
+                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-700 font-medium text-xs border border-red-200 px-2 py-1 rounded">
+                                                Deactivate / Reject
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        teamData.rejected.length === 0 ? <p className="text-gray-400 italic text-center">No rejected applicants.</p> :
+                        <table className="w-full text-sm">
+                            <thead><tr className="text-left text-gray-500"><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+                            <tbody className="divide-y">
+                                {teamData.rejected.map(emp => (
+                                    <tr key={emp.id} className="hover:bg-red-50">
+                                        <td className="py-3 font-medium text-gray-700">{emp.full_name}</td>
+                                        <td className="py-3 text-gray-500">{emp.email}</td>
+                                        <td className="py-3">
+                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-600 hover:text-green-800 font-medium text-xs border border-green-200 px-2 py-1 rounded">
+                                                Re-Approve
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+
+            {/* --- SECTION 3: EVENTS & ASSIGNMENTS --- */}
             <ManagerEvents />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                
                 {/* Assign Task Form */}
                 <div className="bg-white p-6 rounded shadow mb-8 h-fit">
                     <h2 className="text-xl font-bold text-blue-700 mb-4">Assign Staff</h2>
@@ -135,8 +203,11 @@ const ManagerDashboard = () => {
                             {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
                         </select>
                         <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="p-2 border rounded">
-                            <option value="">-- Select Verified Employee --</option>
-                            {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>)}
+                            <option value="">-- Select Employee --</option>
+                            {/* ✅ Updated: Use teamData.verified for assignment dropdown */}
+                            {teamData.verified.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
+                            ))}
                         </select>
                         <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="p-2 border rounded" />
                         <button type="submit" className="bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition py-2">Assign</button>
@@ -145,7 +216,7 @@ const ManagerDashboard = () => {
 
                 {/* Lists Section */}
                 <div className="space-y-8">
-                    {/* ... (Existing Attendance/Assignments Tables) ... */}
+                    {/* Assignments Table */}
                     <div className="bg-white rounded shadow overflow-hidden">
                         <div className="p-4 bg-gray-100 border-b"><h3 className="font-bold text-gray-700">Recent Assignments</h3></div>
                         <table className="w-full text-sm">
@@ -156,6 +227,22 @@ const ManagerDashboard = () => {
                                         <td className="p-3 font-medium">{task.profiles?.full_name}</td>
                                         <td className="p-3">{task.events?.title}</td>
                                         <td className="p-3"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{task.status}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {/* Attendance Table */}
+                    <div className="bg-white rounded shadow overflow-hidden">
+                        <div className="p-4 bg-gray-100 border-b"><h3 className="font-bold text-gray-700">Recent Attendance</h3></div>
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-left"><tr><th className="p-3">Staff</th><th className="p-3">Event</th><th className="p-3">Time</th></tr></thead>
+                            <tbody>
+                                {attendance.map(log => (
+                                    <tr key={log.id} className="border-t hover:bg-gray-50">
+                                        <td className="p-3 font-medium">{log.profiles?.full_name}</td>
+                                        <td className="p-3 text-gray-600">{log.events?.title}</td>
+                                        <td className="p-3 text-green-600">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                                     </tr>
                                 ))}
                             </tbody>

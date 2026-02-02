@@ -2,6 +2,27 @@ import supabase from '../config/supabaseClient.js';
 import { sendEmployeeApprovalEmail } from '../services/emailService.js';
 
 // --------------------------------------------------------
+// 6. MANAGER: Get ALL Assigned Employees (Pending, Verified, Rejected)
+// --------------------------------------------------------
+export const getManagedEmployees = async (req, res) => {
+    try {
+        const managerId = req.user.id;
+
+        // Fetch ALL profiles assigned to this manager
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, created_at, verification_status')
+            .eq('assigned_manager_id', managerId)
+            .eq('role', 'employee')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+// --------------------------------------------------------
 // 1. MANAGER: Get Dashboard Analytics
 // --------------------------------------------------------
 export const getAnalytics = async (req, res) => {
