@@ -22,19 +22,26 @@ DO $$ BEGIN
   CREATE TYPE assignment_status AS ENUM ('pending', 'accepted', 'rejected');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- =================================================
 -- 3. CORE TABLES
 -- =================================================
 
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   role user_role NOT NULL DEFAULT 'client',
+  verification_status verification_status DEFAULT 'verified',
+  assigned_manager_id UUID REFERENCES public.profiles(id),
+  category_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.venues (
+CREATE TABLE IF NOT EXISTS public.venues (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   capacity INT NOT NULL,
@@ -46,13 +53,13 @@ CREATE TABLE public.venues (
 -- 4. CATEGORIES & SUBTYPES
 -- =================================================
 
-CREATE TABLE public.event_categories (
+CREATE TABLE IF NOT EXISTS public.event_categories (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE public.event_subtypes (
+CREATE TABLE IF NOT EXISTS public.event_subtypes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   category_id UUID REFERENCES public.event_categories(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -60,11 +67,15 @@ CREATE TABLE public.event_subtypes (
   UNIQUE (category_id, name)
 );
 
+ALTER TABLE public.profiles
+ADD CONSTRAINT fk_profiles_category
+FOREIGN KEY (category_id) REFERENCES public.event_categories(id);
+
 -- =================================================
 -- 5. EVENTS
 -- =================================================
 
-CREATE TABLE public.events (
+CREATE TABLE IF NOT EXISTS public.events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id UUID NOT NULL REFERENCES public.profiles(id),
   title TEXT NOT NULL,
@@ -82,7 +93,7 @@ CREATE TABLE public.events (
 -- 6. MANAGER ↔ CATEGORY ASSIGNMENTS
 -- =================================================
 
-CREATE TABLE public.manager_category_assignments (
+CREATE TABLE IF NOT EXISTS public.manager_category_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   manager_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   category_id UUID REFERENCES public.event_categories(id) ON DELETE CASCADE,
@@ -94,7 +105,7 @@ CREATE TABLE public.manager_category_assignments (
 -- 7. SUPPORTING TABLES
 -- =================================================
 
-CREATE TABLE public.assignments (
+CREATE TABLE IF NOT EXISTS public.assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
   employee_id UUID REFERENCES public.profiles(id),
@@ -104,7 +115,7 @@ CREATE TABLE public.assignments (
   UNIQUE (event_id, employee_id)
 );
 
-CREATE TABLE public.attendance (
+CREATE TABLE IF NOT EXISTS public.attendance (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id),
   employee_id UUID REFERENCES public.profiles(id),
@@ -112,7 +123,7 @@ CREATE TABLE public.attendance (
   check_out TIMESTAMP
 );
 
-CREATE TABLE public.sponsorships (
+CREATE TABLE IF NOT EXISTS public.sponsorships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id),
   sponsor_id UUID REFERENCES public.profiles(id),
@@ -123,7 +134,7 @@ CREATE TABLE public.sponsorships (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE public.terms (
+CREATE TABLE IF NOT EXISTS public.terms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
@@ -131,7 +142,7 @@ CREATE TABLE public.terms (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE public.tickets (
+CREATE TABLE IF NOT EXISTS public.tickets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id),
   type_name TEXT NOT NULL,
@@ -140,7 +151,7 @@ CREATE TABLE public.tickets (
   quantity_sold INT DEFAULT 0
 );
 
-CREATE TABLE public.modification_requests (
+CREATE TABLE IF NOT EXISTS public.modification_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id),
   requested_by UUID REFERENCES public.profiles(id),
@@ -154,38 +165,16 @@ CREATE TABLE public.modification_requests (
 );
 
 -- =================================================
--- 7.5 CONSTRAINTS
+-- 7.5 INDEXES & CONSTRAINTS
 -- =================================================
 
--- Enforce: only ONE pending modification per event
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_pending_mod_per_event
 ON public.modification_requests (event_id)
 WHERE status = 'pending';
 
--- =================================================
--- 7.6 VIEWS
--- =================================================
-
-CREATE OR REPLACE VIEW public.manager_event_overview
-WITH (security_invoker = true)
-AS
-SELECT
-  e.id,
-  e.title,
-  e.event_date,
-  e.status,
-  e.subtype_id,
-  es.name AS subtype_name,
-  ec.name AS category_name,
-  EXISTS (
-    SELECT 1
-    FROM public.modification_requests mr
-    WHERE mr.event_id = e.id
-      AND mr.status = 'pending'
-  ) AS has_pending_request
-FROM public.events e
-LEFT JOIN public.event_subtypes es ON e.subtype_id = es.id
-LEFT JOIN public.event_categories ec ON es.category_id = ec.id;
+CREATE INDEX IF NOT EXISTS idx_profiles_manager_status
+ON public.profiles(assigned_manager_id)
+WHERE verification_status = 'pending';
 
 -- =================================================
 -- 8. FUNCTIONS
@@ -208,6 +197,8 @@ DECLARE
   v_role_str TEXT;
   v_role_enum public.user_role;
   v_category_id UUID;
+  v_assigned_manager UUID;
+  v_initial_status public.verification_status;
 BEGIN
   v_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'User');
   v_role_str := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
@@ -224,15 +215,42 @@ BEGIN
     v_role_enum := 'client';
   END IF;
 
-  INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (NEW.id, NEW.email, v_full_name, v_role_enum)
-  ON CONFLICT (id) DO NOTHING;
+  IF v_role_enum = 'employee' THEN
+    v_initial_status := 'pending';
+  ELSE
+    v_initial_status := 'verified';
+  END IF;
+
+  IF v_role_enum = 'employee' AND v_category_id IS NOT NULL THEN
+    PERFORM pg_advisory_xact_lock(hashtext(v_category_id::text));
+
+    SELECT mca.manager_id
+    INTO v_assigned_manager
+    FROM public.manager_category_assignments mca
+    LEFT JOIN public.profiles p
+      ON p.assigned_manager_id = mca.manager_id
+      AND p.verification_status = 'pending'
+    WHERE mca.category_id = v_category_id
+    GROUP BY mca.manager_id
+    ORDER BY COUNT(p.id) ASC, mca.manager_id ASC
+    LIMIT 1;
+  END IF;
 
   IF v_role_enum = 'manager' AND v_category_id IS NOT NULL THEN
     INSERT INTO public.manager_category_assignments (manager_id, category_id)
     VALUES (NEW.id, v_category_id)
     ON CONFLICT (manager_id, category_id) DO NOTHING;
   END IF;
+
+  INSERT INTO public.profiles (
+    id, email, full_name, role,
+    verification_status, assigned_manager_id, category_id
+  )
+  VALUES (
+    NEW.id, NEW.email, v_full_name, v_role_enum,
+    v_initial_status, v_assigned_manager, v_category_id
+  )
+  ON CONFLICT (id) DO NOTHING;
 
   RETURN NEW;
 END;
@@ -241,6 +259,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =================================================
 -- 9. TRIGGERS
 -- =================================================
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
@@ -273,111 +293,6 @@ USING (true);
 CREATE POLICY "Profiles update own"
 ON public.profiles FOR UPDATE TO authenticated
 USING (auth.uid() = id);
-
-CREATE POLICY "Client own events"
-ON public.events FOR ALL TO authenticated
-USING (client_id = auth.uid())
-WITH CHECK (client_id = auth.uid());
-
-CREATE POLICY "Manager category events"
-ON public.events FOR ALL TO authenticated
-USING (
-  public.is_manager()
-  AND EXISTS (
-    SELECT 1
-    FROM public.event_subtypes es
-    JOIN public.manager_category_assignments mca
-      ON es.category_id = mca.category_id
-    WHERE es.id = events.subtype_id
-      AND mca.manager_id = auth.uid()
-  )
-);
-
-CREATE POLICY "Employee assigned events"
-ON public.events FOR SELECT TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.assignments a
-    WHERE a.event_id = events.id
-      AND a.employee_id = auth.uid()
-  )
-);
-
-CREATE POLICY "Public read categories"
-ON public.event_categories FOR SELECT
-TO anon, authenticated
-USING (true);
-
-CREATE POLICY "Public read subtypes"
-ON public.event_subtypes FOR SELECT
-TO anon, authenticated
-USING (true);
-
-CREATE POLICY "Managers view own category assignments"
-ON public.manager_category_assignments FOR SELECT
-TO authenticated
-USING (manager_id = auth.uid());
-
-CREATE POLICY "Managers view category modification requests"
-ON public.modification_requests FOR SELECT
-TO authenticated
-USING (
-  public.is_manager()
-  AND EXISTS (
-    SELECT 1
-    FROM public.events e
-    JOIN public.event_subtypes es ON e.subtype_id = es.id
-    JOIN public.manager_category_assignments mca
-      ON es.category_id = mca.category_id
-    WHERE e.id = modification_requests.event_id
-      AND mca.manager_id = auth.uid()
-  )
-);
-
-CREATE POLICY "Managers create category modification requests"
-ON public.modification_requests FOR INSERT
-TO authenticated
-WITH CHECK (
-  public.is_manager()
-  AND EXISTS (
-    SELECT 1
-    FROM public.events e
-    JOIN public.event_subtypes es ON e.subtype_id = es.id
-    JOIN public.manager_category_assignments mca
-      ON es.category_id = mca.category_id
-    WHERE e.id = modification_requests.event_id
-      AND mca.manager_id = auth.uid()
-  )
-);
-
-CREATE POLICY "Clients view own modification requests"
-ON public.modification_requests FOR SELECT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    WHERE e.id = modification_requests.event_id
-      AND e.client_id = auth.uid()
-  )
-);
-
-CREATE POLICY "Clients respond to own modification requests"
-ON public.modification_requests FOR UPDATE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    WHERE e.id = modification_requests.event_id
-      AND e.client_id = auth.uid()
-  )
-)
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    WHERE e.id = modification_requests.event_id
-      AND e.client_id = auth.uid()
-  )
-);
 
 -- =================================================
 -- 13. GRANTS
