@@ -8,7 +8,8 @@ const Register = () => {
         password: '',
         fullName: '',
         role: 'client',
-        category_id: '' 
+        category_id: '',
+        companyName: '' // ✅ 1. Add State
     });
     
     const [categories, setCategories] = useState([]); 
@@ -32,11 +33,17 @@ const Register = () => {
         setLoading(true);
 
         try {
-            // ✅ CHANGE 1: Require Category for both Manager AND Employee
             const needsCategory = ['manager', 'employee'].includes(formData.role);
 
             if (needsCategory && !formData.category_id) {
                 alert("Please select a Department/Category.");
+                setLoading(false);
+                return;
+            }
+
+            // Validate Sponsor
+            if (formData.role === 'sponsor' && !formData.companyName) {
+                alert("Please enter a Company Name.");
                 setLoading(false);
                 return;
             }
@@ -48,8 +55,9 @@ const Register = () => {
                     data: {
                         full_name: formData.fullName,
                         role: formData.role,
-                        // ✅ CHANGE 2: Send category_id for both roles
-                        category_id: needsCategory ? formData.category_id : null
+                        category_id: needsCategory ? formData.category_id : null,
+                        // ✅ 2. Send company name in metadata
+                        company_name: formData.role === 'sponsor' ? formData.companyName : null
                     },
                 },
             });
@@ -100,7 +108,18 @@ const Register = () => {
                     <option value="sponsor">Sponsor</option>
                 </select>
 
-                {/* ✅ CHANGE 3: Show dropdown for Manager OR Employee */}
+                {/* ✅ 3. Conditional Input for Sponsors */}
+                {formData.role === 'sponsor' && (
+                    <input 
+                        name="companyName" 
+                        placeholder="Company Name" 
+                        required
+                        className="w-full mb-3 p-2 border rounded animate-fade-in border-purple-400 bg-purple-50"
+                        onChange={handleChange} 
+                    />
+                )}
+
+                {/* Dropdown for Manager OR Employee */}
                 {['manager', 'employee'].includes(formData.role) && (
                     <div className="mb-3 animate-fade-in">
                         <label className="block text-sm text-gray-600 mb-1">

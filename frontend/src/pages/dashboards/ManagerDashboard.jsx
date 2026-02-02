@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api'; 
 import ManagerEvents from './ManagerEvents';
+import ManagerSponsorships from './ManagerSponsorships'; // ✅ 1. Import New Component
 
 const ManagerDashboard = () => {
     // Events & Core Data
-    const [events, setEvents] = useState([]); // (If used for events list)
+    const [events, setEvents] = useState([]); 
     const [assignments, setAssignments] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [activeEventsList, setActiveEventsList] = useState([]);
@@ -18,7 +19,7 @@ const ManagerDashboard = () => {
     
     // UI State
     const [loading, setLoading] = useState(true);
-    const [teamView, setTeamView] = useState('verified'); // 'verified' | 'rejected'
+    const [teamView, setTeamView] = useState('verified'); 
 
     const [formData, setFormData] = useState({
         employee_id: '',
@@ -42,7 +43,7 @@ const ManagerDashboard = () => {
                 .order('event_date', { ascending: true });
             if (eventData) setActiveEventsList(eventData);
 
-            // 2. ✅ NEW: Fetch ALL Managed Employees (Pending, Verified, Rejected)
+            // 2. Fetch Team
             try {
                 const res = await api.get('/admin/employees/managed');
                 const allEmployees = res.data || [];
@@ -82,7 +83,6 @@ const ManagerDashboard = () => {
         
         try {
             await api.post('/admin/employees/verify', { employee_id: employeeId, action });
-            // Optimistic Update or Refresh
             fetchDashboardData(); 
         } catch (err) {
             alert(err.response?.data?.error || "Action failed");
@@ -131,7 +131,7 @@ const ManagerDashboard = () => {
                 </div>
             )}
 
-            {/* --- SECTION 2: TEAM MANAGEMENT (Verified / Rejected) --- */}
+            {/* --- SECTION 2: TEAM MANAGEMENT --- */}
             <div className="bg-white rounded shadow mb-8 overflow-hidden">
                 <div className="flex border-b">
                     <button 
@@ -159,16 +159,13 @@ const ManagerDashboard = () => {
                                         <td className="py-3 font-medium">{emp.full_name}</td>
                                         <td className="py-3 text-gray-500">{emp.email}</td>
                                         <td className="py-3">
-                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-700 font-medium text-xs border border-red-200 px-2 py-1 rounded">
-                                                Deactivate / Reject
-                                            </button>
+                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-700 font-medium text-xs border border-red-200 px-2 py-1 rounded">Deactivate</button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     ) : (
-                        teamData.rejected.length === 0 ? <p className="text-gray-400 italic text-center">No rejected applicants.</p> :
                         <table className="w-full text-sm">
                             <thead><tr className="text-left text-gray-500"><th>Name</th><th>Email</th><th>Action</th></tr></thead>
                             <tbody className="divide-y">
@@ -177,9 +174,7 @@ const ManagerDashboard = () => {
                                         <td className="py-3 font-medium text-gray-700">{emp.full_name}</td>
                                         <td className="py-3 text-gray-500">{emp.email}</td>
                                         <td className="py-3">
-                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-600 hover:text-green-800 font-medium text-xs border border-green-200 px-2 py-1 rounded">
-                                                Re-Approve
-                                            </button>
+                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-600 hover:text-green-800 font-medium text-xs border border-green-200 px-2 py-1 rounded">Re-Approve</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -189,32 +184,41 @@ const ManagerDashboard = () => {
                 </div>
             </div>
 
-            {/* --- SECTION 3: EVENTS & ASSIGNMENTS --- */}
+            {/* --- SECTION 3: EVENTS --- */}
             <ManagerEvents />
 
+            {/* --- SECTION 4: ACTIONS & LISTS --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 
-                {/* Assign Task Form */}
-                <div className="bg-white p-6 rounded shadow mb-8 h-fit">
-                    <h2 className="text-xl font-bold text-blue-700 mb-4">Assign Staff</h2>
-                    <form onSubmit={handleAssign} className="flex flex-col gap-4">
-                        <select name="event_id" value={formData.event_id} onChange={handleChange} className="p-2 border rounded">
-                            <option value="">-- Select Active Event --</option>
-                            {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
-                        </select>
-                        <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="p-2 border rounded">
-                            <option value="">-- Select Employee --</option>
-                            {/* ✅ Updated: Use teamData.verified for assignment dropdown */}
-                            {teamData.verified.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
-                            ))}
-                        </select>
-                        <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="p-2 border rounded" />
-                        <button type="submit" className="bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition py-2">Assign</button>
-                    </form>
+                {/* LEFT COLUMN: FORMS */}
+                <div className="flex flex-col gap-8">
+                    
+                    {/* A. Assign Staff Form */}
+                    <div className="bg-white p-6 rounded shadow h-fit">
+                        <h2 className="text-xl font-bold text-blue-700 mb-4">Assign Staff</h2>
+                        <form onSubmit={handleAssign} className="flex flex-col gap-4">
+                            <select name="event_id" value={formData.event_id} onChange={handleChange} className="p-2 border rounded">
+                                <option value="">-- Select Active Event --</option>
+                                {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
+                            </select>
+                            <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="p-2 border rounded">
+                                <option value="">-- Select Employee --</option>
+                                {teamData.verified.map(emp => (
+                                    <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
+                                ))}
+                            </select>
+                            <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="p-2 border rounded" />
+                            <button type="submit" className="bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition py-2">Assign</button>
+                        </form>
+                    </div>
+
+                    {/* ✅ B. Request Sponsorship (New Component) */}
+                    {/* We pass the activeEventsList so we don't need to fetch it again */}
+                    <ManagerSponsorships activeEvents={activeEventsList} />
+
                 </div>
 
-                {/* Lists Section */}
+                {/* RIGHT COLUMN: LISTS */}
                 <div className="space-y-8">
                     {/* Assignments Table */}
                     <div className="bg-white rounded shadow overflow-hidden">

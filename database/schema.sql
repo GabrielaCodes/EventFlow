@@ -34,10 +34,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
+  company_name TEXT,
   role user_role NOT NULL DEFAULT 'client',
   verification_status verification_status DEFAULT 'verified',
   assigned_manager_id UUID REFERENCES public.profiles(id),
-  category_id UUID,
+  category_id UUID REFERENCES public.event_categories(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -66,10 +67,6 @@ CREATE TABLE IF NOT EXISTS public.event_subtypes (
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (category_id, name)
 );
-
-ALTER TABLE public.profiles
-ADD CONSTRAINT fk_profiles_category
-FOREIGN KEY (category_id) REFERENCES public.event_categories(id);
 
 -- =================================================
 -- 5. EVENTS
@@ -131,7 +128,9 @@ CREATE TABLE IF NOT EXISTS public.sponsorships (
   status sponsorship_status DEFAULT 'pending',
   request_note TEXT,
   payment_reference TEXT,
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (event_id, sponsor_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.terms (
@@ -199,9 +198,11 @@ DECLARE
   v_category_id UUID;
   v_assigned_manager UUID;
   v_initial_status public.verification_status;
+  v_company_name TEXT;
 BEGIN
   v_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'User');
   v_role_str := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
+  v_company_name := NEW.raw_user_meta_data->>'company_name';
 
   BEGIN
     v_category_id := (NEW.raw_user_meta_data->>'category_id')::UUID;
@@ -232,7 +233,7 @@ BEGIN
       AND p.verification_status = 'pending'
     WHERE mca.category_id = v_category_id
     GROUP BY mca.manager_id
-    ORDER BY COUNT(p.id) ASC, mca.manager_id ASC
+    ORDER BY COUNT(p.id), mca.manager_id
     LIMIT 1;
   END IF;
 
@@ -243,11 +244,11 @@ BEGIN
   END IF;
 
   INSERT INTO public.profiles (
-    id, email, full_name, role,
+    id, email, full_name, company_name, role,
     verification_status, assigned_manager_id, category_id
   )
   VALUES (
-    NEW.id, NEW.email, v_full_name, v_role_enum,
+    NEW.id, NEW.email, v_full_name, v_company_name, v_role_enum,
     v_initial_status, v_assigned_manager, v_category_id
   )
   ON CONFLICT (id) DO NOTHING;
@@ -286,13 +287,44 @@ ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
 -- 11. POLICIES
 -- =================================================
 
-CREATE POLICY "Profiles read"
-ON public.profiles FOR SELECT TO authenticated
-USING (true);
+CREATE POLICY "Sponsors view own requests"
+ON public.sponsorships FOR SELECT
+TO authenticated
+USING (sponsor_id = auth.uid());
 
-CREATE POLICY "Profiles update own"
-ON public.profiles FOR UPDATE TO authenticated
-USING (auth.uid() = id);
+CREATE POLICY "Sponsors update own requests"
+ON public.sponsorships FOR UPDATE
+TO authenticated
+USING (sponsor_id = auth.uid())
+WITH CHECK (sponsor_id = auth.uid());
+
+CREATE POLICY "Managers view category sponsorships"
+ON public.sponsorships FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON e.subtype_id = es.id
+    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
+    WHERE e.id = sponsorships.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Managers create sponsorships"
+ON public.sponsorships FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.event_subtypes es ON e.subtype_id = es.id
+    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
+    WHERE e.id = sponsorships.event_id
+      AND mca.manager_id = auth.uid()
+  )
+);
 
 -- =================================================
 -- 13. GRANTS
