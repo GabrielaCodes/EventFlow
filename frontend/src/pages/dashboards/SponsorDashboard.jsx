@@ -1,116 +1,161 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api'; // Ensure this path matches your structure
+import api from '../../services/api';
 
 const SponsorDashboard = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    // Negotiation State
+    const [negotiatingId, setNegotiatingId] = useState(null);
+    const [negForm, setNegForm] = useState({ amount: '', note: '' });
 
-    useEffect(() => {
-        fetchRequests();
-    }, []);
+    useEffect(() => { fetchRequests(); }, []);
 
     const fetchRequests = async () => {
         try {
-            // This endpoint returns sponsorships joined with event details
             const { data } = await api.get('/sponsors/requests');
-            setRequests(data);
+            setRequests(data || []);
         } catch (err) {
-            console.error("Failed to load requests", err);
+            console.error("Failed to load", err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleRespond = async (id, action) => {
-        if (!window.confirm(`Are you sure you want to mark this as ${action}?`)) return;
+    const handleAction = async (id, action) => {
+        if (action !== 'negotiating' && !window.confirm(`Confirm ${action}?`)) return;
 
         try {
-            // action: 'accepted' | 'rejected'
-            await api.patch('/sponsors/respond', { sponsorship_id: id, action });
+            const payload = { sponsorship_id: id, action };
             
-            // Remove from UI immediately for responsiveness
-            setRequests(prev => prev.filter(req => req.id !== id));
-            alert(`Sponsorship request ${action}!`);
+            if (action === 'negotiating') {
+                payload.amount = negForm.amount;
+                payload.sponsor_note = negForm.note;
+            }
+
+            await api.patch('/sponsors/respond', payload);
+            alert("Updated!");
+            setNegotiatingId(null);
+            fetchRequests(); 
         } catch (err) {
-            console.error(err);
             alert('Error processing request');
         }
     };
 
-    if (loading) return <div className="p-10 text-center text-gray-500">Loading opportunities...</div>;
+    const startNegotiation = (req) => {
+        setNegotiatingId(req.id);
+        setNegForm({ amount: req.amount, note: '' });
+    };
+
+    const getStatusColor = (status) => {
+        switch(status) {
+            case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
+            case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
+            case 'negotiating': return 'bg-orange-100 text-orange-800 border-orange-200';
+            default: return 'bg-blue-50 text-blue-800 border-blue-200';
+        }
+    };
+
+    if (loading) return <div className="p-10 text-center">Loading...</div>;
 
     return (
-        <div className="p-6 max-w-6xl mx-auto min-h-screen bg-gray-50">
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Sponsorship Opportunities</h1>
-                <p className="text-gray-500">Review pending requests from event managers.</p>
-            </header>
-
-            {requests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border-2 border-dashed border-gray-300">
-                    <div className="text-4xl mb-4">🎉</div>
-                    <p className="text-xl text-gray-600 font-medium">All caught up!</p>
-                    <p className="text-sm text-gray-400">No pending sponsorship requests at the moment.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {requests.map((req) => (
-                        <div key={req.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition duration-300">
-                            
-                            {/* Card Header: Event Title & Date */}
-                            <div className="bg-indigo-600 p-5">
-                                <h3 className="text-white font-bold text-lg truncate" title={req.events?.title}>
-                                    {req.events?.title || 'Untitled Event'}
-                                </h3>
-                                <p className="text-indigo-100 text-sm mt-1 flex items-center gap-2">
-                                    📅 {new Date(req.events?.event_date).toLocaleDateString()}
-                                </p>
+        <div className="p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Sponsorship Portal</h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {requests.map((req) => (
+                    <div key={req.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${req.status === 'pending' ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'}`}>
+                        
+                        {/* Header */}
+                        <div className="bg-gray-900 p-4 flex justify-between items-start">
+                            <div>
+                                <h3 className="text-white font-bold truncate w-48" title={req.events?.title}>{req.events?.title}</h3>
+                                <p className="text-gray-400 text-xs">{new Date(req.events?.event_date).toDateString()}</p>
                             </div>
-                            
-                            {/* Card Body: Details */}
-                            <div className="p-6">
-                                <div className="flex justify-between items-end mb-4 border-b pb-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Amount</p>
-                                        <p className="text-2xl font-extrabold text-gray-900">${req.amount?.toLocaleString()}</p>
-                                    </div>
-                                    {req.events?.venues && (
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Venue</p>
-                                            <p className="text-sm text-gray-700 font-medium">{req.events.venues.name}</p>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {req.request_note ? (
-                                    <div className="mb-6 bg-gray-50 p-3 rounded-md border border-gray-100">
-                                        <p className="text-xs text-gray-400 uppercase font-bold mb-1">Note from Manager:</p>
-                                        <p className="text-sm text-gray-600 italic">"{req.request_note}"</p>
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-gray-400 italic mb-6">No additional notes.</p>
-                                )}
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-3 mt-auto">
-                                    <button 
-                                        onClick={() => handleRespond(req.id, 'accepted')}
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition shadow-sm"
-                                    >
-                                        Accept
-                                    </button>
-                                    <button 
-                                        onClick={() => handleRespond(req.id, 'rejected')}
-                                        className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg font-semibold transition"
-                                    >
-                                        Reject
-                                    </button>
-                                </div>
-                            </div>
+                            <span className={`px-2 py-1 text-xs font-bold uppercase rounded border ${getStatusColor(req.status)}`}>
+                                {req.status}
+                            </span>
                         </div>
-                    ))}
-                </div>
-            )}
+
+                        <div className="p-6">
+                            {/* Negotiation Input View */}
+                            {negotiatingId === req.id ? (
+                                <div className="space-y-3 animate-fade-in">
+                                    <p className="font-bold text-sm text-gray-700">Your Counter Offer:</p>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Amount" 
+                                        className="w-full border p-2 rounded"
+                                        value={negForm.amount}
+                                        onChange={e => setNegForm({...negForm, amount: e.target.value})}
+                                    />
+                                    <textarea 
+                                        placeholder="Note / Condition" 
+                                        className="w-full border p-2 rounded h-20"
+                                        value={negForm.note}
+                                        onChange={e => setNegForm({...negForm, note: e.target.value})}
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleAction(req.id, 'negotiating')} className="bg-indigo-600 text-white px-4 py-2 rounded w-full hover:bg-indigo-700">Send Offer</button>
+                                        <button onClick={() => setNegotiatingId(null)} className="text-gray-500 px-4 py-2 hover:bg-gray-100 rounded">Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Standard View
+                                <>
+                                    <div className="mb-4">
+                                        <p className="text-xs text-gray-500 font-bold uppercase">Requested Amount</p>
+                                        <p className="text-3xl font-extrabold text-gray-800">${req.amount?.toLocaleString()}</p>
+                                    </div>
+                                    
+                                    <div className="space-y-2 mb-6 text-sm">
+                                        {req.request_note && (
+                                            <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                                                <span className="font-bold text-blue-800 block mb-1">Manager Says:</span>
+                                                "{req.request_note}"
+                                            </div>
+                                        )}
+                                        {req.sponsor_note && (
+                                            <div className="bg-orange-50 p-3 rounded border border-orange-100 text-right">
+                                                <span className="font-bold text-orange-800 block mb-1">You Said:</span>
+                                                "{req.sponsor_note}"
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Actions: Always allow negotiation unless paid/finalized logic exists */}
+                                    <div className="flex gap-2">
+                                        {req.status !== 'accepted' && (
+                                            <button 
+                                                onClick={() => handleAction(req.id, 'accepted')} 
+                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium shadow-sm transition"
+                                            >
+                                                Accept
+                                            </button>
+                                        )}
+                                        
+                                        <button 
+                                            onClick={() => startNegotiation(req)} 
+                                            className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 rounded font-medium transition"
+                                        >
+                                            {req.status === 'rejected' ? 'Re-Open' : 'Counter'}
+                                        </button>
+
+                                        {req.status !== 'rejected' && (
+                                            <button 
+                                                onClick={() => handleAction(req.id, 'rejected')} 
+                                                className="flex-1 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2 rounded font-medium transition"
+                                            >
+                                                Reject
+                                            </button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };
