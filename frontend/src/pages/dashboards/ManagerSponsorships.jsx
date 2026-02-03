@@ -102,7 +102,9 @@ const ManagerSponsorships = ({ activeEvents }) => {
                         <select name="sponsor_id" value={formData.sponsor_id} onChange={handleChange} className="w-full p-2 border rounded" required>
                             <option value="">-- Select Sponsor --</option>
                             {sponsors.map(sp => (
-                                <option key={sp.id} value={sp.id}>{sp.company_name ? `${sp.company_name} (${sp.full_name})` : sp.full_name}</option>
+                                <option key={sp.id} value={sp.id}>
+                                    {sp.company_name ? `${sp.company_name} (${sp.full_name})` : sp.full_name}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -136,7 +138,19 @@ const ManagerSponsorships = ({ activeEvents }) => {
                             <div className="flex justify-between items-center mb-2">
                                 <div>
                                     <span className="font-bold text-gray-800 block">{req.events?.title}</span>
-                                    <span className="text-xs text-gray-500">{req.profiles?.company_name || req.profiles?.full_name}</span>
+                                    
+                                    {/* ✅ UPDATED: Show Company AND Full Name */}
+                                    <div className="text-xs text-gray-600">
+                                        {req.profiles?.company_name ? (
+                                            <>
+                                                <span className="font-semibold">{req.profiles.company_name}</span>
+                                                <span className="text-gray-400 ml-1">({req.profiles.full_name})</span>
+                                            </>
+                                        ) : (
+                                            <span className="font-semibold">{req.profiles?.full_name}</span>
+                                        )}
+                                    </div>
+
                                 </div>
                                 <span className={`px-2 py-1 text-xs font-bold uppercase rounded ${
                                     req.status === 'negotiating' ? 'bg-orange-500 text-white' : 
