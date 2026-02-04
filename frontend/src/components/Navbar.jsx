@@ -13,7 +13,7 @@ const Navbar = () => {
 
     const companyName = profile?.company_name || user?.user_metadata?.company_name;
     
-    // ✅ NEW: Extract Category Name (if it exists)
+    // Extract Category Name (if it exists)
     const categoryName = profile?.event_categories?.name;
 
     // 2. Determine Dashboard Link
