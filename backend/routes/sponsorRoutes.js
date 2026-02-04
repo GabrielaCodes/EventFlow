@@ -15,8 +15,13 @@ const router = express.Router();
 router.use(authenticate);
 
 // --- MANAGER ROUTES ---
-router.get('/list', authorize(['manager']), getSponsorsList);
+// 1. List Sponsors
+router.get('/list', authorize(['manager', 'chief_coordinator']), getSponsorsList);
+
+// 2. Create/Update Request (Logic inside controller checks category)
 router.post('/request', authorize(['manager']), sendSponsorshipRequest);
+
+// 3. View History (Logic inside controller filters by category)
 router.get('/sent-requests', authorize(['manager']), getManagerRequests);
 
 // --- SPONSOR ROUTES ---

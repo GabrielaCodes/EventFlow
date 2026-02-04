@@ -1,14 +1,16 @@
-import supabase from '../config/supabaseClient.js'; // ⚠️ Ensure file is named exactly 'supabaseClient.js' (lowercase s)
+import supabase from '../config/supabaseClient.js';
 
 /* ============================================================
    1. MANAGER: List Available Sponsors
+   (Global list is fine, as sponsors work across categories)
 ============================================================ */
 export const getSponsorsList = async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('profiles')
             .select('id, full_name, email, company_name')
-            .eq('role', 'sponsor');
+            .eq('role', 'sponsor')
+            .eq('verification_status', 'verified'); // ✅ Added strict check
 
         if (error) throw error;
         res.json(data);
@@ -23,9 +25,8 @@ export const getSponsorsList = async (req, res) => {
 ============================================================ */
 export const sendSponsorshipRequest = async (req, res) => {
     try {
-        console.log("📝 Incoming Request Body:", req.body); // ✅ Debug Log
-
         const { event_id, sponsor_id, amount, request_note, sponsorship_id, status } = req.body;
+        const userId = req.user.id; // Manager's ID
 
         // 1. Force Amount to Number
         const safeAmount = parseFloat(amount);
@@ -35,6 +36,8 @@ export const sendSponsorshipRequest = async (req, res) => {
 
         // CASE A: UPDATE (Manager Counter-Offer / Accept)
         if (sponsorship_id) {
+            // Note: RLS policies usually handle ownership checks here, 
+            // but we update logic to ensure 'pending' status on counters
             const updatePayload = {
                 amount: safeAmount,
                 request_note, 
@@ -54,11 +57,35 @@ export const sendSponsorshipRequest = async (req, res) => {
         
         // CASE B: CREATE NEW REQUEST
         else {
-            // Validation for new requests
             if (!event_id || !sponsor_id) {
                 return res.status(400).json({ error: "Event and Sponsor are required." });
             }
 
+            // 🛑 SECURITY CHECK: Does Manager own this Event's Category?
+            // 1. Get Event's Category
+            const { data: eventData, error: eventError } = await supabase
+                .from('events')
+                .select('subtype_id, event_subtypes!inner(category_id)')
+                .eq('id', event_id)
+                .single();
+
+            if (eventError || !eventData) return res.status(404).json({ error: "Event not found" });
+
+            const categoryId = eventData.event_subtypes.category_id;
+
+            // 2. Check Assignment
+            const { data: hasAccess, error: accessError } = await supabase
+                .from('manager_category_assignments')
+                .select('id')
+                .eq('manager_id', userId)
+                .eq('category_id', categoryId)
+                .maybeSingle();
+
+            if (!hasAccess) {
+                return res.status(403).json({ error: "⛔ You are not assigned to this event's category." });
+            }
+
+            // ✅ Proceed with Insert
             const { data, error } = await supabase
                 .from('sponsorships')
                 .insert([{
@@ -71,14 +98,13 @@ export const sendSponsorshipRequest = async (req, res) => {
                 .select();
 
             if (error) {
-                console.error("❌ DB Insert Error:", error);
                 if (error.code === '23505') return res.status(409).json({ error: "Request already exists." });
                 throw error;
             }
             res.status(201).json(data[0]);
         }
     } catch (err) {
-        console.error("🔥 System Error in sendSponsorshipRequest:", err);
+        console.error("🔥 Error in sendSponsorshipRequest:", err.message);
         res.status(500).json({ error: err.message });
     }
 };
@@ -93,18 +119,12 @@ export const getSponsorRequests = async (req, res) => {
         const { data, error } = await supabase
             .from('sponsorships')
             .select(`
-                id,
-                amount,
-                status,
-                request_note,
-                sponsor_note,
-                created_at,
+                id, amount, status, request_note, sponsor_note, created_at,
                 events (
                     id, title, event_date, description, venues (name, location)
                 )
             `)
             .eq('sponsor_id', sponsorId)
-            // ✅ CHANGED: Removed .in(...) filter to show ALL statuses (Accepted, Rejected, Pending)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -145,21 +165,51 @@ export const respondToSponsorship = async (req, res) => {
 
 /* ============================================================
    5. MANAGER: View Sent Requests (History)
+   ✅ FIXED: Only shows requests for Manager's Assigned Category
 ============================================================ */
 export const getManagerRequests = async (req, res) => {
     try {
+        const userId = req.user.id;
+
+        // 1. Get Manager's Assigned Categories
+        const { data: assignments, error: assignError } = await supabase
+            .from('manager_category_assignments')
+            .select('category_id')
+            .eq('manager_id', userId);
+
+        if (assignError) throw assignError;
+        
+        // Extract IDs (e.g. ['uuid-1', 'uuid-2'])
+        const categoryIds = assignments.map(a => a.category_id);
+
+        if (categoryIds.length === 0) {
+            return res.json([]); // No category assigned, sees nothing
+        }
+
+        // 2. Fetch Sponsorships filtered by Event -> Subtype -> Category
+        // using !inner to enforce the filter on the joined table
         const { data, error } = await supabase
             .from('sponsorships')
             .select(`
                 id, amount, status, request_note, sponsor_note, created_at,
-                events (title, event_date),
-                profiles:sponsor_id (full_name, company_name, email)
+                events!inner (
+                    title, 
+                    event_date,
+                    event_subtypes!inner ( category_id ) 
+                ),
+                profiles!sponsorships_sponsor_id_fkey (
+                    full_name, 
+                    company_name, 
+                    email
+                )
             `)
+            .in('events.event_subtypes.category_id', categoryIds) // 👈 THE FILTER
             .order('created_at', { ascending: false });
 
         if (error) throw error;
         res.json(data);
     } catch (err) {
+        console.error("❌ Error fetching manager history:", err.message);
         res.status(500).json({ error: err.message });
     }
 };
