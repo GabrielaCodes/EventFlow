@@ -6,7 +6,7 @@ import { supabase } from '../services/api';
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login } = useAuth();
+    const { login, logout } = useAuth(); // ✅ Get logout
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
@@ -17,54 +17,36 @@ const Login = () => {
         try {
             // 1. Perform the Auth Login
             const { user } = await login(email, password);
-
             if (!user) throw new Error("Login failed");
 
-            // 2. Fetch the role manually (SAFER METHOD)
-            // We use .maybeSingle() instead of .single() to avoid the "Cannot coerce" crash
+            // 2. Security Check: Fetch Profile Status immediately
+            // We do this here to catch them BEFORE they enter the app
             let { data: profile, error } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('verification_status')
                 .eq('id', user.id)
                 .maybeSingle();
 
-            // 🛑 RETRY LOGIC: If profile is missing (race condition), wait 1 second and try again
-            if (!profile) {
-                console.log("⚠️ Profile not ready. Waiting for trigger...");
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const retry = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .maybeSingle();
-                
-                profile = retry.data;
+            if (error) console.warn("Profile fetch warning:", error);
+
+            // 🛑 BLOCK PENDING USERS
+            if (profile?.verification_status === 'pending') {
+                await logout(); // Force logout in Supabase
+                alert("🚫 Account Pending Approval.\n\nPlease wait for the Chief Coordinator to verify you.");
+                setLoading(false);
+                return; // Stop execution
             }
 
-            if (error) console.error("Profile fetch error:", error);
-
-            // 3. Robust Fallback
-            // If the profile is STILL missing, default to 'client' so the user isn't stuck.
-            const userRole = profile?.role || 'client';
-
-            // 4. Dynamic Redirect
-            switch (userRole) {
-                case 'manager':
-                    navigate('/manager-dashboard');
-                    break;
-                case 'sponsor':
-                    navigate('/sponsor-dashboard');
-                    break;
-                case 'client':
-                    navigate('/client-dashboard');
-                    break;
-                case 'employee': 
-                    navigate('/employee-dashboard'); 
-                    break;
-                default:
-                    navigate('/client-dashboard'); 
+            // 🛑 BLOCK REJECTED USERS
+            if (profile?.verification_status === 'rejected') {
+                await logout();
+                alert("❌ Account Rejected.\n\nYour access has been revoked. Contact support.");
+                setLoading(false);
+                return;
             }
+
+            // 3. Success - Let App.jsx handle the routing
+            navigate('/dashboard'); 
 
         } catch (err) {
             console.error('Login error:', err.message);

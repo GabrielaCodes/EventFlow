@@ -6,9 +6,11 @@ const Navbar = () => {
 
     // Helper to determine dashboard link
     const getHomeLink = () => {
+        if (role === 'chief_coordinator') return '/coordinator'; // ✅ ADDED
         if (role === 'manager') return '/manager-dashboard';
         if (role === 'client') return '/client-dashboard';
         if (role === 'employee') return '/employee-dashboard';
+        if (role === 'sponsor') return '/sponsor-dashboard';
         return '/';
     };
 
@@ -25,7 +27,6 @@ const Navbar = () => {
 
     return (
         <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
-            {/* ✅ FIXED: Logo now links to the correct dashboard */}
             <Link to={getHomeLink()} className="text-xl font-bold tracking-wide hover:text-blue-100 transition">
                 Eventflow
             </Link>
@@ -35,7 +36,7 @@ const Navbar = () => {
                     {user ? (
                         <div className="flex gap-4 items-center">
                             <span className="uppercase font-semibold text-sm bg-blue-700 px-3 py-1 rounded shadow-sm border border-blue-500">
-                                {role || 'User'}
+                                {role ? role.replace('_', ' ') : 'User'}
                             </span>
                             <button
                                 onClick={handleLogout}

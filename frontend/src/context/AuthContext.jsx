@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
             const userProfile = await ensureProfileExists(session.user);
             
             if (mounted) {
-                setRole(userProfile?.role || 'client');
+                setRole(userProfile?.role || null);
                 // ✅ NEW: Save the full profile to state
                 setProfile(userProfile); 
             }
