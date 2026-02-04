@@ -1,8 +1,7 @@
 import api from './api'; // Adjust path if your api.js is elsewhere
 
 // 1. Overview & Stats
-export const getCoordinatorStats = () => api.get('/coordinator/analytics/overview');
-
+export const getCoordinatorStats = () => api.get('/analytics/system-overview');
 // 2. User Management (Approvals & Directory)
 // ✅ UPDATED: Accepts status (default to 'pending' to keep old behavior working if needed)
 export const getPendingUsers = (status = 'pending') => api.get(`/coordinator/users/pending?status=${status}`);

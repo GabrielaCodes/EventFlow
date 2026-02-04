@@ -7,6 +7,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import sponsorRoutes from './routes/sponsorRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js'; 
 import coordinatorRoutes from './routes/coordinatorRoutes.js';
+
+import analyticsRoutes from './routes/analyticsRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -26,6 +28,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/sponsors', sponsorRoutes);
 app.use('/api/employee', employeeRoutes); 
 app.use('/api/coordinator', coordinatorRoutes);
+app.use('/api/analytics', analyticsRoutes);
 // Health check
 app.get('/', (req, res) => {
   res.send('Event Management System API is running...');

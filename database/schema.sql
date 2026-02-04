@@ -179,7 +179,6 @@ CREATE TABLE IF NOT EXISTS public.terms (
 -- =================================================
 -- 4. FUNCTIONS
 -- =================================================
-
 -- -------------------------------------------------
 -- 4.1 CHECK MANAGER ROLE (USED BY RLS)
 -- -------------------------------------------------
@@ -324,10 +323,56 @@ EXCEPTION
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+-- =================================================
+-- 5. Analytics Views
+-- =================================================
 
+-- 5.1 ANALYTICS: SYSTEM OVERVIEW (KPIs)
+
+CREATE OR REPLACE VIEW public.analytics_overview AS
+SELECT
+  (SELECT COUNT(*) FROM public.events) AS total_events,
+  (SELECT COUNT(*) FROM public.events WHERE status = 'consideration') AS pending_approvals,
+  (SELECT COUNT(*) FROM public.venues WHERE is_available = TRUE) AS active_venues,
+  (SELECT COALESCE(SUM(amount), 0) FROM public.sponsorships WHERE status = 'accepted') AS total_sponsorship_amount;
+
+
+-- 5.2. ANALYTICS: EVENTS BY CATEGORY
+
+CREATE OR REPLACE VIEW public.analytics_category_performance AS
+SELECT 
+  c.name AS category_name,
+  COUNT(e.id) AS event_count
+FROM public.event_categories c
+LEFT JOIN public.event_subtypes s ON c.id = s.category_id
+LEFT JOIN public.events e ON s.id = e.subtype_id
+GROUP BY c.name
+ORDER BY event_count DESC;
+
+
+-- 5.3. ANALYTICS: MONTHLY TRENDS (Last 12 Months)
+
+CREATE OR REPLACE VIEW public.analytics_monthly_trends AS
+SELECT 
+  TO_CHAR(created_at, 'YYYY-MM') AS month_year,
+  COUNT(id) AS events_created
+FROM public.events
+WHERE created_at >= NOW() - INTERVAL '12 months'
+GROUP BY 1
+ORDER BY 1 ASC;
+
+
+-- 5.4. ANALYTICS: STATUS DISTRIBUTION
+
+CREATE OR REPLACE VIEW public.analytics_status_distribution AS
+SELECT 
+  status,
+  COUNT(id) AS count
+FROM public.events
+GROUP BY status;
 
 -- =================================================
--- 5. TRIGGERS
+-- 6. TRIGGERS
 -- =================================================
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -338,7 +383,7 @@ FOR EACH ROW
 EXECUTE PROCEDURE public.handle_new_user();
 
 -- =================================================
--- 6. RLS ENABLE
+-- 7. RLS ENABLE
 -- =================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -354,7 +399,7 @@ ALTER TABLE public.event_subtypes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
 
 -- =================================================
--- 7. POLICIES (CLEAN SLATE)
+-- 8. POLICIES (CLEAN SLATE)
 -- =================================================
 
 -- --- PROFILES ---
@@ -441,8 +486,13 @@ CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE T
 );
 
 -- =================================================
--- 8. GRANTS
+-- 9. GRANTS
 -- =================================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+-- Allow authenticated users to read views (RLS on underlying tables handles the rest)
+GRANT SELECT ON public.analytics_overview TO authenticated;
+GRANT SELECT ON public.analytics_category_performance TO authenticated;
+GRANT SELECT ON public.analytics_monthly_trends TO authenticated;
+GRANT SELECT ON public.analytics_status_distribution TO authenticated;

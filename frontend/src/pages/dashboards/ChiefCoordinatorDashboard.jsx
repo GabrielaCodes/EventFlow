@@ -6,9 +6,10 @@ import { getCoordinatorStats } from '../../services/coordinatorService';
 import UserApprovals from '../../components/coordinator/UserApprovals';
 import MasterDataCategories from '../../components/coordinator/MasterDataCategories';
 import MasterDataVenues from '../../components/coordinator/MasterDataVenues';
-// ✅ 1. Import New Component
+// Manager request to Chief Coordinator
 import MasterRequestApprovals from '../../components/coordinator/MasterRequestApprovals';
-
+// Analytics
+import AnalyticsDashboard from '../../components/coordinator/analytics/AnalyticsDashboard';
 const ChiefCoordinatorDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
@@ -63,6 +64,8 @@ const ChiefCoordinatorDashboard = () => {
             // ✅ 2. Add New Case
             case 'resource_requests':
                 return <MasterRequestApprovals />;
+            case 'analytics':
+                return <AnalyticsDashboard />;
             default:
                 return <div>Select a tab</div>;
         }
@@ -77,7 +80,7 @@ const ChiefCoordinatorDashboard = () => {
                 {/* Tabs */}
                 <div className="flex gap-4 border-b border-gray-300 mb-6 overflow-x-auto">
                     {/* ✅ 3. Update Tab List */}
-                    {['overview', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
+                    {['overview', 'analytics', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
