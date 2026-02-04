@@ -14,6 +14,7 @@ const AnalyticsDashboard = () => {
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
+                // Adjust this URL if your route is different
                 const res = await api.get('/analytics/system-overview');
                 setData(res.data);
             } catch (err) {
@@ -31,27 +32,28 @@ const AnalyticsDashboard = () => {
     const { overview, categories, trends, statusDistribution } = data;
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-8 animate-fade-in pb-10">
             
             {/* 1. KPI CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <KPICard title="Total Events" value={overview.total_events} color="blue" />
                 <KPICard title="Pending Approvals" value={overview.pending_approvals} color="orange" />
                 <KPICard title="Active Venues" value={overview.active_venues} color="green" />
-                <KPICard title="Total Sponsorship" value={`$${overview.total_sponsorship_amount.toLocaleString()}`} color="purple" />
+                <KPICard title="Total Sponsorship" value={`$${(overview.total_sponsorship_amount || 0).toLocaleString()}`} color="purple" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 {/* 2. TRENDS CHART (Line) */}
                 <div className="bg-white p-6 rounded shadow border">
-                    <h3 className="text-lg font-bold mb-4 text-gray-700">Event Creation Trend (12 Months)</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <h3 className="text-lg font-bold mb-4 text-gray-700">Event Creation Trend</h3>
+                    {/* ✅ FIX: Explicit Height Style */}
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
                             <LineChart data={trends}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="month_year" />
-                                <YAxis />
+                                <YAxis allowDecimals={false} />
                                 <Tooltip />
                                 <Line type="monotone" dataKey="events_created" stroke="#2563EB" strokeWidth={3} />
                             </LineChart>
@@ -62,14 +64,15 @@ const AnalyticsDashboard = () => {
                 {/* 3. CATEGORY PERFORMANCE (Bar) */}
                 <div className="bg-white p-6 rounded shadow border">
                     <h3 className="text-lg font-bold mb-4 text-gray-700">Events by Category</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={categories} layout="vertical">
+                    {/* ✅ FIX: Explicit Height Style */}
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                            <BarChart data={categories} layout="vertical" margin={{ left: 20 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="category_name" type="category" width={100} />
+                                <XAxis type="number" allowDecimals={false} />
+                                <YAxis dataKey="category_name" type="category" width={100} fontSize={12} />
                                 <Tooltip />
-                                <Bar dataKey="event_count" fill="#8884d8" barSize={20} />
+                                <Bar dataKey="event_count" fill="#8884d8" barSize={20} radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -79,8 +82,9 @@ const AnalyticsDashboard = () => {
              {/* 4. STATUS DISTRIBUTION (Pie) */}
              <div className="bg-white p-6 rounded shadow border max-w-lg mx-auto">
                 <h3 className="text-lg font-bold mb-4 text-gray-700 text-center">Event Status Distribution</h3>
-                <div className="h-64 flex justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                {/* ✅ FIX: Explicit Height Style */}
+                <div style={{ width: '100%', height: 300 }}>
+                    <ResponsiveContainer>
                         <PieChart>
                             <Pie
                                 data={statusDistribution}
@@ -94,12 +98,12 @@ const AnalyticsDashboard = () => {
                                 nameKey="status"
                                 label
                             >
-                                {statusDistribution.map((entry, index) => (
+                                {(statusDistribution || []).map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
                             <Tooltip />
-                            <Legend />
+                            <Legend verticalAlign="bottom" height={36} />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>

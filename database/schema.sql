@@ -6,12 +6,11 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =================================================
 -- 2. ENUMS
 -- =================================================
--- We use DO blocks to safely create enums only if they don't exist
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('client', 'manager', 'employee', 'sponsor', 'chief_coordinator');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- If 'chief_coordinator' was missing from an old install, add it now:
+-- Fix for legacy installs
 ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'chief_coordinator';
 
 DO $$ BEGIN
@@ -22,7 +21,6 @@ DO $$ BEGIN
   CREATE TYPE sponsorship_status AS ENUM ('pending', 'accepted', 'rejected', 'paid', 'negotiating');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Ensure 'negotiating' exists if table was already made
 ALTER TYPE sponsorship_status ADD VALUE IF NOT EXISTS 'negotiating';
 
 DO $$ BEGIN
@@ -31,6 +29,11 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
   CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ✅ NEW: Enum for Master Data Requests
+DO $$ BEGIN
+  CREATE TYPE request_type AS ENUM ('venue', 'category', 'subtype');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- =================================================
@@ -46,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role user_role NOT NULL DEFAULT 'client',
   verification_status verification_status DEFAULT 'verified',
   assigned_manager_id UUID REFERENCES public.profiles(id),
-  category_id UUID, -- References event_categories(id) created later
+  category_id UUID, 
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -66,7 +69,6 @@ CREATE TABLE IF NOT EXISTS public.event_categories (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Add Foreign Key to profiles now that categories exist
 ALTER TABLE public.profiles 
 DROP CONSTRAINT IF EXISTS profiles_category_id_fkey;
 
@@ -94,7 +96,9 @@ CREATE TABLE IF NOT EXISTS public.events (
   venue_id UUID REFERENCES public.venues(id),
   subtype_id UUID REFERENCES public.event_subtypes(id),
   client_notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- ✅ NEW: Updated At Column for Alerts
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3.5 ASSIGNMENTS (Manager <-> Category)
@@ -176,45 +180,39 @@ CREATE TABLE IF NOT EXISTS public.terms (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 3.10 ✅ NEW: MASTER DATA REQUESTS (For Managers)
+CREATE TABLE IF NOT EXISTS public.master_data_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  requested_by UUID REFERENCES public.profiles(id),
+  type request_type NOT NULL,
+  request_data JSONB NOT NULL, 
+  request_note TEXT,
+  rejection_reason TEXT,
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =================================================
--- 4. FUNCTIONS
+-- 4. FUNCTIONS & TRIGGERS
 -- =================================================
--- -------------------------------------------------
--- 4.1 CHECK MANAGER ROLE (USED BY RLS)
--- -------------------------------------------------
+
+-- 4.1 ROLE CHECKS
 CREATE OR REPLACE FUNCTION public.is_manager()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1
-    FROM public.profiles
-    WHERE id = auth.uid()
-      AND role = 'manager'
-  );
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-
--- -------------------------------------------------
--- 4.2 CHECK CHIEF COORDINATOR ROLE (SAFE, VERIFIED)
--- -------------------------------------------------
 CREATE OR REPLACE FUNCTION public.is_chief_coordinator()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1
-    FROM public.profiles
-    WHERE id = auth.uid()
-      AND role = 'chief_coordinator'
-      AND verification_status = 'verified'
-  );
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'chief_coordinator' AND verification_status = 'verified');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-
--- -------------------------------------------------
--- 4.3 USER SIGNUP HANDLER (SAFE + FEATURE COMPLETE)
--- -------------------------------------------------
+-- 4.2 USER SIGNUP HANDLER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -226,109 +224,59 @@ DECLARE
   v_initial_status public.verification_status;
   v_company_name TEXT;
 BEGIN
-  -- -----------------------------------------------
-  -- 1. BASIC FIELDS WITH SAFE DEFAULTS
-  -- -----------------------------------------------
   v_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'User');
   v_role_str  := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
   v_company_name := NEW.raw_user_meta_data->>'company_name';
 
-  -- -----------------------------------------------
-  -- 2. SAFELY PARSE category_id (NEVER FAIL SIGNUP)
-  -- -----------------------------------------------
-  BEGIN
-    v_category_id := (NEW.raw_user_meta_data->>'category_id')::UUID;
-  EXCEPTION WHEN OTHERS THEN
-    v_category_id := NULL;
-  END;
+  BEGIN v_category_id := (NEW.raw_user_meta_data->>'category_id')::UUID; EXCEPTION WHEN OTHERS THEN v_category_id := NULL; END;
+  BEGIN v_role_enum := v_role_str::public.user_role; EXCEPTION WHEN OTHERS THEN v_role_enum := 'client'; END;
 
-  -- -----------------------------------------------
-  -- 3. SAFELY MAP ROLE (AVOID INVALID ENUM CRASH)
-  -- -----------------------------------------------
-  BEGIN
-    v_role_enum := v_role_str::public.user_role;
-  EXCEPTION WHEN OTHERS THEN
-    v_role_enum := 'client';
-  END;
+  IF v_role_enum IN ('manager', 'employee', 'sponsor') THEN v_initial_status := 'pending';
+  ELSIF v_role_enum = 'chief_coordinator' THEN v_initial_status := 'pending';
+  ELSE v_initial_status := 'verified'; END IF;
 
-  -- -----------------------------------------------
-  -- 4. MAP INITIAL VERIFICATION STATUS
-  -- -----------------------------------------------
-  IF v_role_enum IN ('manager', 'employee', 'sponsor') THEN
-    v_initial_status := 'pending';
-  ELSIF v_role_enum = 'chief_coordinator' THEN
-    v_initial_status := 'pending'; -- manual verification required
-  ELSE
-    v_initial_status := 'verified'; -- clients
-  END IF;
-
-  -- -----------------------------------------------
-  -- 5. ASSIGN MANAGER FOR EMPLOYEES (LOAD-BALANCED)
-  -- -----------------------------------------------
   IF v_role_enum = 'employee' AND v_category_id IS NOT NULL THEN
     PERFORM pg_advisory_xact_lock(hashtext(v_category_id::text));
-
-    SELECT mca.manager_id
-    INTO v_assigned_manager
-    FROM public.manager_category_assignments mca
-    LEFT JOIN public.profiles p
-      ON p.assigned_manager_id = mca.manager_id
-      AND p.verification_status = 'pending'
-    WHERE mca.category_id = v_category_id
-    GROUP BY mca.manager_id
-    ORDER BY COUNT(p.id), mca.manager_id
-    LIMIT 1;
+    SELECT mca.manager_id INTO v_assigned_manager FROM public.manager_category_assignments mca
+    LEFT JOIN public.profiles p ON p.assigned_manager_id = mca.manager_id AND p.verification_status = 'pending'
+    WHERE mca.category_id = v_category_id GROUP BY mca.manager_id ORDER BY COUNT(p.id), mca.manager_id LIMIT 1;
   END IF;
 
-  -- -----------------------------------------------
-  -- 6. INSERT PROFILE (NEVER BLOCK AUTH SIGNUP)
-  -- -----------------------------------------------
-  INSERT INTO public.profiles (
-    id,
-    email,
-    full_name,
-    company_name,
-    role,
-    verification_status,
-    assigned_manager_id,
-    category_id
-  )
-  VALUES (
-    NEW.id,
-    NEW.email,
-    v_full_name,
-    v_company_name,
-    v_role_enum,
-    v_initial_status,
-    v_assigned_manager,
-    v_category_id
-  )
+  INSERT INTO public.profiles (id, email, full_name, company_name, role, verification_status, assigned_manager_id, category_id)
+  VALUES (NEW.id, NEW.email, v_full_name, v_company_name, v_role_enum, v_initial_status, v_assigned_manager, v_category_id)
   ON CONFLICT (id) DO NOTHING;
 
-  -- -----------------------------------------------
-  -- 7. MANAGER → CATEGORY ASSIGNMENT (IF APPLICABLE)
-  -- -----------------------------------------------
   IF v_role_enum = 'manager' AND v_category_id IS NOT NULL THEN
-    INSERT INTO public.manager_category_assignments (manager_id, category_id)
-    VALUES (NEW.id, v_category_id)
+    INSERT INTO public.manager_category_assignments (manager_id, category_id) VALUES (NEW.id, v_category_id)
     ON CONFLICT (manager_id, category_id) DO NOTHING;
   END IF;
 
   RETURN NEW;
-
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Never block Auth user creation
-    RAISE LOG 'Error in handle_new_user(): %', SQLERRM;
-    RETURN NEW;
+EXCEPTION WHEN OTHERS THEN RAISE LOG 'Error in handle_new_user(): %', SQLERRM; RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4.3 ✅ NEW: TRIGGER FOR UPDATED_AT
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = NOW();
+   RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+DROP TRIGGER IF EXISTS update_events_modtime ON public.events;
+CREATE TRIGGER update_events_modtime BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
 -- =================================================
--- 5. Analytics Views
+-- 5. ANALYTICS & CONTROL PANEL VIEWS
 -- =================================================
 
--- 5.1 ANALYTICS: SYSTEM OVERVIEW (KPIs)
-
+-- 5.1 ANALYTICS (STABLE)
 CREATE OR REPLACE VIEW public.analytics_overview AS
 SELECT
   (SELECT COUNT(*) FROM public.events) AS total_events,
@@ -336,56 +284,53 @@ SELECT
   (SELECT COUNT(*) FROM public.venues WHERE is_available = TRUE) AS active_venues,
   (SELECT COALESCE(SUM(amount), 0) FROM public.sponsorships WHERE status = 'accepted') AS total_sponsorship_amount;
 
-
--- 5.2. ANALYTICS: EVENTS BY CATEGORY
-
 CREATE OR REPLACE VIEW public.analytics_category_performance AS
-SELECT 
-  c.name AS category_name,
-  COUNT(e.id) AS event_count
+SELECT c.name AS category_name, COUNT(e.id) AS event_count
 FROM public.event_categories c
 LEFT JOIN public.event_subtypes s ON c.id = s.category_id
 LEFT JOIN public.events e ON s.id = e.subtype_id
-GROUP BY c.name
-ORDER BY event_count DESC;
-
-
--- 5.3. ANALYTICS: MONTHLY TRENDS (Last 12 Months)
+GROUP BY c.name ORDER BY event_count DESC;
 
 CREATE OR REPLACE VIEW public.analytics_monthly_trends AS
-SELECT 
-  TO_CHAR(created_at, 'YYYY-MM') AS month_year,
-  COUNT(id) AS events_created
-FROM public.events
-WHERE created_at >= NOW() - INTERVAL '12 months'
-GROUP BY 1
-ORDER BY 1 ASC;
-
-
--- 5.4. ANALYTICS: STATUS DISTRIBUTION
+SELECT TO_CHAR(created_at, 'YYYY-MM') AS month_year, COUNT(id) AS events_created
+FROM public.events WHERE created_at >= NOW() - INTERVAL '12 months' GROUP BY 1 ORDER BY 1 ASC;
 
 CREATE OR REPLACE VIEW public.analytics_status_distribution AS
+SELECT status, COUNT(id) AS count FROM public.events GROUP BY status;
+
+
+-- 5.2 ✅ NEW: CONTROL PANEL VIEWS (ACTIONABLE DATA)
+
+-- View 1: Pending Actions (Managers/Sponsors waiting)
+CREATE OR REPLACE VIEW public.view_coordinator_pending_actions AS
+SELECT id, full_name, role, company_name, created_at, EXTRACT(DAY FROM (NOW() - created_at)) AS days_waiting
+FROM public.profiles
+WHERE verification_status = 'pending' AND role IN ('manager', 'sponsor')
+ORDER BY created_at ASC;
+
+-- View 2: Urgent Events (Next 7 days + High Risk)
+CREATE OR REPLACE VIEW public.view_coordinator_urgent_events AS
 SELECT 
-  status,
-  COUNT(id) AS count
+  id, title, event_date, status, venue_id, client_id,
+  ROUND(EXTRACT(EPOCH FROM (event_date::timestamp - NOW())) / 86400) AS days_until_event
 FROM public.events
-GROUP BY status;
+WHERE 
+  event_date >= CURRENT_DATE 
+  AND event_date <= (CURRENT_DATE + INTERVAL '7 days')
+  AND (status = 'consideration' OR venue_id IS NULL)
+ORDER BY event_date ASC;
+
+-- View 3: Recent Alerts (Cancellations in last 7 days)
+CREATE OR REPLACE VIEW public.view_coordinator_recent_alerts AS
+SELECT id, title, updated_at, status
+FROM public.events
+WHERE status = 'cancelled'
+AND updated_at >= NOW() - INTERVAL '7 days'
+ORDER BY updated_at DESC;
 
 -- =================================================
--- 6. TRIGGERS
+-- 6. RLS ENABLE & POLICIES
 -- =================================================
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
-CREATE TRIGGER on_auth_user_created
-AFTER INSERT ON auth.users
-FOR EACH ROW
-EXECUTE PROCEDURE public.handle_new_user();
-
--- =================================================
--- 7. RLS ENABLE
--- =================================================
-
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.venues ENABLE ROW LEVEL SECURITY;
@@ -397,102 +342,63 @@ ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_subtypes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
-
--- =================================================
--- 8. POLICIES (CLEAN SLATE)
--- =================================================
+ALTER TABLE public.master_data_requests ENABLE ROW LEVEL SECURITY; -- ✅ Enabled
 
 -- --- PROFILES ---
 DROP POLICY IF EXISTS "Public profiles access" ON public.profiles;
 CREATE POLICY "Public profiles access" ON public.profiles FOR SELECT TO authenticated USING (true);
-
-DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
-
-DROP POLICY IF EXISTS "Users insert own profile" ON public.profiles;
 CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
-
-DROP POLICY IF EXISTS "Coordinator manage all" ON public.profiles;
 CREATE POLICY "Coordinator manage all" ON public.profiles FOR ALL TO authenticated USING (is_chief_coordinator());
 
 -- --- EVENTS ---
 DROP POLICY IF EXISTS "Clients view own events" ON public.events;
 CREATE POLICY "Clients view own events" ON public.events FOR SELECT TO authenticated USING (client_id = auth.uid());
-
-DROP POLICY IF EXISTS "Clients create events" ON public.events;
 CREATE POLICY "Clients create events" ON public.events FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid());
-
-DROP POLICY IF EXISTS "Clients update own events" ON public.events;
 CREATE POLICY "Clients update own events" ON public.events FOR UPDATE TO authenticated USING (client_id = auth.uid() AND status = 'consideration');
-
-DROP POLICY IF EXISTS "Managers view category events" ON public.events;
 CREATE POLICY "Managers view category events" ON public.events FOR SELECT TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.event_subtypes es
-    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
-    WHERE es.id = events.subtype_id AND mca.manager_id = auth.uid()
-  )
+  EXISTS (SELECT 1 FROM public.event_subtypes es JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id WHERE es.id = events.subtype_id AND mca.manager_id = auth.uid())
 );
-
-DROP POLICY IF EXISTS "Coordinator view all events" ON public.events;
 CREATE POLICY "Coordinator view all events" ON public.events FOR SELECT TO authenticated USING (is_chief_coordinator());
 
--- --- MASTER DATA (Categories/Subtypes/Venues) ---
--- Public Read
+-- --- MASTER DATA ---
 CREATE POLICY "Public read categories" ON public.event_categories FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Public read subtypes" ON public.event_subtypes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Public read venues" ON public.venues FOR SELECT TO authenticated USING (true);
-
--- Coordinator Manage (Write)
 CREATE POLICY "Coord manage categories" ON public.event_categories FOR ALL TO authenticated USING (is_chief_coordinator());
 CREATE POLICY "Coord manage subtypes" ON public.event_subtypes FOR ALL TO authenticated USING (is_chief_coordinator());
 CREATE POLICY "Coord manage venues" ON public.venues FOR ALL TO authenticated USING (is_chief_coordinator());
 
 -- --- SPONSORSHIPS ---
-DROP POLICY IF EXISTS "Sponsors view own requests" ON public.sponsorships;
 CREATE POLICY "Sponsors view own requests" ON public.sponsorships FOR SELECT TO authenticated USING (sponsor_id = auth.uid());
-
-DROP POLICY IF EXISTS "Sponsors update own requests" ON public.sponsorships;
 CREATE POLICY "Sponsors update own requests" ON public.sponsorships FOR UPDATE TO authenticated USING (sponsor_id = auth.uid());
-
-DROP POLICY IF EXISTS "Managers view category sponsorships" ON public.sponsorships;
 CREATE POLICY "Managers view category sponsorships" ON public.sponsorships FOR SELECT TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    JOIN public.event_subtypes es ON e.subtype_id = es.id
-    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
-    WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid()
-  )
+  EXISTS (SELECT 1 FROM public.events e JOIN public.event_subtypes es ON e.subtype_id = es.id JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid())
 );
-
-DROP POLICY IF EXISTS "Managers create sponsorships" ON public.sponsorships;
 CREATE POLICY "Managers create sponsorships" ON public.sponsorships FOR INSERT TO authenticated WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    JOIN public.event_subtypes es ON e.subtype_id = es.id
-    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
-    WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid()
-  )
+  EXISTS (SELECT 1 FROM public.events e JOIN public.event_subtypes es ON e.subtype_id = es.id JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid())
+);
+CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE TO authenticated USING (
+  EXISTS (SELECT 1 FROM public.events e JOIN public.event_subtypes es ON e.subtype_id = es.id JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid())
 );
 
-DROP POLICY IF EXISTS "Managers update sponsorships" ON public.sponsorships;
-CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.events e
-    JOIN public.event_subtypes es ON e.subtype_id = es.id
-    JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id
-    WHERE e.id = sponsorships.event_id AND mca.manager_id = auth.uid()
-  )
-);
+-- --- ✅ NEW: MASTER DATA REQUESTS ---
+CREATE POLICY "Managers create requests" ON public.master_data_requests FOR INSERT TO authenticated WITH CHECK (auth.uid() = requested_by);
+CREATE POLICY "Managers view own requests" ON public.master_data_requests FOR SELECT TO authenticated USING (auth.uid() = requested_by);
+CREATE POLICY "Coordinator manage requests" ON public.master_data_requests FOR ALL TO authenticated USING (is_chief_coordinator());
 
 -- =================================================
--- 9. GRANTS
+-- 7. GRANTS
 -- =================================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
--- Allow authenticated users to read views (RLS on underlying tables handles the rest)
+
+-- Grant access to all views
 GRANT SELECT ON public.analytics_overview TO authenticated;
 GRANT SELECT ON public.analytics_category_performance TO authenticated;
 GRANT SELECT ON public.analytics_monthly_trends TO authenticated;
 GRANT SELECT ON public.analytics_status_distribution TO authenticated;
+GRANT SELECT ON public.view_coordinator_pending_actions TO authenticated;
+GRANT SELECT ON public.view_coordinator_urgent_events TO authenticated;
+GRANT SELECT ON public.view_coordinator_recent_alerts TO authenticated;

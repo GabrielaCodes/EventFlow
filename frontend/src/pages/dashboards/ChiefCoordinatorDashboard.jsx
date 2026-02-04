@@ -10,6 +10,9 @@ import MasterDataVenues from '../../components/coordinator/MasterDataVenues';
 import MasterRequestApprovals from '../../components/coordinator/MasterRequestApprovals';
 // Analytics
 import AnalyticsDashboard from '../../components/coordinator/analytics/AnalyticsDashboard';
+//Overview
+import CoordinatorLanding from '../../components/coordinator/CoordinatorLanding';
+
 const ChiefCoordinatorDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
@@ -39,22 +42,7 @@ const ChiefCoordinatorDashboard = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'overview':
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-                        <div className="bg-blue-600 text-white p-6 rounded shadow">
-                            <h3 className="text-lg font-bold">Total Events</h3>
-                            <p className="text-4xl font-bold">{stats?.totalEvents || 0}</p>
-                        </div>
-                        <div className="bg-orange-500 text-white p-6 rounded shadow">
-                            <h3 className="text-lg font-bold">Pending Approvals</h3>
-                            <p className="text-4xl font-bold">{stats?.pendingUsers || 0}</p>
-                        </div>
-                        <div className="bg-green-600 text-white p-6 rounded shadow">
-                            <h3 className="text-lg font-bold">Active Venues</h3>
-                            <p className="text-4xl font-bold">{stats?.activeVenues || 0}</p>
-                        </div>
-                    </div>
-                );
+                return <CoordinatorLanding setActiveTab={setActiveTab} />;
             case 'approvals':
                 return <UserApprovals />;
             case 'categories':
@@ -80,7 +68,7 @@ const ChiefCoordinatorDashboard = () => {
                 {/* Tabs */}
                 <div className="flex gap-4 border-b border-gray-300 mb-6 overflow-x-auto">
                     {/* ✅ 3. Update Tab List */}
-                    {['overview', 'analytics', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
+                    {['overview' ,'analytics', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}

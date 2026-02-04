@@ -7,7 +7,9 @@ import {
     getSubtypes, createSubtype, deleteSubtype,
     getVenues, createVenue, deleteVenue
 } from '../controllers/coordinatorController.js';
-
+//Analytics
+import { getLandingData } from '../controllers/coordinatorLandingController.js';
+//Manager requests
 import { getCoordinatorRequests, processRequest } from '../controllers/masterRequestController.js';
 const router = express.Router();
 
@@ -38,4 +40,6 @@ router.delete('/venues/:id', deleteVenue);
 // Manager Requests
 router.get('/master-requests', getCoordinatorRequests);
 router.patch('/master-requests/process', processRequest);
+// Overview Landing page
+router.get('/landing-data', getLandingData);
 export default router;
