@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCoordinatorStats } from '../../services/coordinatorService';
 
-// Child Components (To be created next)
+// Child Components
 import UserApprovals from '../../components/coordinator/UserApprovals';
 import MasterDataCategories from '../../components/coordinator/MasterDataCategories';
 import MasterDataVenues from '../../components/coordinator/MasterDataVenues';
+// ✅ 1. Import New Component
+import MasterRequestApprovals from '../../components/coordinator/MasterRequestApprovals';
 
 const ChiefCoordinatorDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -55,9 +57,12 @@ const ChiefCoordinatorDashboard = () => {
             case 'approvals':
                 return <UserApprovals />;
             case 'categories':
-                return <MasterDataCategories />; // <MasterDataCategories />
+                return <MasterDataCategories />; 
             case 'venues':
-                return <MasterDataVenues />; // <MasterDataVenues />
+                return <MasterDataVenues />;
+            // ✅ 2. Add New Case
+            case 'resource_requests':
+                return <MasterRequestApprovals />;
             default:
                 return <div>Select a tab</div>;
         }
@@ -70,18 +75,19 @@ const ChiefCoordinatorDashboard = () => {
             {/* Main Content */}
             <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
                 {/* Tabs */}
-                <div className="flex gap-4 border-b border-gray-300 mb-6">
-                    {['overview', 'approvals', 'categories', 'venues'].map((tab) => (
+                <div className="flex gap-4 border-b border-gray-300 mb-6 overflow-x-auto">
+                    {/* ✅ 3. Update Tab List */}
+                    {['overview', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
+                            className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 whitespace-nowrap ${
                                 activeTab === tab 
                                 ? 'border-blue-600 text-blue-600' 
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}
                         >
-                            {tab}
+                            {tab.replace('_', ' ')}
                         </button>
                     ))}
                 </div>

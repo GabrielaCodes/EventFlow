@@ -180,31 +180,42 @@ CREATE TABLE IF NOT EXISTS public.terms (
 -- 4. FUNCTIONS
 -- =================================================
 
--- ✅ 4.1 SECURE ROLE CHECK (PREVENTS 500 ERROR)
-CREATE OR REPLACE FUNCTION public.is_chief_coordinator()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() 
-    AND role = 'chief_coordinator' 
-    AND verification_status = 'verified'
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 4.2 CHECK MANAGER ROLE
+-- -------------------------------------------------
+-- 4.1 CHECK MANAGER ROLE (USED BY RLS)
+-- -------------------------------------------------
 CREATE OR REPLACE FUNCTION public.is_manager()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'manager'
+    SELECT 1
+    FROM public.profiles
+    WHERE id = auth.uid()
+      AND role = 'manager'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ✅ 4.3 USER SIGNUP HANDLER (FIXED INSERT ORDER)
+
+-- -------------------------------------------------
+-- 4.2 CHECK CHIEF COORDINATOR ROLE (SAFE, VERIFIED)
+-- -------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_chief_coordinator()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = auth.uid()
+      AND role = 'chief_coordinator'
+      AND verification_status = 'verified'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- -------------------------------------------------
+-- 4.3 USER SIGNUP HANDLER (SAFE + FEATURE COMPLETE)
+-- -------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -216,59 +227,88 @@ DECLARE
   v_initial_status public.verification_status;
   v_company_name TEXT;
 BEGIN
+  -- -----------------------------------------------
+  -- 1. BASIC FIELDS WITH SAFE DEFAULTS
+  -- -----------------------------------------------
   v_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'User');
-  v_role_str := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
+  v_role_str  := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
   v_company_name := NEW.raw_user_meta_data->>'company_name';
 
-  -- Safely parse category_id
+  -- -----------------------------------------------
+  -- 2. SAFELY PARSE category_id (NEVER FAIL SIGNUP)
+  -- -----------------------------------------------
   BEGIN
     v_category_id := (NEW.raw_user_meta_data->>'category_id')::UUID;
   EXCEPTION WHEN OTHERS THEN
     v_category_id := NULL;
   END;
 
-  -- Map Role
-  IF v_role_str IN ('manager','employee','sponsor','chief_coordinator') THEN
+  -- -----------------------------------------------
+  -- 3. SAFELY MAP ROLE (AVOID INVALID ENUM CRASH)
+  -- -----------------------------------------------
+  BEGIN
     v_role_enum := v_role_str::public.user_role;
-  ELSE
+  EXCEPTION WHEN OTHERS THEN
     v_role_enum := 'client';
-  END IF;
+  END;
 
-  -- Map Status
-  IF v_role_enum = 'employee' THEN
+  -- -----------------------------------------------
+  -- 4. MAP INITIAL VERIFICATION STATUS
+  -- -----------------------------------------------
+  IF v_role_enum IN ('manager', 'employee', 'sponsor') THEN
     v_initial_status := 'pending';
-  ELSIF v_role_enum = 'manager' OR v_role_enum = 'sponsor' THEN
-    v_initial_status := 'pending'; -- Require Approval
   ELSIF v_role_enum = 'chief_coordinator' THEN
-    v_initial_status := 'verified';
+    v_initial_status := 'pending'; -- manual verification required
   ELSE
-    v_initial_status := 'verified'; -- Clients
+    v_initial_status := 'verified'; -- clients
   END IF;
 
-  -- Employee: Find Manager
+  -- -----------------------------------------------
+  -- 5. ASSIGN MANAGER FOR EMPLOYEES (LOAD-BALANCED)
+  -- -----------------------------------------------
   IF v_role_enum = 'employee' AND v_category_id IS NOT NULL THEN
     PERFORM pg_advisory_xact_lock(hashtext(v_category_id::text));
-    SELECT mca.manager_id INTO v_assigned_manager
+
+    SELECT mca.manager_id
+    INTO v_assigned_manager
     FROM public.manager_category_assignments mca
-    LEFT JOIN public.profiles p ON p.assigned_manager_id = mca.manager_id AND p.verification_status = 'pending'
+    LEFT JOIN public.profiles p
+      ON p.assigned_manager_id = mca.manager_id
+      AND p.verification_status = 'pending'
     WHERE mca.category_id = v_category_id
     GROUP BY mca.manager_id
     ORDER BY COUNT(p.id), mca.manager_id
     LIMIT 1;
   END IF;
 
-  -- 1. Insert Profile FIRST (Prevents FK Error)
+  -- -----------------------------------------------
+  -- 6. INSERT PROFILE (NEVER BLOCK AUTH SIGNUP)
+  -- -----------------------------------------------
   INSERT INTO public.profiles (
-    id, email, full_name, company_name, role, 
-    verification_status, assigned_manager_id, category_id
+    id,
+    email,
+    full_name,
+    company_name,
+    role,
+    verification_status,
+    assigned_manager_id,
+    category_id
   )
   VALUES (
-    NEW.id, NEW.email, v_full_name, v_company_name, v_role_enum, 
-    v_initial_status, v_assigned_manager, v_category_id
+    NEW.id,
+    NEW.email,
+    v_full_name,
+    v_company_name,
+    v_role_enum,
+    v_initial_status,
+    v_assigned_manager,
+    v_category_id
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- 2. Insert Manager Assignment SECOND
+  -- -----------------------------------------------
+  -- 7. MANAGER → CATEGORY ASSIGNMENT (IF APPLICABLE)
+  -- -----------------------------------------------
   IF v_role_enum = 'manager' AND v_category_id IS NOT NULL THEN
     INSERT INTO public.manager_category_assignments (manager_id, category_id)
     VALUES (NEW.id, v_category_id)
@@ -276,17 +316,26 @@ BEGIN
   END IF;
 
   RETURN NEW;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Never block Auth user creation
+    RAISE LOG 'Error in handle_new_user(): %', SQLERRM;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- =================================================
 -- 5. TRIGGERS
 -- =================================================
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
-FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+FOR EACH ROW
+EXECUTE PROCEDURE public.handle_new_user();
 
 -- =================================================
 -- 6. RLS ENABLE

@@ -8,6 +8,7 @@ import {
     getVenues, createVenue, deleteVenue
 } from '../controllers/coordinatorController.js';
 
+import { getCoordinatorRequests, processRequest } from '../controllers/masterRequestController.js';
 const router = express.Router();
 
 router.use(authenticate);
@@ -34,4 +35,7 @@ router.get('/venues', getVenues);
 router.post('/venues', createVenue);
 router.delete('/venues/:id', deleteVenue);
 
+// Manager Requests
+router.get('/master-requests', getCoordinatorRequests);
+router.patch('/master-requests/process', processRequest);
 export default router;
