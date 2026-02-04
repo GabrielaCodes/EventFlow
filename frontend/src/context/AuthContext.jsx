@@ -6,16 +6,12 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  
-  // ✅ NEW: Store the full profile object (which has verification_status)
   const [profile, setProfile] = useState(null); 
-  
   const [loading, setLoading] = useState(true);
   
   const lastCheckedUserId = useRef(null);
 
   const ensureProfileExists = async (sessionUser) => {
-    // Optimization: Don't fetch if we already have it
     if (lastCheckedUserId.current === sessionUser.id && role !== null) {
         return { role, ...profile }; 
     }
@@ -26,11 +22,14 @@ export const AuthProvider = ({ children }) => {
       let attempts = 0;
       let existingProfile = null;
 
-      // 🔄 RETRY LOOP
       while (attempts < 5 && !existingProfile) {
+          // ✅ MODIFIED: Fetch profile AND the category name
           const { data, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(`
+                *,
+                event_categories ( name )
+            `)
             .eq('id', sessionUser.id)
             .maybeSingle();
 
@@ -44,7 +43,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (existingProfile) return existingProfile;
-
       console.error("❌ Profile missing.");
       return null;
 
@@ -64,14 +62,13 @@ export const AuthProvider = ({ children }) => {
             
             if (mounted) {
                 setRole(userProfile?.role || null);
-                // ✅ NEW: Save the full profile to state
                 setProfile(userProfile); 
             }
         } else {
             if (mounted) {
                 setUser(null);
                 setRole(null);
-                setProfile(null); // ✅ Reset
+                setProfile(null);
                 lastCheckedUserId.current = null; 
             }
         }
@@ -103,7 +100,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setUser(null);
     setRole(null);
-    setProfile(null); // ✅ Reset
+    setProfile(null);
     lastCheckedUserId.current = null;
     localStorage.clear();
     try {
@@ -114,7 +111,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    // ✅ NEW: Add 'profile' to the value object
     <AuthContext.Provider value={{ user, role, profile, loading, login, logout }}>
       {children}
     </AuthContext.Provider>

@@ -64,16 +64,19 @@ export const getMyEvents = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Query the database for events owned by this user
+        // ✅ Query updated to join tables (fetch Names instead of just IDs)
         const { data, error } = await supabase
             .from('events')
-            .select('*')
+            .select(`
+                *,
+                event_subtypes ( name ),
+                venues ( name, location )
+            `)
             .eq('client_id', userId)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // Return the ARRAY of events
         res.status(200).json(data); 
 
     } catch (error) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom'; // ✅ Added Link
+import { Link } from 'react-router-dom'; 
 import api, { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -137,16 +137,26 @@ const ClientDashboard = () => {
                             <div key={ev.id} className="border-l-4 border-blue-500 bg-white p-4 rounded shadow-sm hover:shadow-md transition flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <h4 className="font-bold text-lg text-gray-800">{ev.title}</h4>
-                                    <div className="text-sm text-gray-600 mt-1">
+                                    <div className="text-sm text-gray-600 mt-1 space-y-1">
                                         <p>📅 {new Date(ev.event_date).toLocaleDateString()}</p>
-                                        {ev.subtype_id && <p className="text-xs text-gray-500 mt-1">ID: {ev.subtype_id.slice(0,8)}...</p>}
+                                        
+                                        {/* ✅ REMOVED ID, ADDED NAMES */}
+                                        {ev.event_subtypes && (
+                                            <p className="font-medium text-blue-600">
+                                                Event Type: {ev.event_subtypes.name}
+                                            </p>
+                                        )}
+                                        {ev.venues && (
+                                            <p className="text-gray-500">
+                                                📍 {ev.venues.name}, {ev.venues.location}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-gray-100 text-gray-700'}`}>
                                         {ev.status.replace('_', ' ')}
                                     </span>
-                                    {/* ✅ THIS IS THE BUTTON TO VIEW MODIFICATIONS */}
                                     <Link to={`/event-modifications/${ev.id}`} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 transition">
                                         View / Manage
                                     </Link>
