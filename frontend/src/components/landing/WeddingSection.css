@@ -1,0 +1,32 @@
+.wedding-section {
+  font-family: 'Playfair Display', 'Georgia', serif;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .wedding-section {
+    padding: 3rem 1rem !important;
+    height: auto !important;
+  }
+
+  .wedding-section h2 {
+    font-size: 2rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .wedding-section > div > div:last-child > div {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* Print */
+@media print {
+  .wedding-section {
+    background: white !important;
+  }
+
+  .wedding-section svg {
+    display: none;
+  }
+}
