@@ -9,7 +9,7 @@ const Register = () => {
         fullName: '',
         role: 'client',
         category_id: '',
-        companyName: '' // ✅ 1. Add State
+        companyName: '' 
     });
     
     const [categories, setCategories] = useState([]); 
@@ -41,7 +41,6 @@ const Register = () => {
                 return;
             }
 
-            // Validate Sponsor
             if (formData.role === 'sponsor' && !formData.companyName) {
                 alert("Please enter a Company Name.");
                 setLoading(false);
@@ -56,7 +55,6 @@ const Register = () => {
                         full_name: formData.fullName,
                         role: formData.role,
                         category_id: needsCategory ? formData.category_id : null,
-                        // ✅ 2. Send company name in metadata
                         company_name: formData.role === 'sponsor' ? formData.companyName : null
                     },
                 },
@@ -65,7 +63,7 @@ const Register = () => {
             if (authError) throw authError;
 
             alert("Registration Successful! Please Log In.");
-            navigate('/');
+            navigate('/login'); // ✅ Redirect to Login Page
 
         } catch (err) {
             console.error("Registration Error:", err);
@@ -76,7 +74,16 @@ const Register = () => {
     };
 
     return (
-        <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 relative">
+            
+            {/* ✅ MANUAL HOME LINK (Top Left) */}
+            <Link 
+                to="/" 
+                className="absolute top-6 left-6 text-blue-600 hover:text-blue-800 font-bold flex items-center gap-2"
+            >
+                ← Home
+            </Link>
+
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
                 <h2 className="text-2xl mb-4 font-bold text-center">Create Account</h2>
                 
@@ -108,7 +115,6 @@ const Register = () => {
                     <option value="sponsor">Sponsor</option>
                 </select>
 
-                {/* ✅ 3. Conditional Input for Sponsors */}
                 {formData.role === 'sponsor' && (
                     <input 
                         name="companyName" 
@@ -119,7 +125,6 @@ const Register = () => {
                     />
                 )}
 
-                {/* Dropdown for Manager OR Employee */}
                 {['manager', 'employee'].includes(formData.role) && (
                     <div className="mb-3 animate-fade-in">
                         <label className="block text-sm text-gray-600 mb-1">
@@ -152,7 +157,8 @@ const Register = () => {
                 </button>
                 
                 <p className="mt-4 text-center text-sm">
-                    Already have an account? <Link to="/" className="text-blue-600 underline">Login</Link>
+                    {/* ✅ FIXED: Point to Login Page, not Landing Page */}
+                    Already have an account? <Link to="/login" className="text-blue-600 underline">Login</Link>
                 </p>
             </form>
         </div>
