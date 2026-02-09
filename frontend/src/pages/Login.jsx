@@ -2,7 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/api'; 
-// ❌ Navbar import removed (Handled by App.jsx)
+
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -29,7 +29,7 @@ const Login = () => {
 
             if (profile?.verification_status === 'pending') {
                 await logout(); 
-                alert("🚫 Account Pending Approval.\n\nPlease wait for the Chief Coordinator to verify you.");
+                alert("🚫 Account Pending Approval.\n\nPlease wait until verification is completed. You will be notified by email.");
                 setLoading(false);
                 return;
             }
