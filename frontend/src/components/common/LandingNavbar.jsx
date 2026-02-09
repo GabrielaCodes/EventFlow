@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const LandingNavbar = () => {
-  // Function to handle smooth scrolling
+  // Function to handle smooth scrolling for sections on the Landing Page
   const handleScroll = (e, id) => {
     e.preventDefault();
     const element = document.getElementById(id);
@@ -25,7 +25,7 @@ const LandingNavbar = () => {
       borderBottom: '1px solid rgba(212, 175, 55, 0.1)'
     }}>
       
-      {/* --- LOGO STYLES (Kept exactly as you provided) --- */}
+      {/* --- LOGO STYLES --- */}
       <style>{`
         .ef-logo-container {
           --gold-100: #fff9c4; --gold-200: #ffd54f; --gold-300: #ffb300;
@@ -77,7 +77,7 @@ const LandingNavbar = () => {
           0% { background-position: -100%; } 20% { background-position: 200%; } 100% { background-position: 200%; }
         }
         
-        /* New Link Styles */
+        /* Link Styles */
         .nav-link {
           color: var(--text-cream, #f5f5f5); text-decoration: none;
           fontSize: 0.9rem; letter-spacing: 1px; cursor: pointer;
@@ -103,15 +103,13 @@ const LandingNavbar = () => {
       {/* --- NAVIGATION LINKS --- */}
       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
         
-        {/* Scroll Links */}
-        <a href="#wedding" className="nav-link" onClick={(e) => handleScroll(e, 'wedding')}>WEDDINGS</a>
-        <a href="#theatre" className="nav-link" onClick={(e) => handleScroll(e, 'theatre')}>THEATRE</a>
-        <a href="#graduation" className="nav-link" onClick={(e) => handleScroll(e, 'graduation')}>GRADUATION</a>
-        <a href="#concert" className="nav-link" onClick={(e) => handleScroll(e, 'concert')}>CONCERTS</a>
+        {/* ✅ Updated Links: Contact, About, Gallery */}
+        <Link to="/about" className="nav-link">ABOUT</Link>
+        <Link to="/gallery" className="nav-link">GALLERY</Link>
+        <a href="#contact" className="nav-link" onClick={(e) => handleScroll(e, 'contact')}>CONTACT</a>
 
         {/* Auth Buttons */}
         <div style={{ display: 'flex', gap: '1rem', marginLeft: '1rem' }}>
-          {/* ✅ FIXED: Points to actual Login Page */}
           <Link to="/login" style={{ 
             color: '#ffd54f', 
             textDecoration: 'none',
@@ -119,7 +117,6 @@ const LandingNavbar = () => {
             fontWeight: '600'
           }}>LOGIN</Link>
           
-          {/* ✅ FIXED: Points to actual Register Page */}
           <Link to="/register" style={{ 
             padding: '0.6rem 1.8rem', 
             background: 'linear-gradient(45deg, #ffe082, #ffb300)',

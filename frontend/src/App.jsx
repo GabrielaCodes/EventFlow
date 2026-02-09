@@ -1,15 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-// Components
-import Navbar from './components/Navbar'; // Your Main App Navbar
+import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
-import LandingPage from './pages/LandingPage'; // ✅ New Landing Page
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Gallery from './pages/Gallery'; // Assuming you moved this to pages
+import Gallery from './pages/Gallery';
 
 // Dashboards
 import CoordinatorRoute from './routes/CoordinatorRoute';
@@ -20,12 +18,10 @@ import SponsorDashboard from './pages/dashboards/SponsorDashboard';
 import EmployeeDashboard from './pages/dashboards/EmployeeDashboard';
 import EventModifications from './pages/dashboards/EventModifications';
 
-// --- Dashboard Redirect Logic ---
 const DashboardRedirect = () => {
     const { user, role, profile, loading } = useAuth();
-
     if (loading) return <div className="p-10 text-center">Loading...</div>;
-    if (!user) return <Navigate to="/login" replace />; // Redirect to login if trying to access dashboard unauthenticated
+    if (!user) return <Navigate to="/login" replace />;
 
     if (profile?.verification_status === 'pending') {
         return (
@@ -38,7 +34,6 @@ const DashboardRedirect = () => {
             </div>
         );
     }
-
     if (profile?.verification_status === 'rejected') {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
@@ -50,21 +45,21 @@ const DashboardRedirect = () => {
             </div>
         );
     }
-
     if (role === 'chief_coordinator') return <Navigate to="/coordinator" replace />;
     if (role === 'manager') return <Navigate to="/manager-dashboard" replace />;
     if (role === 'client') return <Navigate to="/client-dashboard" replace />;
     if (role === 'employee') return <Navigate to="/employee-dashboard" replace />;
     if (role === 'sponsor') return <Navigate to="/sponsor-dashboard" replace />;
-
     return <div className="p-10 text-red-500">Error: Role '{role}' not recognized.</div>;
 };
 
-// --- Layout Component to Hide Navbar on Landing Page ---
 const Layout = ({ children }) => {
     const location = useLocation();
-    // Don't show Main Navbar on Landing Page ('/') or Gallery ('/gallery') as they have their own or need none
+    
+    // ✅ FIX: Only hide Navbar on Landing ('/') and Gallery. 
+    // We removed '/login' and '/register' from this list so the Global Navbar shows up there.
     const hideNavbarPaths = ['/', '/gallery']; 
+    
     const showNavbar = !hideNavbarPaths.includes(location.pathname);
 
     return (
@@ -81,36 +76,18 @@ function App() {
       <BrowserRouter>
         <Layout>
             <Routes>
-                {/* ✅ PUBLIC ROUTES */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-
-                {/* ✅ DASHBOARD REDIRECT */}
                 <Route path="/dashboard" element={<DashboardRedirect />} />
-
-                {/* ✅ PROTECTED ROUTES */}
-                <Route path="/manager-dashboard" element={
-                    <ProtectedRoute allowedRoles={['manager']}><ManagerDashboard /></ProtectedRoute>
-                }/>
-
-                <Route path="/client-dashboard" element={
-                    <ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>
-                }/>
-
-                <Route path="/employee-dashboard" element={
-                    <ProtectedRoute allowedRoles={['employee']}><EmployeeDashboard /></ProtectedRoute>
-                }/>
-
-                <Route path="/sponsor-dashboard" element={
-                    <ProtectedRoute allowedRoles={['sponsor']}><SponsorDashboard /></ProtectedRoute>
-                }/>
-
-                <Route path="/event-modifications/:id" element={
-                    <ProtectedRoute allowedRoles={['manager', 'client']}><EventModifications /></ProtectedRoute>
-                }/>
-
+                
+                <Route path="/manager-dashboard" element={<ProtectedRoute allowedRoles={['manager']}><ManagerDashboard /></ProtectedRoute>}/>
+                <Route path="/client-dashboard" element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>}/>
+                <Route path="/employee-dashboard" element={<ProtectedRoute allowedRoles={['employee']}><EmployeeDashboard /></ProtectedRoute>}/>
+                <Route path="/sponsor-dashboard" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorDashboard /></ProtectedRoute>}/>
+                <Route path="/event-modifications/:id" element={<ProtectedRoute allowedRoles={['manager', 'client']}><EventModifications /></ProtectedRoute>}/>
+                
                 <Route element={<CoordinatorRoute />}>
                     <Route path="/coordinator" element={<ChiefCoordinatorDashboard />} />
                 </Route>

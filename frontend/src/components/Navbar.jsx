@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const { user, logout, role, loading, profile } = useAuth();
+    const navigate = useNavigate();
 
     // 1. Determine Display Name
     const displayName = 
@@ -23,7 +24,7 @@ const Navbar = () => {
         if (role === 'client') return '/client-dashboard';
         if (role === 'employee') return '/employee-dashboard';
         if (role === 'sponsor') return '/sponsor-dashboard';
-        return '/';
+        return '/'; // ✅ Default to Landing Page
     };
 
     const handleLogout = async () => {
@@ -33,13 +34,13 @@ const Navbar = () => {
             console.error("Logout error:", error);
         } finally {
             localStorage.clear();
-            window.location.href = '/';
+            navigate('/login', { replace: true }); 
         }
     };
 
     return (
         <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
-            {/* LOGO */}
+            {/* LOGO - Goes to Dashboard if logged in, Landing Page if not */}
             <Link to={getHomeLink()} className="text-xl font-bold tracking-wide hover:text-blue-100 transition">
                 Eventflow
             </Link>
@@ -56,7 +57,6 @@ const Navbar = () => {
                                 
                                 {/* ✅ DISPLAY COMPANY OR CATEGORY */}
                                 <div className="text-xs text-blue-200 opacity-90 leading-none mt-0.5">
-                                    {/* If Manager, show Category. If Sponsor, show Company. */}
                                     {role === 'manager' && categoryName 
                                         ? categoryName 
                                         : companyName
@@ -78,12 +78,19 @@ const Navbar = () => {
                             </button>
                         </div>
                     ) : (
-                        <Link
-                            to="/"
-                            className="text-white hover:text-blue-200 underline font-medium"
-                        >
-                            Login
-                        </Link>
+                        <div className="flex gap-4">
+                             {/* ✅ Home Link for non-logged in users (Optional if Logo is enough) */}
+                             <Link to="/" className="text-white hover:text-blue-200 font-medium">
+                                Home
+                            </Link>
+                            
+                            <Link
+                                to="/login" // ✅ Points to Login Page
+                                className="text-white hover:text-blue-200 underline font-medium"
+                            >
+                                Login
+                            </Link>
+                        </div>
                     )}
                 </div>
             )}

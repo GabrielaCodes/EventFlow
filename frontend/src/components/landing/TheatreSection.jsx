@@ -44,6 +44,7 @@ const TheatreSection = () => {
           <motion.img
             src={theatreLightOff}
             alt="Spotlight Off"
+            draggable={false}
             animate={{ opacity: isLightsOn ? 0 : 1 }}
             transition={{ duration: 0.2 }}
             style={{ width: '100%', position: 'absolute', zIndex: 1, top: 0, right: 0 }}
@@ -53,6 +54,7 @@ const TheatreSection = () => {
           <motion.img
             src={theatreLightOn}
             alt="Spotlight On"
+            draggable={false}
             initial={{ opacity: 0 }}
             animate={{ opacity: isLightsOn ? 1 : 0 }}
             transition={{ duration: 0.1 }}
