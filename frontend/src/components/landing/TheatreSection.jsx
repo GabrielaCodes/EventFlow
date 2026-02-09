@@ -12,35 +12,45 @@ const images = [img1, img2, img3, img4];
 
 const TheatreSection = () => {
   const [isLightsOn, setIsLightsOn] = useState(false);
-  
-  // Ref to track the section
+
   const sectionRef = useRef(null);
-  // Check if section is in view (amount: 0.5 means button appears when 50% of section is visible)
   const isInView = useInView(sectionRef, { amount: 0.5 });
-  
-  // Sweep duration
+
   const sweepDuration = 3.5;
 
   return (
     <section
-      ref={sectionRef} // Attached ref here
+      ref={sectionRef}
       style={{
         minHeight: '100vh',
-        // Default is #443429 (Dark), changes to #c4a88b (Fawn) only when clicked
-        background: isLightsOn ? '#c4a88b' : '#443429', 
+        background: isLightsOn
+          ? '#c4a88b'
+          : 'radial-gradient(ellipse at center, #2d1810 0%, #1a0f0a 80%)',
         display: 'flex',
         overflow: 'hidden',
         position: 'relative',
-        transition: 'background-color 0.8s ease' // Smooth color fade
+        transition: 'background 0.8s ease'
       }}
     >
+      {/* === SAME AMBIENT GLOW AS WEDDING SECTION === */}
+      {!isLightsOn && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'radial-gradient(circle at center, rgba(218,165,32,0.2), transparent 60%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      )}
+
       {/* ================= LEFT SIDE: LIGHT SOURCE & IMG 5 ================= */}
       <div style={{ width: '40%', position: 'relative', height: '100vh', zIndex: 20 }}>
-        
-        {/* LIGHT FIXTURE CONTAINER */}
+
         <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', maxWidth: '500px' }}>
 
-          {/* LIGHT OFF IMAGE */}
           <motion.img
             src={theatreLightOff}
             alt="Spotlight Off"
@@ -50,7 +60,6 @@ const TheatreSection = () => {
             style={{ width: '100%', position: 'absolute', zIndex: 1, top: 0, right: 0 }}
           />
 
-          {/* LIGHT ON IMAGE */}
           <motion.img
             src={theatreLightOn}
             alt="Spotlight On"
@@ -61,7 +70,6 @@ const TheatreSection = () => {
             style={{ width: '100%', position: 'relative', zIndex: 2 }}
           />
 
-          {/* CONTROL BUTTON - VISIBLE ONLY WHEN SCROLLED TO SECTION */}
           {!isLightsOn && isInView && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
@@ -71,7 +79,7 @@ const TheatreSection = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               style={{
-                position: 'fixed', // Keeps it centered on screen
+                position: 'fixed',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
@@ -86,10 +94,20 @@ const TheatreSection = () => {
                 fontSize: '0.9rem',
                 letterSpacing: '1px',
                 backdropFilter: 'blur(4px)',
-                display: 'flex', alignItems: 'center', gap: '8px'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              <span style={{ width: '8px', height: '8px', background: '#ff4444', borderRadius: '50%', boxShadow: '0 0 8px #ff4444' }}/>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  background: '#ff4444',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 8px #ff4444'
+                }}
+              />
               START SHOW
             </motion.button>
           )}
@@ -104,15 +122,14 @@ const TheatreSection = () => {
               height: 0,
               zIndex: 30,
             }}
-            initial={{ rotate: -25 }} 
+            initial={{ rotate: -25 }}
             animate={isLightsOn ? { rotate: -60 } : {}}
             transition={{ duration: sweepDuration, ease: "easeInOut" }}
           >
-            {/* VISIBLE LIGHT BEAM */}
             <motion.div
               initial={{ opacity: 0, scaleY: 0.2 }}
               animate={isLightsOn ? { opacity: [0, 1, 0.8, 0], scaleY: 1 } : {}}
-              transition={{ 
+              transition={{
                 opacity: { duration: sweepDuration, times: [0, 0.1, 0.8, 1] },
                 scaleY: { duration: 0.4 }
               }}
@@ -123,18 +140,25 @@ const TheatreSection = () => {
                 width: '700px',
                 height: '250vh',
                 transformOrigin: 'top center',
-                background: 'conic-gradient(from 180deg at 50% 0%, transparent 160deg, rgba(255, 220, 150, 0.7) 165deg, rgba(255, 255, 255, 1) 180deg, rgba(255, 220, 150, 0.7) 195deg, transparent 200deg)',
+                background:
+                  'conic-gradient(from 180deg at 50% 0%, transparent 160deg, rgba(255, 220, 150, 0.7) 165deg, rgba(255, 255, 255, 1) 180deg, rgba(255, 220, 150, 0.7) 195deg, transparent 200deg)',
                 filter: 'blur(20px)',
                 mixBlendMode: 'overlay',
                 pointerEvents: 'none',
               }}
             >
-              {/* RAYS LAYER */}
               <motion.div
                 style={{
-                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                  background: 'repeating-conic-gradient(from 180deg at 50% 0%, rgba(255, 230, 150, 0.5) 0deg 2deg, transparent 2deg 36deg)',
-                  filter: 'blur(10px)', mixBlendMode: 'screen', pointerEvents: 'none',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background:
+                    'repeating-conic-gradient(from 180deg at 50% 0%, rgba(255, 230, 150, 0.5) 0deg 2deg, transparent 2deg 36deg)',
+                  filter: 'blur(10px)',
+                  mixBlendMode: 'screen',
+                  pointerEvents: 'none',
                 }}
                 initial={{ opacity: 0 }}
                 animate={isLightsOn ? { opacity: [0, 1, 0.8, 0] } : {}}
@@ -142,87 +166,81 @@ const TheatreSection = () => {
               />
             </motion.div>
 
-            {/* LENS FLARE GLOW */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={isLightsOn ? { opacity: [0, 1, 1, 0] } : {}}
               transition={{ opacity: { duration: sweepDuration, times: [0, 0.1, 0.9, 1] } }}
               style={{
-                position: 'absolute', top: 0, left: 0,
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 transform: 'translate(-50%, -50%)',
-                width: '180px', height: '180px',
-                background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,215,0,0.8) 40%, transparent 70%)',
+                width: '180px',
+                height: '180px',
+                background:
+                  'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,215,0,0.8) 40%, transparent 70%)',
                 filter: 'blur(20px)',
                 boxShadow: '0 0 80px 40px rgba(255, 215, 0, 0.6)',
-                pointerEvents: 'none', mixBlendMode: 'screen'
+                pointerEvents: 'none',
+                mixBlendMode: 'screen'
               }}
             />
           </motion.div>
         </div>
 
-        {/* ================= NEW: IMAGE 5 (BELOW LIGHT) ================= */}
+        {/* IMAGE 5 */}
         <motion.div
           initial={{ opacity: 0, filter: 'brightness(0)' }}
-          animate={isLightsOn ? { 
-            opacity: 1, 
-            filter: ['brightness(0)', 'brightness(1.5)', 'brightness(1)'] 
+          animate={isLightsOn ? {
+            opacity: 1,
+            filter: ['brightness(0)', 'brightness(1.5)', 'brightness(1)']
           } : {}}
           transition={{ delay: 0.5, duration: 1.2, ease: "easeOut" }}
           style={{
-  position: 'absolute',
-  bottom: '-45px',   // ← adjust: -6px, -10px, -14px
-  right: '10%',
-  width: '71%',
-  aspectRatio: '4/3',
-  overflow: 'hidden',
-  borderRadius: '4px',
-  zIndex: 10
-}}
-
-
+            position: 'absolute',
+            bottom: '-45px',
+            right: '10%',
+            width: '71%',
+            aspectRatio: '4/3',
+            overflow: 'hidden',
+            borderRadius: '4px',
+            zIndex: 10
+          }}
         >
-          <img 
-            src={img5} 
+          <img
+            src={img5}
             alt="Theatre 5"
             draggable={false}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         </motion.div>
-
       </div>
 
-      {/* ================= RIGHT SIDE: CONTENT ================= */}
+      {/* ================= RIGHT SIDE ================= */}
       <div style={{ width: '60%', padding: '15vh 4rem 0 2rem', zIndex: 10 }}>
-        
-        {/* SECTION TITLE */}
-        
-
-        {/* IMAGE GRID (1-4) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '2rem' }}>
           {images.map((src, index) => {
             const delay = index % 2 === 0 ? 1.0 : 2.2;
-
             return (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, filter: 'brightness(0)' }}
-                animate={isLightsOn ? { 
-                  opacity: 1, 
+                animate={isLightsOn ? {
+                  opacity: 1,
                   filter: ['brightness(0)', 'brightness(1.5)', 'brightness(1)']
                 } : {}}
                 transition={{ delay, duration: 1.2, ease: "easeOut" }}
-                style={{ 
-                  aspectRatio: '4/3', 
+                style={{
+                  aspectRatio: '4/3',
                   overflow: 'hidden',
-                  borderRadius: '4px',
-                  position: 'relative'
+                  borderRadius: '4px'
                 }}
               >
-                <img 
-                  src={src} 
+                <img
+                  src={src}
                   alt={`Theatre ${index + 1}`}
                   draggable={false}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </motion.div>
             );
