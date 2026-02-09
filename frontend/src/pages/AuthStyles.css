@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+
+/* --- ANIMATIONS --- */
+@keyframes wave1 { 0% { transform: skewX(-55deg); } 50% { transform: skewX(-50deg); } 100% { transform: skewX(-55deg); } }
+@keyframes wave2 { 0% { transform: skewX(-45deg); } 50% { transform: skewX(-40deg); } 100% { transform: skewX(-45deg); } }
+@keyframes wave3 { 0% { transform: skewX(-65deg); } 50% { transform: skewX(-60deg); } 100% { transform: skewX(-65deg); } }
+@keyframes wave4 { 
+  0% { transform: skewX(-65deg); border-radius: 0; } 
+  50% { transform: skewX(-60deg) rotateX(50deg); border-radius: 90%; } 
+  100% { transform: skewX(-65deg); border-radius: 0; } 
+}
+
+/* --- WRAPPER (Pure Black) --- */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000000; /* Pure Pitch Black */
+  font-family: 'Open Sans', sans-serif;
+  overflow: hidden;
+}
+
+/* --- THE CARD (Login - Black Base) --- */
+.form8 {
+  width: 400px;
+  min-height: 400px; 
+  margin: 0 auto;
+  padding: 40px;
+  
+  /* ✅ INCREASED GLOW: Layered shadows for intensity */
+  box-shadow: 
+    0 0 30px rgba(212, 175, 55, 0.4),  /* Soft outer glow */
+    0 0 10px rgba(212, 175, 55, 0.6),  /* Tight inner glow */
+    inset 0 0 20px rgba(212, 175, 55, 0.1); /* Subtle inner reflection */
+
+  background: #050505; /* Slightly lighter than pure black to distinguish card */
+  position: relative;
+  transition: all .5s ease;
+  border-bottom: 4px solid #d4af37; /* Gold border */
+  border-radius: 8px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+/* --- REGISTER STATE (Gold Base) --- */
+.form8.register__bg {
+  /* Lustrous Gold Gradient */
+  background: linear-gradient(135deg, #b8860b 0%, #ffd700 50%, #b8860b 100%);
+  border-color: #000;
+  /* Gold glow on gold card */
+  box-shadow: 0 0 50px rgba(255, 215, 0, 0.6); 
+}
+
+/* --- STRIPES --- */
+.stripes {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    overflow: hidden; z-index: 0; pointer-events: none; border-radius: 8px;
+}
+.stripe { position: absolute; width: 500px; height: 500px; }
+
+/* Gold Stripes for Login (Black Background) */
+/* Increased opacity slightly for visibility against dark bg */
+.stripe1 { top: -300px; left: -300px; transform: skewX(-55deg); background: rgba(212, 175, 55, 0.35); animation: wave1 6s infinite; }
+.stripe2 { top: -350px; left: -350px; transform: skewX(-45deg); background: rgba(212, 175, 55, 0.25); animation: wave2 6s infinite; }
+.stripe3 { top: -356px; left: -200px; transform: skewX(-65deg); background: rgba(212, 175, 55, 0.15); animation: wave3 6s infinite; }
+.stripe4 { top: -322px; left: -200px; transform: skewX(-65deg); background: rgba(212, 175, 55, 0.15); animation: wave3 6s infinite; }
+.stripe5 { top: -380px; left: -200px; transform: skewX(-65deg); background: rgba(212, 175, 55, 0.45); animation: wave3 6s infinite; }
+.stripe6 { top: -179px; left: -191px; transform: skewX(-65deg); background: rgba(255, 215, 0, 0.1); animation: wave4 6s infinite linear; }
+.stripe7 { top: -316px; left: 51px; transform: skewX(-55deg); background: rgba(255, 215, 0, 0.08); animation: wave4 6s infinite linear; }
+
+/* Black Stripes for Register (Gold Background) */
+.form8.register__bg .stripe1 { background: rgba(0,0,0,0.4); }
+.form8.register__bg .stripe2 { background: rgba(0,0,0,0.3); }
+.form8.register__bg .stripe3 { background: rgba(0,0,0,0.15); }
+.form8.register__bg .stripe4 { background: rgba(0,0,0,0.15); }
+.form8.register__bg .stripe5 { background: rgba(0,0,0,0.5); }
+.form8.register__bg .stripe6 { background: rgba(0,0,0,0.1); }
+.form8.register__bg .stripe7 { background: rgba(0,0,0,0.08); }
+
+/* --- TEXT & INPUTS --- */
+.form8__text {
+  text-align: center; display: block; font-weight: bold;
+  text-transform: uppercase; letter-spacing: 2px;
+  margin-bottom: 30px; font-size: 1.2rem; position: relative; z-index: 2;
+  color: #fff;
+}
+.form8__text span { color: #d4af37; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
+
+/* Register Text Colors */
+.form8.register__bg .form8__text { color: #000; }
+.form8.register__bg .form8__text span { color: #fff; text-shadow: none; }
+
+.form8__inpt, .form8 select {
+  display: block; width: 100%; background: transparent; border: 0;
+  height: 50px; line-height: 50px; outline: none;
+  border-bottom: 1px solid #666; 
+  color: #ffd700; /* Gold Text */
+  font-family: 'Open Sans', sans-serif; margin-bottom: 10px; position: relative; z-index: 2;
+  font-weight: 500;
+}
+
+.form8__inpt:focus { border-bottom: 1px solid #d4af37; box-shadow: 0 4px 2px -2px rgba(212, 175, 55, 0.4); }
+
+.form8 input::placeholder { transition: all .2s ease; opacity: 1; color: #999; }
+.form8 input:focus::placeholder { opacity: 0; }
+
+/* Register Input Colors (Black on Gold) */
+.form8.register__bg .form8__inpt { color: #000; border-bottom-color: #333; }
+.form8.register__bg .form8__inpt::placeholder { color: rgba(0,0,0,0.6); }
+
+/* Dropdowns */
+.form8 select option { background: #000; color: #d4af37; }
+.form8.register__bg select option { background: #fff; color: #000; }
+
+/* --- BUTTONS --- */
+.form8__btn {
+  /* Lustrous Gold Gradient */
+  background: linear-gradient(to right, #b8860b, #ffd700, #b8860b);
+  background-size: 200% auto;
+  border: 0; width: 80%; margin: 30px auto 0; display: block;
+  text-transform: uppercase; color: #000;
+  font-size: 17px; padding: 12px; border-radius: 40px; cursor: pointer;
+  outline: none; position: relative; transition: 0.5s;
+  text-align: center; z-index: 2; font-weight: 800; letter-spacing: 1px;
+  box-shadow: 0 0 20px #d4af37; /* Glowing Button */
+}
+
+.form8__btn:hover { 
+  background-position: right center; /* animate gradient */
+  box-shadow: 0 0 30px #ffd700;
+  color: #000;
+  transform: scale(1.02);
+}
+
+.form8__btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+
+/* Register Button (Black on Gold) */
+.form8.register__bg .form8__btn { 
+  background: #000; color: #d4af37; 
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+.form8.register__bg .form8__btn:hover { 
+  background: #222; color: #fff; 
+  box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+}
+
+/* --- TOGGLE CIRCLE --- */
+.form8__btncircle {
+  cursor: pointer; width: 40px; height: 40px; background: transparent;
+  border: 0; position: absolute; right: 20px; top: 20px; outline: none;
+  z-index: 50; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+}
+.form8__btncircle span {
+  width: 5px; height: 5px; background: #d4af37;
+  display: block; border-radius: 50%; margin: 3px 0; transition: all .2s ease;
+  box-shadow: 0 0 5px rgba(212, 175, 55, 0.8);
+}
+.form8__btncircle:hover span { width: 80%; height: 3px; border-radius: 10px; background: #fff; }
+
+.form8.register__bg .form8__btncircle span { background: #000; box-shadow: none; }

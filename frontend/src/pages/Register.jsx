@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
-// ❌ Navbar import removed (Handled by App.jsx)
+import './AuthStyles.css';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -35,13 +35,11 @@ const Register = () => {
 
         try {
             const needsCategory = ['manager', 'employee'].includes(formData.role);
-
             if (needsCategory && !formData.category_id) {
                 alert("Please select a Department/Category.");
                 setLoading(false);
                 return;
             }
-
             if (formData.role === 'sponsor' && !formData.companyName) {
                 alert("Please enter a Company Name.");
                 setLoading(false);
@@ -75,86 +73,94 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
-            {/* ❌ Navbar Component Removed */}
+        <div className="auth-wrapper">
+            {/* register__bg active: Gold Card Style */}
+            <div className="form8 register__bg">
+                
+                <div className="stripes">
+                    <div className="stripe stripe1"></div>
+                    <div className="stripe stripe2"></div>
+                    <div className="stripe stripe3"></div>
+                    <div className="stripe stripe4"></div>
+                    <div className="stripe stripe5"></div>
+                    <div className="stripe stripe6"></div>
+                    <div className="stripe stripe7"></div>
+                </div>
 
-            <div className="flex-1 flex items-center justify-center p-4">
-                <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
-                    <h2 className="text-2xl mb-4 font-bold text-center">Create Account</h2>
-                    
-                    <input 
-                        name="fullName" placeholder="Full Name" required
-                        className="w-full mb-3 p-2 border rounded" 
-                        onChange={handleChange} 
-                    />
-                    <input 
-                        name="email" type="email" placeholder="Email" required
-                        className="w-full mb-3 p-2 border rounded" 
-                        onChange={handleChange} 
-                    />
-                    <input 
-                        name="password" type="password" placeholder="Password" required
-                        className="w-full mb-3 p-2 border rounded" 
-                        onChange={handleChange} 
-                    />
-                    
-                    <select 
-                        name="role" 
-                        className="w-full mb-3 p-2 border rounded" 
-                        onChange={handleChange}
-                        value={formData.role}
-                    >
-                        <option value="client">Client</option>
-                        <option value="employee">Employee</option>
-                        <option value="manager">Manager</option>
-                        <option value="sponsor">Sponsor</option>
-                    </select>
+                {/* ✅ Home Link Removed */}
 
-                    {formData.role === 'sponsor' && (
+                {/* Toggle to Login */}
+                <Link to="/login" className="form8__btncircle active" title="Switch to Login">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </Link>
+
+                <div className="form8__reg" style={{ opacity: 1, top: 0 }}>
+                    <span className="form8__text">
+                        <span>Sign up</span> free
+                    </span>
+
+                    <form onSubmit={handleSubmit}>
                         <input 
-                            name="companyName" 
-                            placeholder="Company Name" 
-                            required
-                            className="w-full mb-3 p-2 border rounded animate-fade-in border-purple-400 bg-purple-50"
+                            name="fullName" placeholder="Full Name" required
+                            className="form8__inpt"
                             onChange={handleChange} 
                         />
-                    )}
+                        <input 
+                            name="email" type="email" placeholder="Email" required
+                            className="form8__inpt"
+                            onChange={handleChange} 
+                        />
+                        <input 
+                            name="password" type="password" placeholder="Password" required
+                            className="form8__inpt"
+                            onChange={handleChange} 
+                        />
 
-                    {['manager', 'employee'].includes(formData.role) && (
-                        <div className="mb-3 animate-fade-in">
-                            <label className="block text-sm text-gray-600 mb-1">
-                                Select Department:
-                            </label>
-                            <select 
-                                name="category_id" 
-                                className="w-full p-2 border rounded border-blue-400 bg-blue-50" 
-                                onChange={handleChange}
+                        <select 
+                            name="role" 
+                            className="form8__inpt" 
+                            onChange={handleChange}
+                            value={formData.role}
+                        >
+                            <option value="client">Client</option>
+                            <option value="employee">Employee</option>
+                            <option value="manager">Manager</option>
+                            <option value="sponsor">Sponsor</option>
+                        </select>
+
+                        {formData.role === 'sponsor' && (
+                            <input 
+                                name="companyName" 
+                                placeholder="Company Name" 
                                 required
-                            >
-                                <option value="">-- Select Category --</option>
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                            </select>
-                            {formData.role === 'employee' && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                    You will be assigned to a manager in this department for verification.
-                                </p>
-                            )}
-                        </div>
-                    )}
+                                className="form8__inpt"
+                                onChange={handleChange} 
+                            />
+                        )}
 
-                    <button 
-                        disabled={loading}
-                        className="w-full text-white p-2 rounded bg-green-600 hover:bg-green-700"
-                    >
-                        {loading ? "Creating Account..." : "Sign Up"}
-                    </button>
-                    
-                    <p className="mt-4 text-center text-sm">
-                        Already have an account? <Link to="/login" className="text-blue-600 underline">Login</Link>
-                    </p>
-                </form>
+                        {['manager', 'employee'].includes(formData.role) && (
+                            <div style={{ position: 'relative', zIndex: 2 }}>
+                                <select 
+                                    name="category_id" 
+                                    className="form8__inpt"
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">-- Select Department --</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <button className="form8__btn" disabled={loading}>
+                            {loading ? "Creating..." : "Submit"}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );
