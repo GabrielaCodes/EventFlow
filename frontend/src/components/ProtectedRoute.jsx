@@ -10,15 +10,25 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
 
     // 2️⃣ Not logged in → go to login
+    // ✅ FIX: Redirect to /login instead of / (Landing Page)
     if (!user) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     // 3️⃣ Role Restriction Check
     if (allowedRoles && role && !allowedRoles.includes(role)) {
         return (
-            <div className="p-10 text-red-500 font-semibold text-center">
-                Access Denied: You do not have permission to view this page.
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="p-8 bg-white rounded shadow text-center max-w-md border border-red-100">
+                    <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
+                    <p className="text-gray-600">You do not have permission to view this page.</p>
+                    <button 
+                        onClick={() => window.history.back()}
+                        className="mt-4 text-blue-600 hover:underline text-sm"
+                    >
+                        &larr; Go Back
+                    </button>
+                </div>
             </div>
         );
     }
