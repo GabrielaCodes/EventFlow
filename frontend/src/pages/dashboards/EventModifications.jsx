@@ -8,7 +8,7 @@ import '../../styles/DashboardStyles.css';
 
 const EventModifications = () => {
     const { id } = useParams();
-    const { role } = useAuth();
+    const { role, user } = useAuth(); // ✅ Added 'user' to verify ownership
     const navigate = useNavigate();
 
     const [event, setEvent] = useState(null);
@@ -46,6 +46,9 @@ const EventModifications = () => {
     };
 
     const hasPendingRequest = requests.some(r => r.status === 'pending');
+    
+    // ✅ Check if the logged-in user is the manager assigned to this specific event
+    const isAssignedManager = role === 'manager' && user?.id === event?.assigned_manager_id;
 
     const handleBack = () => {
         if (role === 'manager') navigate('/manager-dashboard');
@@ -183,7 +186,6 @@ const EventModifications = () => {
     if (loading || !event) return <div className="dash-wrapper flex justify-center items-center text-xl text-[#d4af37]">Loading Details...</div>;
 
     return (
-        // ✅ Applied dash-wrapper for dark theme
         <div className="dash-wrapper">
             <div className="max-w-4xl mx-auto">
                 <button onClick={handleBack} className="mb-6 text-[#d4af37] hover:text-white transition font-medium">
@@ -228,8 +230,17 @@ const EventModifications = () => {
                     </div>
                 )}
 
-                {/* MANAGER ACTIONS */}
-                {role === 'manager' && !hasPendingRequest && (
+                {/* ✅ NON-ASSIGNED MANAGERS: READ ONLY NOTICE */}
+                {role === 'manager' && !isAssignedManager && (
+                    <div className="dash-card border-l-4 border-l-[#333] text-center p-6 bg-[#0a0a0a]">
+                        <p className="text-gray-400 italic">
+                            👀 You are viewing this event in Read-Only mode because it is assigned to another manager in your department.
+                        </p>
+                    </div>
+                )}
+
+                {/* ✅ ONLY ASSIGNED MANAGER ACTIONS */}
+                {isAssignedManager && !hasPendingRequest && (
                     <div className="dash-card">
                         
                         {/* OPTION A: Approve (Consideration -> In Progress) */}
@@ -285,7 +296,7 @@ const EventModifications = () => {
                     </div>
                 )}
 
-                {role === 'manager' && hasPendingRequest && (
+                {isAssignedManager && hasPendingRequest && (
                     <p className="mt-6 text-center italic text-[#d4af37] opacity-80">
                         ⏳ Waiting for client response to the pending modification.
                     </p>

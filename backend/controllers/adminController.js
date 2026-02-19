@@ -86,12 +86,26 @@ export const assignStaff = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 3. MANAGER: Update Event Status (e.g. Cancelled/Completed)
+// 3. MANAGER: Update Event Status (SECURED)
 // --------------------------------------------------------
 export const updateEventStatus = async (req, res) => {
     try {
         const { event_id, status } = req.body;
+        const managerId = req.user.id;
         
+        // ✅ SECURITY CHECK: Verify Ownership
+        const { data: eventCheck, error: checkError } = await supabase
+            .from('events')
+            .select('assigned_manager_id')
+            .eq('id', event_id)
+            .single();
+            
+        if (checkError || !eventCheck) return res.status(404).json({ error: "Event not found." });
+        
+        if (eventCheck.assigned_manager_id !== managerId) {
+            return res.status(403).json({ error: "Access Denied: You are not the assigned manager for this event." });
+        }
+
         const { data, error } = await supabase
             .from('events')
             .update({ status })
@@ -126,20 +140,33 @@ export const getAttendanceLogs = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 5. MANAGER: Propose Modification 
+// 5. MANAGER: Propose Modification (SECURED)
 // --------------------------------------------------------
 export const createModificationRequest = async (req, res) => {
     try {
         const { event_id, proposed_venue_id, proposed_date, request_details } = req.body;
-        const manager_id = req.user.id; 
+        const managerId = req.user.id; 
+
+        // ✅ SECURITY CHECK: Verify Ownership
+        const { data: eventCheck, error: checkError } = await supabase
+            .from('events')
+            .select('assigned_manager_id')
+            .eq('id', event_id)
+            .single();
+            
+        if (checkError || !eventCheck) return res.status(404).json({ error: "Event not found." });
+        
+        if (eventCheck.assigned_manager_id !== managerId) {
+            return res.status(403).json({ error: "Access Denied: You can only modify events assigned specifically to you." });
+        }
 
         // A. Check Availability
-        const { data: isAvailable, error: checkError } = await supabase.rpc('check_venue_availability', {
+        const { data: isAvailable, error: venueCheckError } = await supabase.rpc('check_venue_availability', {
             check_venue_id: proposed_venue_id,
             check_date: proposed_date
         });
 
-        if (checkError) throw checkError;
+        if (venueCheckError) throw venueCheckError;
         
         if (!isAvailable) {
             return res.status(409).json({ error: "Venue is unavailable on this date." });
@@ -150,7 +177,7 @@ export const createModificationRequest = async (req, res) => {
             .from('modification_requests')
             .insert([{
                 event_id,
-                requested_by: manager_id,
+                requested_by: managerId,
                 proposed_venue_id,
                 proposed_date,
                 request_details: request_details || "Manager requested venue/date change",
@@ -257,26 +284,33 @@ export const verifyEmployee = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
 // --------------------------------------------------------
-// 8. MANAGER: Approve Event (Accept As-Is)
+// 8. MANAGER: Approve Event (Accept As-Is) (SECURED)
 // --------------------------------------------------------
 export const approveEvent = async (req, res) => {
     try {
         const { event_id } = req.body;
+        const managerId = req.user.id;
 
         if (!event_id) {
             return res.status(400).json({ error: "Event ID is required." });
         }
 
-        // Ensure event exists and is in consideration
+        // Ensure event exists, get status and assigned manager
         const { data: event, error: eventError } = await supabase
             .from('events')
-            .select('id, status')
+            .select('id, status, assigned_manager_id')
             .eq('id', event_id)
             .single();
 
         if (eventError || !event) {
             return res.status(404).json({ error: "Event not found." });
+        }
+
+        // ✅ SECURITY CHECK: Verify Ownership
+        if (event.assigned_manager_id !== managerId) {
+            return res.status(403).json({ error: "Access Denied: You are not the assigned manager for this event." });
         }
 
         if (event.status !== 'consideration') {
