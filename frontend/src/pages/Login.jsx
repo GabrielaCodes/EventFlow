@@ -1,8 +1,8 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../services/api'; 
-// ❌ Navbar import removed (Handled by App.jsx)
+import { supabase } from '../services/api';
+import './AuthStyles.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -14,7 +14,6 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-
         try {
             const { user, error: loginError } = await login(email, password);
             if (loginError || !user) throw new Error("Invalid email or password");
@@ -28,7 +27,7 @@ const Login = () => {
             if (error) console.warn("Profile fetch warning:", error);
 
             if (profile?.verification_status === 'pending') {
-                await logout(); 
+                await logout();
                 alert("🚫 Account Pending Approval.\n\nPlease wait for the Chief Coordinator to verify you.");
                 setLoading(false);
                 return;
@@ -41,7 +40,7 @@ const Login = () => {
                 return;
             }
 
-            navigate('/dashboard'); 
+            navigate('/dashboard');
 
         } catch (err) {
             console.error('Login error:', err.message);
@@ -52,38 +51,57 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
-            {/* ❌ Navbar Component Removed */}
-            
-            <div className="flex-1 flex items-center justify-center p-4">
-                <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
-                    <h2 className="text-2xl mb-4 font-bold text-center text-gray-800">Login</h2>
+        <div className="auth-wrapper">
+            <div className="form8">
+                
+                {/* Stripes Background */}
+                <div className="stripes">
+                    <div className="stripe stripe1"></div>
+                    <div className="stripe stripe2"></div>
+                    <div className="stripe stripe3"></div>
+                    <div className="stripe stripe4"></div>
+                    <div className="stripe stripe5"></div>
+                    <div className="stripe stripe6"></div>
+                    <div className="stripe stripe7"></div>
+                </div>
+
+                {/* ✅ Home Link Removed (as requested) */}
+
+                {/* Toggle to Register */}
+                <Link to="/register" className="form8__btncircle" title="Switch to Register">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </Link>
+
+                <div className="form8__log">
+                    <span className="form8__text">
+                        <span>Sign in</span> now
+                    </span>
                     
-                    <input 
-                        className="w-full mb-3 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                        type="email" 
-                        placeholder="Email" 
-                        onChange={(e) => setEmail(e.target.value)} 
-                    />
-                    <input 
-                        className="w-full mb-3 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                        type="password" 
-                        placeholder="Password" 
-                        onChange={(e) => setPassword(e.target.value)} 
-                    />
-                    
-                    <button 
-                        disabled={loading}
-                        type="submit" 
-                        className={`w-full text-white p-2 rounded font-semibold transition ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
-                    >
-                        {loading ? "Signing In..." : "Sign In"}
-                    </button>
-                    
-                    <p className="mt-4 text-center text-sm text-gray-600">
-                        Don't have an account? <Link to="/register" className="text-blue-600 hover:underline">Sign Up</Link>
-                    </p>
-                </form>
+                    <form onSubmit={handleSubmit}>
+                        <input 
+                            className="form8__inpt"
+                            type="email" 
+                            placeholder="Email" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required 
+                        />
+                        <input 
+                            className="form8__inpt"
+                            type="password" 
+                            placeholder="Password" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required 
+                        />
+                        
+                        <button className="form8__btn" disabled={loading}>
+                            {loading ? "Signing In..." : "Login"}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

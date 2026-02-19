@@ -1,9 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const { user, logout, role, loading, profile } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation(); // ✅ Get current path
 
     // 1. Determine Display Name
     const displayName = 
@@ -13,8 +14,6 @@ const Navbar = () => {
         'User';
 
     const companyName = profile?.company_name || user?.user_metadata?.company_name;
-    
-    // Extract Category Name (if it exists)
     const categoryName = profile?.event_categories?.name;
 
     // 2. Determine Dashboard Link
@@ -24,7 +23,7 @@ const Navbar = () => {
         if (role === 'client') return '/client-dashboard';
         if (role === 'employee') return '/employee-dashboard';
         if (role === 'sponsor') return '/sponsor-dashboard';
-        return '/'; // ✅ Default to Landing Page
+        return '/'; // Default to Landing Page
     };
 
     const handleLogout = async () => {
@@ -40,7 +39,7 @@ const Navbar = () => {
 
     return (
         <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
-            {/* LOGO - Goes to Dashboard if logged in, Landing Page if not */}
+            {/* LOGO */}
             <Link to={getHomeLink()} className="text-xl font-bold tracking-wide hover:text-blue-100 transition">
                 Eventflow
             </Link>
@@ -54,8 +53,6 @@ const Navbar = () => {
                                 <span className="text-sm font-bold leading-none">
                                     {displayName}
                                 </span>
-                                
-                                {/* ✅ DISPLAY COMPANY OR CATEGORY */}
                                 <div className="text-xs text-blue-200 opacity-90 leading-none mt-0.5">
                                     {role === 'manager' && categoryName 
                                         ? categoryName 
@@ -64,12 +61,10 @@ const Navbar = () => {
                                 </div>
                             </div>
 
-                            {/* ROLE BADGE */}
                             <span className="uppercase font-semibold text-[10px] sm:text-xs bg-blue-700 px-2 py-1 rounded shadow-sm border border-blue-500">
                                 {role ? role.replace('_', ' ') : 'Guest'}
                             </span>
 
-                            {/* LOGOUT BUTTON */}
                             <button
                                 onClick={handleLogout}
                                 className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition-colors text-xs sm:text-sm font-medium shadow-sm"
@@ -78,18 +73,32 @@ const Navbar = () => {
                             </button>
                         </div>
                     ) : (
-                        <div className="flex gap-4">
-                             {/* ✅ Home Link for non-logged in users (Optional if Logo is enough) */}
-                             <Link to="/" className="text-white hover:text-blue-200 font-medium">
+                        <div className="flex gap-6 text-sm font-medium">
+                            {/* ✅ Always show Home */}
+                            <Link to="/" className="text-white hover:text-blue-200 transition">
                                 Home
                             </Link>
-                            
-                            <Link
-                                to="/login" // ✅ Points to Login Page
-                                className="text-white hover:text-blue-200 underline font-medium"
-                            >
-                                Login
-                            </Link>
+
+                            {/* ✅ If on Register Page -> Show Login */}
+                            {location.pathname === '/register' && (
+                                <Link to="/login" className="text-white hover:text-blue-200 transition">
+                                    Login
+                                </Link>
+                            )}
+
+                            {/* ✅ If on Login Page -> Show Register */}
+                            {location.pathname === '/login' && (
+                                <Link to="/register" className="text-white hover:text-blue-200 transition">
+                                    Register
+                                </Link>
+                            )}
+
+                            {/* Optional: Fallback if on neither (e.g. 404 page) show both or just Login */}
+                            {location.pathname !== '/login' && location.pathname !== '/register' && (
+                                <Link to="/login" className="text-white hover:text-blue-200 transition">
+                                    Login
+                                </Link>
+                            )}
                         </div>
                     )}
                 </div>
