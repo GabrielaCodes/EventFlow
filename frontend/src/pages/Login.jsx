@@ -28,7 +28,7 @@ const Login = () => {
 
             if (profile?.verification_status === 'pending') {
                 await logout();
-                alert("🚫 Account Pending Approval.\n\nPlease wait for the Chief Coordinator to verify you.");
+                alert("🚫 Account Pending Approval.\n\nYour account is currently under review. You will be able to log in once it has been approved. Please wait for an email notification.");
                 setLoading(false);
                 return;
             }
