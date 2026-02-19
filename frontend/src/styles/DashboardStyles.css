@@ -1,0 +1,157 @@
+/* =========================================================
+   DASHBOARD THEME: PITCH BLACK & LUSTROUS GOLD
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+
+/* --- MAIN WRAPPER --- */
+.dash-wrapper {
+  min-height: 100vh;
+  background-color: #000000; /* Pure Pitch Black */
+  color: #f5f5f5; /* Off-white text for readability */
+  font-family: 'Open Sans', sans-serif;
+  padding: 2rem;
+}
+
+/* --- HEADERS & TITLES --- */
+.dash-title {
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.5rem;
+}
+
+.dash-title span {
+  color: #d4af37; /* Gold Accent */
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+/* --- DASHBOARD CARDS (Panels/Stats) --- */
+.dash-card {
+  background: #050505; /* Slightly lighter than background */
+  border: 1px solid #222; /* Subtle dark border */
+  border-top: 3px solid #d4af37; /* Gold top accent */
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dash-card:hover {
+  transform: translateY(-3px);
+  /* Soft gold glow on hover */
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.15), 
+              0 0 10px rgba(212, 175, 55, 0.1) inset;
+  border-color: #333;
+}
+
+.dash-card h3 {
+  color: #d4af37;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* --- BUTTONS --- */
+.dash-btn {
+  background: linear-gradient(to right, #b8860b, #ffd700, #b8860b);
+  background-size: 200% auto;
+  color: #000000; /* Black text for contrast */
+  border: none;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.4s;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.dash-btn:hover {
+  background-position: right center;
+  box-shadow: 0 0 20px #ffd700;
+  transform: scale(1.02);
+}
+
+.dash-btn-outline {
+  background: transparent;
+  color: #d4af37;
+  border: 1px solid #d4af37;
+  padding: 0.6rem 1.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dash-btn-outline:hover {
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+/* --- TABLES --- */
+.dash-table-container {
+  background: #050505;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #222;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.dash-table th {
+  background: #111111;
+  color: #d4af37;
+  padding: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #222;
+}
+
+.dash-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #1a1a1a;
+  color: #cccccc;
+  font-size: 0.95rem;
+}
+
+.dash-table tr:hover td {
+  background: rgba(212, 175, 55, 0.05); /* Very subtle gold highlight */
+  color: #ffffff;
+}
+
+/* --- INPUTS & FORMS --- */
+.dash-input {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  color: #ffd700;
+  padding: 0.8rem;
+  border-radius: 4px;
+  font-family: 'Open Sans', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.dash-input:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.dash-input::placeholder {
+  color: #555;
+}

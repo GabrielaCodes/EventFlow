@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api'; 
 import ManagerEvents from './ManagerEvents';
 import ManagerSponsorships from './ManagerSponsorships';
-// ✅ 1. Import New Component
 import MasterDataRequest from '../../components/manager/MasterDataRequest';
+
+// ✅ IMPORT THE DARK/GOLD DASHBOARD THEME
+import '../../styles/DashboardStyles.css';
 
 const ManagerDashboard = () => {
     // Tab State
@@ -107,18 +109,21 @@ const ManagerDashboard = () => {
         }
     };
 
-    if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
+    if (loading) return <div className="dash-wrapper flex justify-center items-center text-xl text-[#d4af37]">Loading Dashboard...</div>;
 
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Manager Dashboard</h1>
+        // ✅ 1. Apply 'dash-wrapper' to set the pitch-black background and fonts
+        <div className="dash-wrapper">
+            
+            {/* ✅ 2. Apply 'dash-title' */}
+            <h1 className="dash-title">Manager <span>Dashboard</span></h1>
 
-            {/* ✅ 2. TAB NAVIGATION */}
-            <div className="flex gap-4 border-b border-gray-300 mb-6">
+            {/* --- TAB NAVIGATION (Adapted for Dark Mode) --- */}
+            <div className="flex gap-4 border-b border-[#333] mb-8">
                 <button
                     onClick={() => setActiveTab('dashboard')}
                     className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'dashboard' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                        activeTab === 'dashboard' ? 'border-[#d4af37] text-[#d4af37]' : 'border-transparent text-gray-500 hover:text-gray-300'
                     }`}
                 >
                     Overview & Team
@@ -126,38 +131,38 @@ const ManagerDashboard = () => {
                 <button
                     onClick={() => setActiveTab('requests')}
                     className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'requests' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                        activeTab === 'requests' ? 'border-[#d4af37] text-[#d4af37]' : 'border-transparent text-gray-500 hover:text-gray-300'
                     }`}
                 >
                     Resource Requests
                 </button>
             </div>
 
-            {/* ✅ 3. TAB CONTENT */}
+            {/* --- TAB CONTENT --- */}
             {activeTab === 'requests' ? (
                 <div className="animate-fade-in">
+                    {/* Note: Ensure MasterDataRequest component also gets updated styling eventually */}
                     <MasterDataRequest />
                 </div>
             ) : (
                 <div className="animate-fade-in">
-                    {/* --- EXISTING DASHBOARD CONTENT --- */}
 
                     {/* SECTION 1: URGENT PENDING APPROVALS */}
                     {teamData.pending.length > 0 && (
-                        <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded shadow mb-8">
-                            <h2 className="text-xl font-bold text-orange-800 mb-4 flex items-center gap-2">
+                        <div className="dash-card mb-8 border-l-4 border-l-red-500">
+                            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
                                 🔔 Pending Approvals ({teamData.pending.length})
                             </h2>
                             <div className="grid gap-3">
                                 {teamData.pending.map(emp => (
-                                    <div key={emp.id} className="flex justify-between items-center bg-white p-4 rounded shadow-sm">
+                                    <div key={emp.id} className="flex justify-between items-center bg-[#111] border border-[#222] p-4 rounded shadow-sm">
                                         <div>
-                                            <p className="font-bold text-gray-800">{emp.full_name}</p>
+                                            <p className="font-bold text-gray-200">{emp.full_name}</p>
                                             <p className="text-sm text-gray-500">{emp.email} • Signed up: {new Date(emp.created_at).toLocaleDateString()}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700 shadow">Approve</button>
-                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600 shadow">Reject</button>
+                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="dash-btn px-4 py-1 text-xs">Approve</button>
+                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="dash-btn-outline px-4 py-1 text-xs border-red-500 text-red-500 hover:bg-red-900/30">Reject</button>
                                         </div>
                                     </div>
                                 ))}
@@ -166,49 +171,49 @@ const ManagerDashboard = () => {
                     )}
 
                     {/* SECTION 2: TEAM MANAGEMENT */}
-                    <div className="bg-white rounded shadow mb-8 overflow-hidden">
-                        <div className="flex border-b">
+                    <div className="dash-card mb-8 p-0 overflow-hidden">
+                        <div className="flex border-b border-[#333]">
                             <button 
                                 onClick={() => setTeamView('verified')}
-                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'verified' ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'verified' ? 'bg-[#111] text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-gray-500 hover:bg-[#1a1a1a]'}`}
                             >
                                 ✅ Active Team ({teamData.verified.length})
                             </button>
                             <button 
                                 onClick={() => setTeamView('rejected')}
-                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'rejected' ? 'bg-red-50 text-red-700 border-b-2 border-red-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'rejected' ? 'bg-[#111] text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:bg-[#1a1a1a]'}`}
                             >
                                 🚫 Rejected Applicants ({teamData.rejected.length})
                             </button>
                         </div>
 
-                        <div className="p-6 max-h-64 overflow-y-auto">
+                        <div className="p-0 max-h-64 overflow-y-auto">
                             {teamView === 'verified' ? (
-                                teamData.verified.length === 0 ? <p className="text-gray-400 italic text-center">No active team members.</p> :
-                                <table className="w-full text-sm">
-                                    <thead><tr className="text-left text-gray-500"><th>Name</th><th>Email</th><th>Action</th></tr></thead>
-                                    <tbody className="divide-y">
+                                teamData.verified.length === 0 ? <p className="text-gray-500 italic text-center p-6">No active team members.</p> :
+                                <table className="dash-table">
+                                    <thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+                                    <tbody>
                                         {teamData.verified.map(emp => (
-                                            <tr key={emp.id} className="hover:bg-gray-50">
-                                                <td className="py-3 font-medium">{emp.full_name}</td>
-                                                <td className="py-3 text-gray-500">{emp.email}</td>
-                                                <td className="py-3">
-                                                    <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-700 font-medium text-xs border border-red-200 px-2 py-1 rounded">Deactivate</button>
+                                            <tr key={emp.id}>
+                                                <td className="font-medium">{emp.full_name}</td>
+                                                <td>{emp.email}</td>
+                                                <td>
+                                                    <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-400 font-medium text-xs border border-red-500 px-2 py-1 rounded transition">Deactivate</button>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             ) : (
-                                <table className="w-full text-sm">
-                                    <thead><tr className="text-left text-gray-500"><th>Name</th><th>Email</th><th>Action</th></tr></thead>
-                                    <tbody className="divide-y">
+                                <table className="dash-table">
+                                    <thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+                                    <tbody>
                                         {teamData.rejected.map(emp => (
-                                            <tr key={emp.id} className="hover:bg-red-50">
-                                                <td className="py-3 font-medium text-gray-700">{emp.full_name}</td>
-                                                <td className="py-3 text-gray-500">{emp.email}</td>
-                                                <td className="py-3">
-                                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-600 hover:text-green-800 font-medium text-xs border border-green-200 px-2 py-1 rounded">Re-Approve</button>
+                                            <tr key={emp.id}>
+                                                <td className="font-medium">{emp.full_name}</td>
+                                                <td>{emp.email}</td>
+                                                <td>
+                                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-500 hover:text-green-400 font-medium text-xs border border-green-500 px-2 py-1 rounded transition">Re-Approve</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -219,6 +224,7 @@ const ManagerDashboard = () => {
                     </div>
 
                     {/* SECTION 3: EVENTS */}
+                    {/* Note: Ensure ManagerEvents is styled internally with dash-card and dash-table classes */}
                     <ManagerEvents />
 
                     {/* SECTION 4: ACTIONS & LISTS */}
@@ -228,21 +234,21 @@ const ManagerDashboard = () => {
                         <div className="flex flex-col gap-8">
                             
                             {/* A. Assign Staff Form */}
-                            <div className="bg-white p-6 rounded shadow h-fit">
-                                <h2 className="text-xl font-bold text-blue-700 mb-4">Assign Staff</h2>
+                            <div className="dash-card h-fit">
+                                <h3 className="mb-4">Assign Staff</h3>
                                 <form onSubmit={handleAssign} className="flex flex-col gap-4">
-                                    <select name="event_id" value={formData.event_id} onChange={handleChange} className="p-2 border rounded">
-                                        <option value="">-- Select Active Event --</option>
-                                        {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
+                                    <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input">
+                                        <option value="" className="text-gray-500">-- Select Active Event --</option>
+                                        {activeEventsList.map(ev => <option key={ev.id} value={ev.id} className="bg-black">{ev.title} ({ev.subtype_name})</option>)}
                                     </select>
-                                    <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="p-2 border rounded">
-                                        <option value="">-- Select Employee --</option>
+                                    <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input">
+                                        <option value="" className="text-gray-500">-- Select Employee --</option>
                                         {teamData.verified.map(emp => (
-                                            <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
+                                            <option key={emp.id} value={emp.id} className="bg-black">{emp.full_name || emp.email}</option>
                                         ))}
                                     </select>
-                                    <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="p-2 border rounded" />
-                                    <button type="submit" className="bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition py-2">Assign</button>
+                                    <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="dash-input" />
+                                    <button type="submit" className="dash-btn mt-2">Assign to Event</button>
                                 </form>
                             </div>
 
@@ -252,31 +258,38 @@ const ManagerDashboard = () => {
 
                         {/* RIGHT COLUMN: LISTS */}
                         <div className="space-y-8">
-                            <div className="bg-white rounded shadow overflow-hidden">
-                                <div className="p-4 bg-gray-100 border-b"><h3 className="font-bold text-gray-700">Recent Assignments</h3></div>
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 text-left"><tr><th className="p-3">Staff</th><th className="p-3">Event</th><th className="p-3">Status</th></tr></thead>
+                            {/* Assignments Table */}
+                            <div className="dash-table-container">
+                                <div className="p-4 bg-[#111] border-b border-[#222]">
+                                    <h3 className="font-bold text-[#d4af37] text-sm uppercase tracking-wider">Recent Assignments</h3>
+                                </div>
+                                <table className="dash-table">
+                                    <thead><tr><th>Staff</th><th>Event</th><th>Status</th></tr></thead>
                                     <tbody>
                                         {assignments.map(task => (
-                                            <tr key={task.id} className="border-t hover:bg-gray-50">
-                                                <td className="p-3 font-medium">{task.profiles?.full_name}</td>
-                                                <td className="p-3">{task.events?.title}</td>
-                                                <td className="p-3"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{task.status}</span></td>
+                                            <tr key={task.id}>
+                                                <td className="font-medium text-gray-200">{task.profiles?.full_name}</td>
+                                                <td>{task.events?.title}</td>
+                                                <td><span className="px-2 py-1 bg-[#222] text-[#d4af37] rounded text-xs border border-[#333]">{task.status}</span></td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="bg-white rounded shadow overflow-hidden">
-                                <div className="p-4 bg-gray-100 border-b"><h3 className="font-bold text-gray-700">Recent Attendance</h3></div>
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 text-left"><tr><th className="p-3">Staff</th><th className="p-3">Event</th><th className="p-3">Time</th></tr></thead>
+
+                            {/* Attendance Table */}
+                            <div className="dash-table-container">
+                                <div className="p-4 bg-[#111] border-b border-[#222]">
+                                    <h3 className="font-bold text-[#d4af37] text-sm uppercase tracking-wider">Recent Attendance</h3>
+                                </div>
+                                <table className="dash-table">
+                                    <thead><tr><th>Staff</th><th>Event</th><th>Time</th></tr></thead>
                                     <tbody>
                                         {attendance.map(log => (
-                                            <tr key={log.id} className="border-t hover:bg-gray-50">
-                                                <td className="p-3 font-medium">{log.profiles?.full_name}</td>
-                                                <td className="p-3 text-gray-600">{log.events?.title}</td>
-                                                <td className="p-3 text-green-600">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                            <tr key={log.id}>
+                                                <td className="font-medium text-gray-200">{log.profiles?.full_name}</td>
+                                                <td className="text-gray-400">{log.events?.title}</td>
+                                                <td className="text-[#d4af37]">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                                             </tr>
                                         ))}
                                     </tbody>

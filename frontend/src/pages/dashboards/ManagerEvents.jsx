@@ -24,25 +24,19 @@ const ManagerEvents = () => {
             if (error) throw error;
 
             if (data) {
-                // ✅ FINAL, CORRECT BUCKETING LOGIC
-
-                // 1. Consideration:
-                //    - New client proposal
-                //    - OR active negotiation
+                // 1. Consideration
                 setConsideration(
                     data.filter(e =>
                         e.status === 'consideration' || e.has_pending_request
                     )
                 );
 
-                // 2. Completed (terminal state)
+                // 2. Completed
                 setCompleted(
                     data.filter(e => e.status === 'completed')
                 );
 
-                // 3. In Progress:
-                //    - Approved
-                //    - No pending negotiation
+                // 3. In Progress
                 setInProgress(
                     data.filter(e =>
                         e.status === 'in_progress' && !e.has_pending_request
@@ -56,41 +50,41 @@ const ManagerEvents = () => {
         }
     };
 
-    // Reusable table renderer
-    const EventTable = ({ title, events, colorClass }) => (
-        <div className="bg-white rounded shadow overflow-hidden mb-8 border border-gray-200">
-            <div className={`p-4 border-b ${colorClass}`}>
-                <h3 className="font-bold text-gray-800">
+    // Reusable table renderer adapted for Dark/Gold Theme
+    const EventTable = ({ title, events, accentColor, textColor }) => (
+        <div className="dash-table-container mb-8">
+            <div className={`p-4 border-b border-[#222] bg-[#111] border-l-4 ${accentColor}`}>
+                <h3 className={`font-bold tracking-wide ${textColor}`}>
                     {title} ({events.length})
                 </h3>
             </div>
 
             {events.length === 0 ? (
-                <div className="p-6 text-center text-gray-400 italic">
+                <div className="p-6 text-center text-gray-500 italic bg-[#050505]">
                     No events in this category.
                 </div>
             ) : (
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-left">
+                <table className="dash-table">
+                    <thead>
                         <tr>
-                            <th className="p-3">Event</th>
-                            <th className="p-3">Date</th>
-                            <th className="p-3">Type</th>
-                            <th className="p-3">Action</th>
+                            <th>Event</th>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {events.map(ev => (
-                            <tr key={ev.id} className="border-t hover:bg-gray-50">
-                                <td className="p-3 font-medium">{ev.title}</td>
-                                <td className="p-3">
+                            <tr key={ev.id}>
+                                <td className="font-medium text-gray-200">{ev.title}</td>
+                                <td>
                                     {new Date(ev.event_date).toLocaleDateString()}
                                 </td>
-                                <td className="p-3">{ev.subtype_name}</td>
-                                <td className="p-3">
+                                <td>{ev.subtype_name}</td>
+                                <td>
                                     <Link
                                         to={`/event-modifications/${ev.id}`}
-                                        className="bg-indigo-600 text-white px-3 py-1 rounded text-xs hover:bg-indigo-700 transition"
+                                        className="dash-btn-outline !py-1 !px-3 !text-xs !border-[#d4af37] !text-[#d4af37] hover:!bg-[#d4af37] hover:!text-black"
                                     >
                                         Manage
                                     </Link>
@@ -105,7 +99,7 @@ const ManagerEvents = () => {
 
     if (loading) {
         return (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-[#d4af37]">
                 Loading events...
             </div>
         );
@@ -116,17 +110,20 @@ const ManagerEvents = () => {
             <EventTable
                 title="⚠️ Consideration"
                 events={consideration}
-                colorClass="bg-yellow-100"
+                accentColor="border-yellow-500"
+                textColor="text-yellow-500"
             />
             <EventTable
                 title="▶️ In Progress / Upcoming"
                 events={inProgress}
-                colorClass="bg-blue-100"
+                accentColor="border-[#d4af37]" // Gold
+                textColor="text-[#d4af37]"
             />
             <EventTable
                 title="✅ Completed"
                 events={completed}
-                colorClass="bg-green-100"
+                accentColor="border-green-500"
+                textColor="text-green-500"
             />
         </div>
     );

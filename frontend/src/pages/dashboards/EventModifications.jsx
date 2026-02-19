@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
+// ✅ IMPORT THE DARK/GOLD DASHBOARD THEME
+import '../../styles/DashboardStyles.css';
+
 const EventModifications = () => {
     const { id } = useParams();
     const { role } = useAuth();
@@ -80,7 +83,7 @@ const EventModifications = () => {
     };
 
     // -----------------------------
-    // ✅ NEW: MANAGER: Mark Completed
+    // MANAGER: Mark Completed
     // -----------------------------
     const handleCompleteEvent = async () => {
         if (!window.confirm("Are you sure you want to mark this event as Completed?")) return;
@@ -89,7 +92,6 @@ const EventModifications = () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
 
-            // Using PATCH /event-status as defined in your adminRoutes
             const res = await fetch('http://127.0.0.1:5000/api/admin/event-status', {
                 method: 'PATCH',
                 headers: {
@@ -178,82 +180,117 @@ const EventModifications = () => {
         }
     };
 
-    if (loading || !event) return <div className="p-10 text-center">Loading...</div>;
+    if (loading || !event) return <div className="dash-wrapper flex justify-center items-center text-xl text-[#d4af37]">Loading Details...</div>;
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
-            <button onClick={handleBack} className="mb-6 text-gray-500 hover:text-blue-600 font-medium">← Back</button>
+        // ✅ Applied dash-wrapper for dark theme
+        <div className="dash-wrapper">
+            <div className="max-w-4xl mx-auto">
+                <button onClick={handleBack} className="mb-6 text-[#d4af37] hover:text-white transition font-medium">
+                    ← Back to Dashboard
+                </button>
 
-            <h1 className="text-2xl font-bold mb-2">Manage Event: {event.title}</h1>
-            <div className="text-gray-600 mb-8 border-b pb-4">
-                Current: <strong>{new Date(event.event_date).toDateString()}</strong> at <strong>{event.venues?.name || 'Unassigned'}</strong>
-                <span className={`ml-4 px-2 py-1 text-xs font-bold uppercase rounded bg-gray-200 text-gray-700`}>{event.status.replace('_', ' ')}</span>
-            </div>
-
-            {/* MODIFICATION HISTORY */}
-            {requests.length > 0 && (
-                <div className="space-y-4 mb-8">
-                    <h3 className="text-lg font-bold">Modification History</h3>
-                    {requests.map(req => (
-                        <div key={req.id} className={`p-4 rounded border-l-4 ${req.status === 'pending' ? 'bg-yellow-50 border-yellow-400' : req.status === 'accepted' ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
-                            <p className="font-semibold">Venue: {req.venues?.name}</p>
-                            <p className="text-sm">Date: {new Date(req.proposed_date).toDateString()}</p>
-                            <p className="text-xs italic">"{req.request_details}"</p>
-                            
-                            {req.status === 'pending' && role === 'client' && (
-                                <div className="mt-3 flex gap-2">
-                                    <button onClick={() => handleResponse(req.id, 'accept')} className="bg-green-600 text-white px-4 py-1 rounded">Accept</button>
-                                    <button onClick={() => handleResponse(req.id, 'reject')} className="bg-red-600 text-white px-4 py-1 rounded">Reject</button>
-                                </div>
-                            )}
-                            {req.status !== 'pending' && <span className="inline-block mt-2 text-xs font-bold uppercase">{req.status}</span>}
-                        </div>
-                    ))}
+                <h1 className="dash-title">Manage Event: <span>{event.title}</span></h1>
+                
+                <div className="text-gray-300 mb-8 border-b border-[#333] pb-4">
+                    Current: <strong className="text-white">{new Date(event.event_date).toDateString()}</strong> at <strong className="text-white">{event.venues?.name || 'Unassigned'}</strong>
+                    <span className="ml-4 px-2 py-1 text-xs font-bold uppercase rounded bg-[#111] text-[#d4af37] border border-[#333]">
+                        {event.status.replace('_', ' ')}
+                    </span>
                 </div>
-            )}
 
-            {/* MANAGER ACTIONS */}
-            {role === 'manager' && !hasPendingRequest && (
-                <div className="bg-gray-100 p-6 rounded-lg shadow-inner">
-                    
-                    {/* OPTION A: Approve (Consideration -> In Progress) */}
-                    {event.status === 'consideration' && (
-                        <div className="mb-8 border-b pb-6">
-                            <h3 className="text-lg font-bold text-green-700 mb-2">Option A: Approve Event</h3>
-                            <p className="text-sm text-gray-600 mb-4">Accept current details to start the event.</p>
-                            <button onClick={handleApproveEvent} className="bg-green-600 text-white px-6 py-2 rounded font-semibold">Accept & Start Event</button>
-                        </div>
-                    )}
-
-                    {/* ✅ OPTION B: Mark as Completed (In Progress -> Completed) */}
-                    {event.status === 'in_progress' && (
-                        <div className="mb-8 border-b border-gray-300 pb-6">
-                            <h3 className="text-lg font-bold mb-2 text-blue-800">Event Actions</h3>
-                            <button onClick={handleCompleteEvent} className="bg-blue-800 text-white px-6 py-2 rounded font-semibold hover:bg-blue-900 transition flex items-center gap-2">
-                                🏁 Mark Event as Completed
-                            </button>
-                        </div>
-                    )}
-
-                    {/* OPTION C: Modify */}
-                    <h3 className="text-lg font-bold mb-4">
-                        {event.status === 'consideration' ? 'Option B: Propose Modification' : 'Propose Modification'}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="date" className="p-2 border rounded" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                        <select className="p-2 border rounded" value={form.venue_id} onChange={e => setForm({ ...form, venue_id: e.target.value })}>
-                            <option value="">Select Venue</option>
-                            {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                        </select>
-                        <input className="p-2 border rounded md:col-span-2" placeholder="Reason for change" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                {/* MODIFICATION HISTORY */}
+                {requests.length > 0 && (
+                    <div className="space-y-4 mb-8">
+                        <h3 className="text-lg font-bold text-[#d4af37]">Modification History</h3>
+                        {requests.map(req => (
+                            <div key={req.id} className={`p-4 rounded border-l-4 bg-[#0a0a0a] shadow-md ${
+                                req.status === 'pending' ? 'border-yellow-500' : 
+                                req.status === 'accepted' ? 'border-green-500' : 'border-red-500'
+                            }`}>
+                                <p className="font-semibold text-gray-200">Venue: <span className="text-white">{req.venues?.name}</span></p>
+                                <p className="text-sm text-gray-400">Date: {new Date(req.proposed_date).toDateString()}</p>
+                                <p className="text-sm italic text-gray-500 mt-1">"{req.request_details}"</p>
+                                
+                                {req.status === 'pending' && role === 'client' && (
+                                    <div className="mt-4 flex gap-3">
+                                        <button onClick={() => handleResponse(req.id, 'accept')} className="bg-green-600/20 text-green-500 border border-green-500 px-4 py-1 rounded hover:bg-green-600 hover:text-white transition">Accept</button>
+                                        <button onClick={() => handleResponse(req.id, 'reject')} className="bg-red-600/20 text-red-500 border border-red-500 px-4 py-1 rounded hover:bg-red-600 hover:text-white transition">Reject</button>
+                                    </div>
+                                )}
+                                {req.status !== 'pending' && (
+                                    <span className={`inline-block mt-3 text-xs font-bold uppercase ${req.status === 'accepted' ? 'text-green-500' : 'text-red-500'}`}>
+                                        {req.status}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
                     </div>
-                    <button onClick={handleSubmitProposal} className="mt-6 bg-blue-600 text-white px-6 py-2 rounded font-semibold">Send Proposal</button>
-                </div>
-            )}
+                )}
 
-            {role === 'manager' && hasPendingRequest && (
-                <p className="mt-6 text-center italic text-gray-400">Waiting for client response to the pending modification.</p>
-            )}
+                {/* MANAGER ACTIONS */}
+                {role === 'manager' && !hasPendingRequest && (
+                    <div className="dash-card">
+                        
+                        {/* OPTION A: Approve (Consideration -> In Progress) */}
+                        {event.status === 'consideration' && (
+                            <div className="mb-8 border-b border-[#333] pb-6">
+                                <h3 className="text-lg font-bold text-green-500 mb-2">Option A: Approve Event</h3>
+                                <p className="text-sm text-gray-400 mb-4">Accept current details to start the event.</p>
+                                <button onClick={handleApproveEvent} className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-500 transition shadow-[0_0_10px_rgba(34,197,94,0.4)]">
+                                    Accept & Start Event
+                                </button>
+                            </div>
+                        )}
+
+                        {/* OPTION B: Mark as Completed (In Progress -> Completed) */}
+                        {event.status === 'in_progress' && (
+                            <div className="mb-8 border-b border-[#333] pb-6">
+                                <h3 className="text-lg font-bold mb-2 text-[#d4af37]">Event Actions</h3>
+                                <button onClick={handleCompleteEvent} className="dash-btn flex items-center gap-2">
+                                    🏁 Mark Event as Completed
+                                </button>
+                            </div>
+                        )}
+
+                        {/* OPTION C: Modify */}
+                        <h3 className="text-lg font-bold text-[#d4af37] mb-4">
+                            {event.status === 'consideration' ? 'Option B: Propose Modification' : 'Propose Modification'}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input 
+                                type="date" 
+                                className="dash-input" 
+                                value={form.date} 
+                                onChange={e => setForm({ ...form, date: e.target.value })} 
+                            />
+                            <select 
+                                className="dash-input" 
+                                value={form.venue_id} 
+                                onChange={e => setForm({ ...form, venue_id: e.target.value })}
+                            >
+                                <option value="" className="text-gray-500">Select Venue</option>
+                                {venues.map(v => <option key={v.id} value={v.id} className="bg-black text-[#d4af37]">{v.name}</option>)}
+                            </select>
+                            <input 
+                                className="dash-input md:col-span-2" 
+                                placeholder="Reason for change" 
+                                value={form.notes} 
+                                onChange={e => setForm({ ...form, notes: e.target.value })} 
+                            />
+                        </div>
+                        <button onClick={handleSubmitProposal} className="dash-btn mt-6">
+                            Send Proposal
+                        </button>
+                    </div>
+                )}
+
+                {role === 'manager' && hasPendingRequest && (
+                    <p className="mt-6 text-center italic text-[#d4af37] opacity-80">
+                        ⏳ Waiting for client response to the pending modification.
+                    </p>
+                )}
+            </div>
         </div>
     );
 };
