@@ -105,9 +105,9 @@ const WeddingSection = () => {
         mat2 flwrm = mat2(flwrcs, -flwrsn, flwrsn, flwrcs); vec2 flwrp = vec2(abs(coord.x), coord.y) * flwrm;
         float r; if(flwrp.x < 0.0) { r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5); } else { r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5); }
         if(r > rstop) discard;
-        // LOVE COLORS (Vibrant Pinks and Reds)
-        vec3 col = mix(vec3(0.9, 0.1, 0.3), vec3(1.0, 0.5, 0.7), r); 
-        float grady = mix(0.0, 1.0, pow(coord.y * 0.5 + 0.5, 0.35)); col *= vec3(1.0, grady, grady);
+        // GOLD COLORS
+        vec3 col = mix(vec3(0.8, 0.5, 0.0), vec3(1.0, 0.9, 0.3), r); 
+        float grady = mix(0.0, 1.0, pow(coord.y * 0.5 + 0.5, 0.35)); col *= vec3(1.0, grady * 0.95, grady * 0.2);
         col *= mix(0.8, 1.0, pow(abs(coord.x), 0.3)); col = col * diffuse + specular;
         col = mix(fadeCol, col, distancefade);
         float alpha = (rstop > 0.001)? (0.5 - r / (rstop * 2.0)) : 1.0;

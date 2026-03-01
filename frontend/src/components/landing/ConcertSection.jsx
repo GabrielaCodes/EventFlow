@@ -37,7 +37,7 @@ const concertEvents = [
   }
 ];
 
-// Reusable Card Component
+// Reusable Glass Card Component
 const ConcertCard = ({ event }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -46,18 +46,31 @@ const ConcertCard = ({ event }) => {
     <motion.div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+      whileHover={{ 
+        y: -5,
+        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)",
+        boxShadow: "0 12px 40px 0 rgba(0, 0, 0, 0.6)"
+      }}
       style={{
-        background: "rgba(255, 255, 255, 0.03)",
-        backdropFilter: "blur(10px)",
-        borderRadius: "12px",
+        /* PREMIUM GLASSMORPHISM SETTINGS */
+        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.005) 100%)",
+        backdropFilter: "blur(20px) saturate(160%)",
+        WebkitBackdropFilter: "blur(20px) saturate(160%)", /* Safari support */
+        
+        /* Edge Lighting (Top/Left brighter, Bottom/Right darker) */
+        borderTop: "1px solid rgba(255, 255, 255, 0.12)",
+        borderLeft: "1px solid rgba(255, 255, 255, 0.12)",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.02)",
+        borderRight: "1px solid rgba(255, 255, 255, 0.02)",
+        
+        boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.4)",
+        borderRadius: "16px",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
         gap: "16px",
         cursor: "pointer",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
-        transition: "background-color 0.3s ease",
+        transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
       }}
     >
       {/* Top Image / Description Area */}
@@ -66,10 +79,10 @@ const ConcertCard = ({ event }) => {
           position: "relative",
           width: "100%",
           aspectRatio: "1 / 1",
-          borderRadius: "8px",
+          borderRadius: "10px",
           overflow: "hidden",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          background: "#121212"
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", // Inner rim for the image
+          background: "#0a0a0a"
         }}
       >
         <AnimatePresence mode="wait">
@@ -102,7 +115,8 @@ const ConcertCard = ({ event }) => {
                 padding: "24px",
                 display: "flex",
                 alignItems: "center",
-                background: "linear-gradient(135deg, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 100%)",
+                background: "linear-gradient(135deg, rgba(20,20,20,0.9) 0%, rgba(5,5,5,0.95) 100%)",
+                backdropFilter: "blur(10px)"
               }}
             >
               <p
@@ -124,13 +138,16 @@ const ConcertCard = ({ event }) => {
 
         {/* Spotify-style Action Button */}
         <motion.button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents double-triggering if you add onClick to the card later
+            setIsExpanded(!isExpanded);
+          }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ 
             opacity: isHovered || isExpanded ? 1 : 0, 
             y: isHovered || isExpanded ? 0 : 10 
           }}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           style={{
             position: "absolute",
@@ -140,13 +157,13 @@ const ConcertCard = ({ event }) => {
             height: "48px",
             borderRadius: "50%",
             background: isExpanded ? "#ffffff" : "#1ed760", // Spotify Green
-            color: isExpanded ? "#000000" : "#000000",
+            color: "#000000",
             border: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            boxShadow: "0 8px 8px rgba(0,0,0,0.3)",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.4)",
             zIndex: 10,
           }}
         >
@@ -165,7 +182,7 @@ const ConcertCard = ({ event }) => {
       </div>
 
       {/* Bottom Text Area */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "0 4px" }}>
         <h3
           style={{
             margin: 0,
@@ -175,7 +192,8 @@ const ConcertCard = ({ event }) => {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            fontFamily: "system-ui, -apple-system, sans-serif"
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            letterSpacing: "-0.01em"
           }}
         >
           {event.title}
@@ -203,35 +221,51 @@ const ConcertSection = () => {
   return (
     <section
       style={{
+        position: "relative",
         minHeight: "100vh",
         width: "100%",
-        background: "#000000", // Solid black context
+        background: "#000000",
         padding: "6rem 2rem",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <div style={{ width: "100%", maxWidth: "1200px" }}>
-        
-        {/* Optional Section Header (remove if not needed) */}
+      {/* Very faint ambient light behind the cards to make the glass effect visible */}
+      <div 
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "60vw",
+          height: "60vh",
+          background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
+          filter: "blur(60px)",
+          pointerEvents: "none",
+          zIndex: 0
+        }}
+      />
+
+      <div style={{ width: "100%", maxWidth: "1200px", position: "relative", zIndex: 1 }}>
         <h2 style={{ 
           color: "#fff", 
-          fontSize: "2rem", 
+          fontSize: "2.5rem", 
           fontWeight: 700, 
-          marginBottom: "2rem",
+          marginBottom: "3rem",
           fontFamily: "system-ui, -apple-system, sans-serif",
-          paddingLeft: "8px"
+          paddingLeft: "8px",
+          letterSpacing: "-0.02em"
         }}>
           Live Experiences
         </h2>
 
-        {/* CSS Grid for the Cards */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
             gap: "24px",
             width: "100%",
           }}
