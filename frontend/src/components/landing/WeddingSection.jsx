@@ -23,7 +23,7 @@ const WeddingSection = () => {
     { start: 4.6, complete: 4.6 + imageRevealDuration },      // Bottom-Right
   ];
 
-  // Love Confetti Particle Engine (Adapted from GraduationSection)
+  // Love Confetti Particle Engine
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -444,7 +444,6 @@ const WeddingSection = () => {
                     overflow: 'hidden',
                     position: 'relative',
                     background: '#0a0604',
-                    boxShadow: '0 15px 60px rgba(218,165,32,0.3)', 
                     zIndex: 10,
                   }}
                 >
@@ -455,15 +454,9 @@ const WeddingSection = () => {
                     initial={{ filter: 'brightness(0.3) grayscale(0.8)' }}
                     animate={{
                       filter: 'brightness(1) grayscale(0)',
-                      boxShadow: [
-                        'inset 0 0 0 rgba(255,215,0, 0)',
-                        'inset 0 0 60px rgba(255,215,0, 0.6)', 
-                        'inset 0 0 0 rgba(255,215,0, 0)',
-                      ],
                     }}
                     transition={{
                       filter: { delay: timing.start, duration: imageRevealDuration },
-                      boxShadow: { delay: timing.start, duration: 1.5, times: [0, 0.5, 1] }
                     }}
                     style={{
                       width: '100%',

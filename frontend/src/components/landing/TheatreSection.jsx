@@ -127,7 +127,9 @@ const TheatreSection = () => {
             padding: '0 1rem'
           }}
         >
-          "We make you shine brighter when you are under the spotlight"
+          <p>
+  Hover to uncover the moments we made shine
+</p>
         </motion.h2>
 
         {/* Image Grid */}
