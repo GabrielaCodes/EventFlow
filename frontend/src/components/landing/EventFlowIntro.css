@@ -152,3 +152,11 @@
     justify-content: center;
   }
 }
+/*Logo is grey*/
+.intro-logo {
+  transform: translateZ(0);
+}
+
+.scroller-window {
+  isolation: isolate;
+}
