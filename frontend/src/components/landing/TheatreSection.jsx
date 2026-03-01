@@ -48,7 +48,7 @@ const TheatreSection = () => {
       style={{
         minHeight: '100vh',
         width: '100vw',
-        background: 'radial-gradient(ellipse at center, #2d1810 0%, #0a0604 80%)',
+        background: '#000000', // FULL BLACK BACKGROUND (Match WeddingSection)
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -95,7 +95,7 @@ const TheatreSection = () => {
           src={stagelightCursor}
           alt="Spotlight Cursor"
           style={{
-            width: '90px', // Explicitly making it much larger
+            width: '120px', // Explicitly making it much larger
             height: 'auto',
             position: 'relative',
             zIndex: 2,
@@ -104,18 +104,6 @@ const TheatreSection = () => {
           }}
         />
       </motion.div>
-
-
-      {/* Ambient Glow / Background Structure */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'radial-gradient(circle at center, rgba(218,165,32,0.1), transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       <div style={{ maxWidth: '1200px', width: '100%', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
