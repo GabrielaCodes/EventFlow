@@ -1,32 +1,38 @@
 import React from 'react';
 import './EventFlowIntro.css';
+import logo from './logo.png';
 
 const EventFlowIntro = () => {
   return (
     <div className="eventflow-intro-container">
       <div className="ticker-container">
-        <h3>We are EventFlow</h3>
+        
+        {/* 1. Large Logo on the Left */}
+        <img src={logo} alt="EventFlow Logo" className="intro-logo" />
+        
+        {/* 2. Static "We host:" Text */}
         <div className="static-text">We host:</div>
         
+        {/* 3. The 3D Scrolling List */}
         <div className="scroller-window">
           <ul className="scrolling-list">
-            {/* 1. Visually ABOVE "Dreamy Weddings" at the very start */}
+            {/* Visually ABOVE "Dreamy Weddings" at the very start */}
             <li aria-hidden="true">Unforgettable Memories</li> 
 
-            {/* 2. The Core List */}
+            {/* The Core List */}
             <li>Dreamy Weddings</li>
             <li>Proud Graduations</li>
             <li>Electric College Fests</li>
             <li>Bold Tech Events</li>
             <li>Unforgettable Memories</li>
 
-            {/* 3. Visually BELOW the loop to make the restart invisible */}
+            {/* Visually BELOW the loop to make the restart invisible */}
             <li aria-hidden="true">Dreamy Weddings</li>
             <li aria-hidden="true">Proud Graduations</li>
           </ul>
         </div>
+        
       </div>
-      <p>If it matters, we flow with it.</p>
     </div>
   );
 };

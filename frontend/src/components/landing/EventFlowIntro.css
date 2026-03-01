@@ -17,21 +17,44 @@
 
 .eventflow-intro-container .ticker-container {
   display: flex;
-  align-items: center;
+  align-items: center; /* Vertically centers text with the big logo */
+  justify-content: center; 
   font-size: clamp(1.2rem, 3vw, 2.2rem); 
   font-weight: 300;
-  gap: 12px;
+  gap: 1.5rem; /* Clean spacing between elements */
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 20px;
 }
 
+/* ==================================
+   THE LOGO STYLING (NOW MUCH LARGER)
+================================== */
+.eventflow-intro-container .intro-logo {
+  /* Scaled up significantly: 
+     Min height 6rem (~96px), scales with screen up to 10rem (~160px) */
+  height: clamp(6rem, 12vw, 10rem); 
+  max-width: 2000px; /* Allows the logo to expand wider if it's rectangular */
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0; /* Crucial: stops the image from getting squished by the text */
+  filter: drop-shadow(0 0 20px rgba(255, 215, 150, 0.25)); /* Slightly stronger glow for bigger logo */
+}
+
+/* ==================================
+   TEXT & SCROLLER STYLING
+================================== */
 .eventflow-intro-container .static-text {
   opacity: 0.8;
+  white-space: nowrap; 
+  flex-shrink: 0;
 }
 
 .eventflow-intro-container .scroller-window {
   height: calc(var(--item-height) * 3); 
   overflow: hidden;
   position: relative;
-  min-width: 350px;
+  min-width: 350px; /* Ensures the longest word fits */
   
   /* Creates the faded "cylinder/roll" depth effect */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
@@ -49,6 +72,7 @@
   height: var(--item-height); 
   display: flex;
   align-items: center;
+  white-space: nowrap; 
   
   background: linear-gradient(135deg, #FFFACD, #e7c96f);
   -webkit-background-clip: text;
@@ -71,12 +95,21 @@
   .eventflow-intro-container .ticker-container {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
   }
+  
+  .eventflow-intro-container .intro-logo {
+    height: 5rem; /* Slightly smaller on very small phones so it doesn't crowd the text */
+    max-width: 250px; 
+    margin-bottom: 1rem;
+  }
+
   .eventflow-intro-container .scroller-window {
     min-width: 100%;
     display: flex;
     justify-content: center;
   }
+  
   .eventflow-intro-container .scrolling-list li {
     justify-content: center;
   }

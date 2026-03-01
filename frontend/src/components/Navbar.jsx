@@ -4,9 +4,8 @@ import { useAuth } from '../context/AuthContext';
 const Navbar = () => {
     const { user, logout, role, loading, profile } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation(); // ✅ Get current path
+    const location = useLocation();
 
-    // 1. Determine Display Name
     const displayName = 
         profile?.full_name || 
         user?.user_metadata?.full_name || 
@@ -16,14 +15,13 @@ const Navbar = () => {
     const companyName = profile?.company_name || user?.user_metadata?.company_name;
     const categoryName = profile?.event_categories?.name;
 
-    // 2. Determine Dashboard Link
     const getHomeLink = () => {
         if (role === 'chief_coordinator') return '/coordinator';
         if (role === 'manager') return '/manager-dashboard';
         if (role === 'client') return '/client-dashboard';
         if (role === 'employee') return '/employee-dashboard';
         if (role === 'sponsor') return '/sponsor-dashboard';
-        return '/'; // Default to Landing Page
+        return '/';
     };
 
     const handleLogout = async () => {
@@ -38,22 +36,83 @@ const Navbar = () => {
     };
 
     return (
-        <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
+        <nav style={{
+            background: 'rgba(5,5,5,0.9)',
+            backdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(255, 215, 0, 0.15)',
+            padding: '0.9rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+        }}>
+
+            {/* Premium Logo Styles */}
+            <style>{`
+                @keyframes shine {
+                    0% { background-position: -100%; }
+                    100% { background-position: 200%; }
+                }
+
+                .ef-logo {
+                    font-family: 'Montserrat', sans-serif;
+                    font-weight: 800;
+                    letter-spacing: 3px;
+                    font-size: 1.1rem;
+                    text-decoration: none;
+                    background: linear-gradient(to bottom, #fff8dc, #ffd54f);
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    color: transparent;
+                    position: relative;
+                }
+
+                .ef-logo::after {
+                    content: attr(data-text);
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(
+                        120deg,
+                        transparent 30%,
+                        rgba(255,255,255,0.7) 50%,
+                        transparent 70%
+                    );
+                    background-size: 200% 100%;
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    color: transparent;
+                    animation: shine 5s linear infinite;
+                    opacity: 0.5;
+                }
+
+                .gold-chip {
+                    background: rgba(255, 215, 0, 0.15);
+                    border: 1px solid rgba(255, 215, 0, 0.25);
+                    color: #ffd54f;
+                    border-radius: 6px;
+                    padding: 3px 6px;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.6px;
+                }
+            `}</style>
+
             {/* LOGO */}
-            <Link to={getHomeLink()} className="text-xl font-bold tracking-wide hover:text-blue-100 transition">
-                Eventflow
+            <Link to={getHomeLink()} className="ef-logo" data-text="EVENTFLOW">
+                EVENTFLOW
             </Link>
 
             {!loading && (
                 <div>
                     {user ? (
-                        <div className="flex gap-3 items-center">
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                             
-                            <div className="text-right flex flex-col justify-center">
-                                <span className="text-sm font-bold leading-none">
+                            {/* Name + Company */}
+                            <div style={{ textAlign: 'right', lineHeight: 1.1 }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
                                     {displayName}
-                                </span>
-                                <div className="text-xs text-blue-200 opacity-90 leading-none mt-0.5">
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#aaa' }}>
                                     {role === 'manager' && categoryName 
                                         ? categoryName 
                                         : companyName
@@ -61,41 +120,49 @@ const Navbar = () => {
                                 </div>
                             </div>
 
-                            <span className="uppercase font-semibold text-[10px] sm:text-xs bg-blue-700 px-2 py-1 rounded shadow-sm border border-blue-500">
+                            {/* Role Badge */}
+                            <span className="gold-chip">
                                 {role ? role.replace('_', ' ') : 'Guest'}
                             </span>
 
+                            {/* Logout */}
                             <button
                                 onClick={handleLogout}
-                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition-colors text-xs sm:text-sm font-medium shadow-sm"
+                                style={{
+                                    background: 'linear-gradient(45deg,#ffe082,#ffb300)',
+                                    color: '#000',
+                                    border: 'none',
+                                    padding: '5px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
                             >
                                 Logout
                             </button>
                         </div>
                     ) : (
-                        <div className="flex gap-6 text-sm font-medium">
-                            {/* ✅ Always show Home */}
-                            <Link to="/" className="text-white hover:text-blue-200 transition">
+                        <div style={{ display: 'flex', gap: '1.2rem', fontSize: '0.85rem' }}>
+                            
+                            <Link to="/" style={{ color: '#fff', textDecoration: 'none' }}>
                                 Home
                             </Link>
 
-                            {/* ✅ If on Register Page -> Show Login */}
                             {location.pathname === '/register' && (
-                                <Link to="/login" className="text-white hover:text-blue-200 transition">
+                                <Link to="/login" style={{ color: '#ffd54f', textDecoration: 'none' }}>
                                     Login
                                 </Link>
                             )}
 
-                            {/* ✅ If on Login Page -> Show Register */}
                             {location.pathname === '/login' && (
-                                <Link to="/register" className="text-white hover:text-blue-200 transition">
+                                <Link to="/register" style={{ color: '#ffd54f', textDecoration: 'none' }}>
                                     Register
                                 </Link>
                             )}
 
-                            {/* Optional: Fallback if on neither (e.g. 404 page) show both or just Login */}
                             {location.pathname !== '/login' && location.pathname !== '/register' && (
-                                <Link to="/login" className="text-white hover:text-blue-200 transition">
+                                <Link to="/login" style={{ color: '#ffd54f', textDecoration: 'none' }}>
                                     Login
                                 </Link>
                             )}
