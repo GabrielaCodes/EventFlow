@@ -26,7 +26,7 @@
     background: white !important;
   }
 
-  .wedding-section svg {
+  .wedding-section canvas {
     display: none;
   }
 }
