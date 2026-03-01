@@ -1,6 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const LandingNavbar = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // Function to handle smooth scrolling for sections on the Landing Page
   const handleScroll = (e, id) => {
     e.preventDefault();
@@ -87,7 +90,12 @@ const LandingNavbar = () => {
       `}</style>
 
       {/* --- LOGO --- */}
-      <Link to="/" className="ef-logo-container" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+      <Link to="/" className="ef-logo-container" onClick={(e) => {
+        if (location.pathname === '/') {
+          e.preventDefault();
+          window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+      }}>
         <div className="bg"></div>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 342 208" className="splash">
           <path strokeLinecap="round" d="M54.1054 99.7837C54.1054 99.7837 40.0984 90.7874 26.6893 97.6362C13.2802 104.485 1.5 97.6362 1.5 97.6362"></path>
@@ -102,26 +110,61 @@ const LandingNavbar = () => {
 
       {/* --- NAVIGATION LINKS --- */}
       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+        <a
+          href="/"
+          className="nav-link"
+          onClick={(e) => {
+            e.preventDefault();
+            if (location.pathname === '/') {
+              // If already on the landing page, scroll smoothly to the intro section
+              handleScroll(e, 'intro');
+            } else {
+              // If on another page, navigate to home first, then scroll
+              navigate('/');
+              setTimeout(() => {
+                document.getElementById('intro')?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }
+          }}
+        >
+          HOME
+        </a>
         
-        {/* ✅ Updated Links: Contact, About, Gallery */}
+        {/* Links: Contact, About, Gallery */}
         <Link to="/about" className="nav-link">ABOUT</Link>
         <Link to="/gallery" className="nav-link">GALLERY</Link>
-        <a href="#contact" className="nav-link" onClick={(e) => handleScroll(e, 'contact')}>CONTACT</a>
+        <a 
+          href="#contact" 
+          className="nav-link" 
+          onClick={(e) => {
+            if (location.pathname === '/') {
+              handleScroll(e, 'contact');
+            } else {
+              e.preventDefault();
+              navigate('/');
+              setTimeout(() => {
+                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }
+          }}
+        >
+          CONTACT
+        </a>
 
         {/* Auth Buttons */}
         <div style={{ display: 'flex', gap: '1rem', marginLeft: '1rem' }}>
           <Link to="/login" style={{ 
-           padding: '0.6rem 1.8rem',
-           background: 'linear-gradient(45deg, #ffe082, #ffb300)',
-           borderRadius: '2px',
-           color: '#000',
-           textDecoration: 'none',
-           fontSize: '0.8rem',
-           fontWeight: 'bold',
-           letterSpacing: '1px'
-        }}>
-  LOGIN
-</Link>
+            padding: '0.6rem 1.8rem',
+            background: 'linear-gradient(45deg, #ffe082, #ffb300)',
+            borderRadius: '2px',
+            color: '#000',
+            textDecoration: 'none',
+            fontSize: '0.8rem',
+            fontWeight: 'bold',
+            letterSpacing: '1px'
+          }}>
+            LOGIN
+          </Link>
           
           <Link to="/register" style={{ 
             padding: '0.6rem 1.8rem', 
@@ -132,7 +175,9 @@ const LandingNavbar = () => {
             fontSize: '0.8rem',
             fontWeight: 'bold',
             letterSpacing: '1px'
-          }}>REGISTER</Link>
+          }}>
+            REGISTER
+          </Link>
         </div>
       </div>
     </nav>
