@@ -33,14 +33,35 @@
 }
 
 .intro-logo {
-  /* Allows the 647x862 image to be tall and majestic without overflowing */
-  height: clamp(300px, 60vh, 650px); 
-  width: auto;
+  /* ===== SIZE CONTROL ===== */
+
+  /* 🔧 Make logo slightly wider (increase values slowly) */
+  height: clamp(520px, 62vh, 680px); 
+  /* try: clamp(540px, 65vh, 700px) */
+
+  width: auto; /* keep auto to avoid distortion */
+
   object-fit: contain;
   display: block;
-  /* Specifically requested: No glow or shadows */
+
+  /* ===== MOVE DOWNWARD ===== */
+
+  /* 🔧 Push logo lower */
+  margin-top: 100px; 
+  /* try: 70px / 90px */
+
+  /* Alternative smoother shift (use instead of margin-top if needed) */
+  /* transform: translateY(50px); */ /* try 70px */
+
+  /* ===== VISUAL WIDTH (without stretching height) ===== */
+
+  /* 🔧 Subtle widen effect */
+  /* transform: scaleX(1.06); */ 
+  /* try: 1.08 max (avoid >1.1 or it looks fake) */
+
+  /* ===== CLEAN LOOK ===== */
   filter: none;
-  box-shadow: none; 
+  box-shadow: none;
 }
 
 /* ==================================
