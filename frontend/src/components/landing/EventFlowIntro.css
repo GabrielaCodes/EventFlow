@@ -8,67 +8,79 @@
   color: #e7c96f; 
   font-family: 'Playfair Display', 'Georgia', serif;
   
-  /* Centers everything perfectly inside this specific section */
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
 }
 
-.eventflow-intro-container .ticker-container {
+/* New 2-Column Wrapper Layout */
+.intro-wrapper {
   display: flex;
-  align-items: center; /* Vertically centers text with the big logo */
-  justify-content: center; 
-  font-size: clamp(1.2rem, 3vw, 2.2rem); 
-  font-weight: 300;
-  gap: 1.5rem; /* Clean spacing between elements */
+  align-items: center;
+  justify-content: flex-start; /* Anchors the logo to the left */
+  gap: 5rem; /* Generous spacing between the tall logo and the text */
   width: 100%;
   max-width: 1200px;
-  padding: 0 20px;
+  padding: 0 2rem;
 }
 
 /* ==================================
-   THE LOGO STYLING (NOW MUCH LARGER)
+   THE LOGO STYLING (PORTRAIT OPTIMIZED)
 ================================== */
-.eventflow-intro-container .intro-logo {
-  /* Scaled up significantly: 
-     Min height 6rem (~96px), scales with screen up to 10rem (~160px) */
-  height: clamp(6rem, 12vw, 10rem); 
-  max-width: 2000px; /* Allows the logo to expand wider if it's rectangular */
+.logo-container {
+  flex: 0 0 auto;
+}
+
+.intro-logo {
+  /* Allows the 647x862 image to be tall and majestic without overflowing */
+  height: clamp(300px, 60vh, 650px); 
   width: auto;
   object-fit: contain;
-  flex-shrink: 0; /* Crucial: stops the image from getting squished by the text */
-  filter: drop-shadow(0 0 20px rgba(255, 215, 150, 0.25)); /* Slightly stronger glow for bigger logo */
+  display: block;
+  /* Specifically requested: No glow or shadows */
+  filter: none;
+  box-shadow: none; 
 }
 
 /* ==================================
    TEXT & SCROLLER STYLING
 ================================== */
-.eventflow-intro-container .static-text {
+.ticker-container {
+  display: flex;
+  align-items: center; 
+  font-size: clamp(1.5rem, 3vw, 2.5rem); /* Slightly larger, elegant text */
+  font-weight: 300;
+  gap: 1.5rem; 
+  flex: 1; /* Takes up the remaining space on the right */
+}
+
+.static-text {
   opacity: 0.8;
   white-space: nowrap; 
   flex-shrink: 0;
 }
 
-.eventflow-intro-container .scroller-window {
+.scroller-window {
   height: calc(var(--item-height) * 3); 
   overflow: hidden;
   position: relative;
-  min-width: 350px; /* Ensures the longest word fits */
+  min-width: 350px; 
+  width: 100%;
   
   /* Creates the faded "cylinder/roll" depth effect */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
 }
 
-.eventflow-intro-container .scrolling-list {
+.scrolling-list {
   margin: 0;
   padding: 0;
   list-style: none;
   animation: rollCylinder 15s infinite cubic-bezier(0.75, 0, 0.25, 1);
 }
 
-.eventflow-intro-container .scrolling-list li {
+.scrolling-list li {
   height: var(--item-height); 
   display: flex;
   align-items: center;
@@ -77,7 +89,8 @@
   background: linear-gradient(135deg, #FFFACD, #e7c96f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 20px rgba(255, 215, 150, 0.2);
+  /* Text still has a soft glow, but the image does not */
+  text-shadow: 0 0 20px rgba(255, 215, 150, 0.2); 
 }
 
 /* THE ANIMATION MATH */
@@ -90,27 +103,31 @@
   100%      { transform: translateY(calc(var(--item-height) * -5)); }        
 }
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-  .eventflow-intro-container .ticker-container {
-    flex-direction: column;
-    text-align: center;
-    gap: 16px;
+/* Mobile & Tablet adjustments */
+@media (max-width: 992px) {
+  .intro-wrapper {
+    flex-direction: column; /* Stacks logo on top of text for smaller screens */
+    justify-content: center;
+    gap: 2rem;
   }
   
-  .eventflow-intro-container .intro-logo {
-    height: 5rem; /* Slightly smaller on very small phones so it doesn't crowd the text */
-    max-width: 250px; 
-    margin-bottom: 1rem;
+  .intro-logo {
+    height: clamp(200px, 40vh, 350px); /* Smaller logo on mobile */
   }
 
-  .eventflow-intro-container .scroller-window {
+  .ticker-container {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .scroller-window {
     min-width: 100%;
     display: flex;
     justify-content: center;
   }
   
-  .eventflow-intro-container .scrolling-list li {
+  .scrolling-list li {
     justify-content: center;
   }
 }
