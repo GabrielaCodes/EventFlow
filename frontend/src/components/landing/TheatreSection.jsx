@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, useMotionValue } from 'framer-motion';
 
-// Using the new cursor image per your request
 import stagelightCursor from "../../assets/theatre/stagelight.png";
 import img1 from "../../assets/theatre/1.jpg";
 import img2 from "../../assets/theatre/2.jpg";
@@ -14,25 +13,26 @@ const images = [img1, img2, img3, img4, img5];
 const TheatreSection = () => {
   const sectionRef = useRef(null);
   const [revealedImages, setRevealedImages] = useState(new Set());
+  const [isHoveringSection, setIsHoveringSection] = useState(false);
   
-  // 1. Intersection Observer for Cursor Logic
+  // 1. Framer Motion values to smoothly track mouse position
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+
   const isInView = useInView(sectionRef, { amount: 0.1 });
 
+  // 2. Track global mouse coordinates for the custom cursor
   useEffect(() => {
-    // Apply the custom cursor to the whole document body when this section is in view
-    if (isInView) {
-      document.body.style.cursor = `url(${stagelightCursor}) 32 32, crosshair`;
-    } else {
-      document.body.style.cursor = 'auto'; // Revert back when leaving
-    }
-
-    // Cleanup on unmount to prevent stuck cursors
-    return () => {
-      document.body.style.cursor = 'auto';
+    const updateMousePosition = (e) => {
+      cursorX.set(e.clientX);
+      cursorY.set(e.clientY);
     };
-  }, [isInView]);
 
-  // 2. Spotlight Reveal Interaction
+    window.addEventListener("mousemove", updateMousePosition);
+    return () => window.removeEventListener("mousemove", updateMousePosition);
+  }, [cursorX, cursorY]);
+
+  // 3. Spotlight Reveal Interaction
   const handleReveal = (index) => {
     if (!revealedImages.has(index)) {
       setRevealedImages((prev) => new Set(prev).add(index));
@@ -43,6 +43,8 @@ const TheatreSection = () => {
     <section
       ref={sectionRef}
       className="theatre-section"
+      onMouseEnter={() => setIsHoveringSection(true)}
+      onMouseLeave={() => setIsHoveringSection(false)}
       style={{
         minHeight: '100vh',
         width: '100vw',
@@ -54,8 +56,56 @@ const TheatreSection = () => {
         padding: '5rem 1rem',
         position: 'relative',
         overflow: 'hidden',
+        cursor: 'none' // Hide the default cursor when inside this section
       }}
     >
+      {/* ================= CUSTOM CURSOR ================= */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          x: cursorX,
+          y: cursorY,
+          pointerEvents: 'none',
+          zIndex: 99999, // Ensure it stays above everything
+          // Center hotspot adjustment (tweak percentages if the pointer tip feels off)
+          translateX: '-25%',
+          translateY: '-25%',
+          opacity: isHoveringSection ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}
+      >
+        {/* Upper Left Glow Element */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '-15px',
+            left: '-15px',
+            width: '60px',
+            height: '60px',
+            background: 'radial-gradient(circle, rgba(255, 230, 150, 0.9) 0%, rgba(218, 165, 32, 0.5) 40%, transparent 70%)',
+            filter: 'blur(12px)',
+            zIndex: 1,
+          }}
+        />
+        
+        {/* The Bigger Cursor Image */}
+        <img
+          src={stagelightCursor}
+          alt="Spotlight Cursor"
+          style={{
+            width: '90px', // Explicitly making it much larger
+            height: 'auto',
+            position: 'relative',
+            zIndex: 2,
+            // Adds a very subtle global glow to the image itself to match the theme
+            filter: 'drop-shadow(0px 0px 8px rgba(255, 215, 0, 0.3))' 
+          }}
+        />
+      </motion.div>
+
+
       {/* Ambient Glow / Background Structure */}
       <div
         style={{
@@ -69,7 +119,7 @@ const TheatreSection = () => {
 
       <div style={{ maxWidth: '1200px', width: '100%', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 3. Tagline Overlay */}
+        {/* Tagline Overlay */}
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -112,14 +162,12 @@ const TheatreSection = () => {
                 key={index}
                 onMouseEnter={() => handleReveal(index)}
                 style={{
-                  // The 5th image spans across both columns to create a nice hero-like base
                   gridColumn: isLastImage ? 'span 2' : 'auto',
                   aspectRatio: isLastImage ? '16/7' : '4/3',
                   borderRadius: '12px',
                   overflow: 'hidden',
                   position: 'relative',
                   background: '#0a0604',
-                  // Soft spotlight glow activates once revealed
                   boxShadow: isRevealed 
                     ? '0 15px 50px rgba(218,165,32,0.3)' 
                     : 'none',
@@ -135,7 +183,6 @@ const TheatreSection = () => {
                     height: '100%',
                     objectFit: 'cover',
                     display: 'block',
-                    // Invisible/dark initially, fades in gracefully on hover
                     opacity: isRevealed ? 1 : 0, 
                     filter: isRevealed ? 'brightness(1) grayscale(0)' : 'brightness(0) grayscale(1)',
                     transform: isRevealed ? 'scale(1)' : 'scale(1.05)',
