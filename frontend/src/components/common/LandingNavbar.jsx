@@ -111,11 +111,17 @@ const LandingNavbar = () => {
         {/* Auth Buttons */}
         <div style={{ display: 'flex', gap: '1rem', marginLeft: '1rem' }}>
           <Link to="/login" style={{ 
-            color: '#ffd54f', 
-            textDecoration: 'none',
-            fontSize: '0.9rem',
-            fontWeight: '600'
-          }}>LOGIN</Link>
+           padding: '0.6rem 1.8rem',
+           background: 'linear-gradient(45deg, #ffe082, #ffb300)',
+           borderRadius: '2px',
+           color: '#000',
+           textDecoration: 'none',
+           fontSize: '0.8rem',
+           fontWeight: 'bold',
+           letterSpacing: '1px'
+        }}>
+  LOGIN
+</Link>
           
           <Link to="/register" style={{ 
             padding: '0.6rem 1.8rem', 

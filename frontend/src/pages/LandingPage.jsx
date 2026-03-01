@@ -1,5 +1,6 @@
 import React from 'react';
 import LandingNavbar from '../components/common/LandingNavbar';
+import EventFlowIntro from '../components/landing/EventFlowIntro'; // Added Import
 import WeddingSection from '../components/landing/WeddingSection';
 import TheatreSection from '../components/landing/TheatreSection';
 import GraduationSection from '../components/landing/GraduationSection';
@@ -11,6 +12,11 @@ const LandingPage = () => {
     <div className="landing-page-wrapper">
       <LandingNavbar />
       
+      {/* Introduction Hero Section */}
+      <section id="intro">
+        <EventFlowIntro />
+      </section>
+
       {/* Sections with IDs for scrolling */}
       <section id="wedding">
         <WeddingSection />

@@ -1,0 +1,83 @@
+.eventflow-intro-container {
+  /* Define the height of a single line of text */
+  --item-height: 3.5rem; 
+
+  height: 100vh;
+  width: 100%;
+  background-color: #000000;
+  color: #e7c96f; 
+  font-family: 'Playfair Display', 'Georgia', serif;
+  
+  /* Centers everything perfectly inside this specific section */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.eventflow-intro-container .ticker-container {
+  display: flex;
+  align-items: center;
+  font-size: clamp(1.2rem, 3vw, 2.2rem); 
+  font-weight: 300;
+  gap: 12px;
+}
+
+.eventflow-intro-container .static-text {
+  opacity: 0.8;
+}
+
+.eventflow-intro-container .scroller-window {
+  height: calc(var(--item-height) * 3); 
+  overflow: hidden;
+  position: relative;
+  min-width: 350px;
+  
+  /* Creates the faded "cylinder/roll" depth effect */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+}
+
+.eventflow-intro-container .scrolling-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: rollCylinder 15s infinite cubic-bezier(0.75, 0, 0.25, 1);
+}
+
+.eventflow-intro-container .scrolling-list li {
+  height: var(--item-height); 
+  display: flex;
+  align-items: center;
+  
+  background: linear-gradient(135deg, #FFFACD, #e7c96f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(255, 215, 150, 0.2);
+}
+
+/* THE ANIMATION MATH */
+@keyframes rollCylinder {
+  0%, 12%   { transform: translateY(0); }                                    
+  20%, 32%  { transform: translateY(calc(var(--item-height) * -1)); }        
+  40%, 52%  { transform: translateY(calc(var(--item-height) * -2)); }        
+  60%, 72%  { transform: translateY(calc(var(--item-height) * -3)); }        
+  80%, 92%  { transform: translateY(calc(var(--item-height) * -4)); }        
+  100%      { transform: translateY(calc(var(--item-height) * -5)); }        
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .eventflow-intro-container .ticker-container {
+    flex-direction: column;
+    text-align: center;
+  }
+  .eventflow-intro-container .scroller-window {
+    min-width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .eventflow-intro-container .scrolling-list li {
+    justify-content: center;
+  }
+}
