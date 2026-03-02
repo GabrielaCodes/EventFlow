@@ -3,21 +3,23 @@ import supabase from '../config/supabaseClient.js';
 /* =======================
    1. USER MANAGEMENT
    ======================= */
-// ✅ UPDATED: Fetch Managers/Sponsors with optional status filter
 export const getPendingUsers = async (req, res) => {
     try {
-        const { status } = req.query; // Get status from URL (pending, verified, rejected)
+        const { status } = req.query; 
 
+        // 1. Apply base selection and filters FIRST
         let query = supabase
             .from('profiles')
             .select('*')
-            .in('role', ['manager', 'sponsor']) // Only fetch approvable roles
-            .order('created_at', { ascending: false });
+            .in('role', ['manager', 'sponsor']); 
 
-        // If a specific status is requested, filter by it. Otherwise return all.
+        // 2. Apply dynamic conditional filters NEXT
         if (status && status !== 'all') {
             query = query.eq('verification_status', status);
         }
+
+        // 3. Apply modifiers (order, limit) LAST
+        query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
 
@@ -84,7 +86,7 @@ export const deleteCategory = async (req, res) => {
 };
 
 /* =======================
-   3. SUBTYPES (This is what you were missing)
+   3. SUBTYPES 
    ======================= */
 export const getSubtypes = async (req, res) => {
     try {
