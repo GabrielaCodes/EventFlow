@@ -364,10 +364,18 @@ FROM public.events WHERE created_at >= NOW() - INTERVAL '12 months' GROUP BY 1 O
 CREATE OR REPLACE VIEW public.analytics_status_distribution AS
 SELECT status, COUNT(id) AS count FROM public.events GROUP BY status;
 
+-- ✅ FIXED: Removed is_chief_coordinator() and added explicit enum casting
 CREATE OR REPLACE VIEW public.view_coordinator_pending_actions AS
-SELECT id, full_name, role, company_name, created_at, EXTRACT(DAY FROM (NOW() - created_at)) AS days_waiting
+SELECT 
+    id, 
+    full_name, 
+    role, 
+    company_name, 
+    created_at, 
+    EXTRACT(DAY FROM (NOW() - created_at))::INT AS days_waiting
 FROM public.profiles
-WHERE verification_status = 'pending' AND role IN ('manager', 'sponsor')
+WHERE verification_status = 'pending'::verification_status 
+  AND role IN ('manager'::user_role, 'sponsor'::user_role)
 ORDER BY created_at ASC;
 
 CREATE OR REPLACE VIEW public.view_coordinator_urgent_events AS
@@ -381,11 +389,16 @@ WHERE
   AND (status = 'consideration' OR venue_id IS NULL)
 ORDER BY event_date ASC;
 
+-- ✅ FIXED: Removed is_chief_coordinator() and added explicit enum casting
 CREATE OR REPLACE VIEW public.view_coordinator_recent_alerts AS
-SELECT id, title, updated_at, status
+SELECT 
+    id, 
+    title, 
+    updated_at, 
+    status
 FROM public.events
-WHERE status = 'cancelled'
-AND updated_at >= NOW() - INTERVAL '7 days'
+WHERE status = 'cancelled'::event_status
+  AND updated_at >= NOW() - INTERVAL '7 days'
 ORDER BY updated_at DESC;
 
 -- =================================================

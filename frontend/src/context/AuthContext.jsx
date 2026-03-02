@@ -98,18 +98,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // 1. Clear UI State immediately to trigger ProtectedRoute logic
     setUser(null);
     setRole(null);
     setProfile(null);
-    lastCheckedUserId.current = null;
+    
+    // 2. Clear Storage
     localStorage.clear();
-    try {
-        await supabase.auth.signOut();
-    } catch (err) {
-        console.warn("Logout warning:", err);
-    }
-  };
+    lastCheckedUserId.current = null;
 
+    // 3. FORCE REDIRECT (This kills the race condition)
+    // Using window.location.href is better than navigate() for 
+    // complex dashboards because it stops all background React processes.
+    window.location.href = '/login';
+
+    // 4. Cleanup Supabase in the background (we don't need to 'await' this for the UI)
+    supabase.auth.signOut().catch(console.warn);
+};
   return (
     <AuthContext.Provider value={{ user, role, profile, loading, login, logout }}>
       {children}
