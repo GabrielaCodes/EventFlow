@@ -139,7 +139,7 @@ const ConcertCard = ({ event }) => {
         {/* Spotify-style Action Button */}
         <motion.button
           onClick={(e) => {
-            e.stopPropagation(); // Prevents double-triggering if you add onClick to the card later
+            e.stopPropagation();
             setIsExpanded(!isExpanded);
           }}
           initial={{ opacity: 0, y: 10 }}
@@ -155,8 +155,9 @@ const ConcertCard = ({ event }) => {
             right: "12px",
             width: "48px",
             height: "48px",
+            padding: 0, // <--- ADD THIS LINE HERE
             borderRadius: "50%",
-            background: isExpanded ? "#ffffff" : "#1ed760", // Spotify Green
+            background: isExpanded ? "#ffffff" : "#1ed760", 
             color: "#000000",
             border: "none",
             display: "flex",

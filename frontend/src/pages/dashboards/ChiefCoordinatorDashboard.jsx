@@ -6,11 +6,8 @@ import { getCoordinatorStats } from '../../services/coordinatorService';
 import UserApprovals from '../../components/coordinator/UserApprovals';
 import MasterDataCategories from '../../components/coordinator/MasterDataCategories';
 import MasterDataVenues from '../../components/coordinator/MasterDataVenues';
-// Manager request to Chief Coordinator
 import MasterRequestApprovals from '../../components/coordinator/MasterRequestApprovals';
-// Analytics
 import AnalyticsDashboard from '../../components/coordinator/analytics/AnalyticsDashboard';
-//Overview
 import CoordinatorLanding from '../../components/coordinator/CoordinatorLanding';
 
 const ChiefCoordinatorDashboard = () => {
@@ -41,42 +38,37 @@ const ChiefCoordinatorDashboard = () => {
     // Render Logic
     const renderContent = () => {
         switch (activeTab) {
-            case 'overview':
-                return <CoordinatorLanding setActiveTab={setActiveTab} />;
-            case 'approvals':
-                return <UserApprovals />;
-            case 'categories':
-                return <MasterDataCategories />; 
-            case 'venues':
-                return <MasterDataVenues />;
-            // ✅ 2. Add New Case
-            case 'resource_requests':
-                return <MasterRequestApprovals />;
-            case 'analytics':
-                return <AnalyticsDashboard />;
-            default:
-                return <div>Select a tab</div>;
+            case 'overview': return <CoordinatorLanding setActiveTab={setActiveTab} />;
+            case 'approvals': return <UserApprovals />;
+            case 'categories': return <MasterDataCategories />; 
+            case 'venues': return <MasterDataVenues />;
+            case 'resource_requests': return <MasterRequestApprovals />;
+            case 'analytics': return <AnalyticsDashboard />;
+            default: return <div style={{ color: 'var(--text-primary)' }}>Select a tab</div>;
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
+        // Removed bg-gray-100 to let the theme.css dark background take over
+        <div className="min-h-screen flex flex-col">
             
-
             {/* Main Content */}
             <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-                {/* Tabs */}
-                <div className="flex gap-4 border-b border-gray-300 mb-6 overflow-x-auto">
-                    {/* ✅ 3. Update Tab List */}
+                
+                {/* Tabs Container - Changed border-gray-300 to a dark hex */}
+                <div className="flex gap-4 border-b border-[#333] mb-6 overflow-x-auto">
                     {['overview' ,'analytics', 'approvals', 'categories', 'venues', 'resource_requests'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
+                            // Swapped Tailwind colors for theme CSS variables
                             className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 whitespace-nowrap ${
                                 activeTab === tab 
-                                ? 'border-blue-600 text-blue-600' 
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-[var(--gold-main)] text-[var(--gold-main)]' 
+                                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--gold-hover)]'
                             }`}
+                            // Overriding the global theme.css button background so tabs look like tabs
+                            style={{ backgroundColor: 'transparent', padding: '0.75rem 1rem' }}
                         >
                             {tab.replace('_', ' ')}
                         </button>
