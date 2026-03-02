@@ -123,7 +123,7 @@ const ManagerDashboard = () => {
                 <button
                     onClick={() => setActiveTab('dashboard')}
                     className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'dashboard' ? 'border-[#d4af37] text-[#d4af37]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                        activeTab === 'dashboard' ? 'border-[#090909] text-[#090909]' : 'border-transparent text-[#090909] hover:text-[#090909]'
                     }`}
                 >
                     Overview & Team
@@ -131,7 +131,7 @@ const ManagerDashboard = () => {
                 <button
                     onClick={() => setActiveTab('requests')}
                     className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'requests' ? 'border-[#d4af37] text-[#d4af37]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                        activeTab === 'requests' ? 'border-[#d4af37] text-[#0612e6]' : 'border-transparent text-[#0612e6] hover:text-[#0612e6]'
                     }`}
                 >
                     Resource Requests

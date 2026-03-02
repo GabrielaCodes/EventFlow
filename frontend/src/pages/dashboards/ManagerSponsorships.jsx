@@ -164,8 +164,8 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 <span className="text-xl font-bold text-[#d4af37]">${req.amount}</span>
                                 {req.status === 'negotiating' && (
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleAcceptOffer(req)} className="text-green-500 hover:text-green-400 text-sm font-bold underline transition">Accept</button>
-                                        <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="text-[#d4af37] hover:text-white text-sm font-bold underline transition">Counter</button>
+                                        <button onClick={() => handleAcceptOffer(req)} className="text-[#03823c] hover:text-[#03823c] text-sm font-bold underline transition">Accept</button>
+                                        <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="text-[#04305c] hover:text-[#04305c] text-sm font-bold underline transition">Counter</button>
                                     </div>
                                 )}
                             </div>
