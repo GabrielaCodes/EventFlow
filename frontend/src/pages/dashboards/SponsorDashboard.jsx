@@ -49,104 +49,105 @@ const SponsorDashboard = () => {
 
     const getStatusColor = (status) => {
         switch(status) {
-            case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
-            case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-            case 'negotiating': return 'bg-orange-100 text-orange-800 border-orange-200';
-            default: return 'bg-blue-50 text-blue-800 border-blue-200';
+            case 'accepted': return 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50';
+            case 'rejected': return 'bg-red-900/30 text-red-400 border-red-500/50';
+            case 'negotiating': return 'bg-amber-900/30 text-amber-400 border-amber-500/50';
+            default: return 'bg-slate-800 text-slate-300 border-slate-600';
         }
     };
 
-    if (loading) return <div className="p-10 text-center">Loading...</div>;
+    if (loading) return <div className="p-10 text-center text-amber-500 bg-slate-950 min-h-screen">Loading Excellence...</div>;
 
     return (
-        <div className="p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Sponsorship Portal</h1>
+        <div className="p-6 max-w-6xl mx-auto bg-slate-950 min-h-screen text-slate-200">
+            <h1 className="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200">
+                Sponsorship Portal
+            </h1>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {requests.map((req) => (
-                    <div key={req.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${req.status === 'pending' ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'}`}>
+                    <div key={req.id} className={`bg-slate-900 rounded-2xl shadow-2xl border transition-all duration-300 ${req.status === 'pending' ? 'border-amber-500/50 shadow-amber-500/10 ring-1 ring-amber-500/20' : 'border-slate-800'}`}>
                         
                         {/* Header */}
-                        <div className="bg-gray-900 p-4 flex justify-between items-start">
+                        <div className="bg-slate-800/50 p-5 flex justify-between items-start border-b border-slate-700">
                             <div>
-                                <h3 className="text-white font-bold truncate w-48" title={req.events?.title}>{req.events?.title}</h3>
-                                <p className="text-gray-400 text-xs">{new Date(req.events?.event_date).toDateString()}</p>
+                                <h3 className="text-amber-50 font-bold truncate w-40" title={req.events?.title}>{req.events?.title}</h3>
+                                <p className="text-amber-500/70 text-xs font-medium uppercase tracking-wider">{new Date(req.events?.event_date).toDateString()}</p>
                             </div>
-                            <span className={`px-2 py-1 text-xs font-bold uppercase rounded border ${getStatusColor(req.status)}`}>
+                            <span className={`px-2 py-1 text-[10px] font-black uppercase rounded-md border tracking-tighter ${getStatusColor(req.status)}`}>
                                 {req.status}
                             </span>
                         </div>
 
                         <div className="p-6">
-                            {/* Negotiation Input View */}
                             {negotiatingId === req.id ? (
-                                <div className="space-y-3 animate-fade-in">
-                                    <p className="font-bold text-sm text-gray-700">Your Counter Offer:</p>
+                                <div className="space-y-4 animate-in fade-in zoom-in duration-200">
+                                    <p className="font-bold text-xs text-amber-500 uppercase">Counter Offer</p>
                                     <input 
                                         type="number" 
-                                        placeholder="Amount" 
-                                        className="w-full border p-2 rounded"
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-amber-50 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
                                         value={negForm.amount}
                                         onChange={e => setNegForm({...negForm, amount: e.target.value})}
                                     />
                                     <textarea 
                                         placeholder="Note / Condition" 
-                                        className="w-full border p-2 rounded h-20"
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-slate-300 h-24 focus:border-amber-500 outline-none resize-none"
                                         value={negForm.note}
                                         onChange={e => setNegForm({...negForm, note: e.target.value})}
                                     />
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleAction(req.id, 'negotiating')} className="bg-indigo-600 text-white px-4 py-2 rounded w-full hover:bg-indigo-700">Send Offer</button>
-                                        <button onClick={() => setNegotiatingId(null)} className="text-gray-500 px-4 py-2 hover:bg-gray-100 rounded">Cancel</button>
+                                        <button onClick={() => handleAction(req.id, 'negotiating')} className="bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg w-full hover:bg-amber-500 transition-colors">Submit</button>
+                                        <button onClick={() => setNegotiatingId(null)} className="text-slate-400 px-4 py-2 hover:text-white transition-colors">Cancel</button>
                                     </div>
                                 </div>
                             ) : (
-                                // Standard View
                                 <>
-                                    <div className="mb-4">
-                                        <p className="text-xs text-gray-500 font-bold uppercase">Requested Amount</p>
-                                        <p className="text-3xl font-extrabold text-gray-800">${req.amount?.toLocaleString()}</p>
+                                    <div className="mb-6">
+                                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Investment Value</p>
+                                        <p className="text-4xl font-light text-amber-400 mt-1">
+                                            <span className="text-xl mr-1 font-bold opacity-50">$</span>
+                                            {req.amount?.toLocaleString()}
+                                        </p>
                                     </div>
                                     
-                                    <div className="space-y-2 mb-6 text-sm">
+                                    <div className="space-y-3 mb-8 text-sm">
                                         {req.request_note && (
-                                            <div className="bg-blue-50 p-3 rounded border border-blue-100">
-                                                <span className="font-bold text-blue-800 block mb-1">Manager Says:</span>
-                                                "{req.request_note}"
+                                            <div className="bg-slate-800/80 p-4 rounded-xl border-l-4 border-amber-600">
+                                                <span className="font-black text-[10px] text-amber-500 block mb-1 uppercase tracking-tighter">Event Memo</span>
+                                                <span className="italic text-slate-300 font-serif">"{req.request_note}"</span>
                                             </div>
                                         )}
                                         {req.sponsor_note && (
-                                            <div className="bg-orange-50 p-3 rounded border border-orange-100 text-right">
-                                                <span className="font-bold text-orange-800 block mb-1">You Said:</span>
-                                                "{req.sponsor_note}"
+                                            <div className="bg-amber-900/10 p-4 rounded-xl border border-amber-900/30 text-right">
+                                                <span className="font-black text-[10px] text-amber-400 block mb-1 uppercase">Your Terms</span>
+                                                <span className="text-slate-400">"{req.sponsor_note}"</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Actions: Always allow negotiation unless paid/finalized logic exists */}
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-3">
                                         {req.status !== 'accepted' && (
                                             <button 
                                                 onClick={() => handleAction(req.id, 'accepted')} 
-                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium shadow-sm transition"
+                                                className="flex-1 bg-gradient-to-b from-amber-400 to-amber-600 text-slate-950 py-2.5 rounded-lg font-bold shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all"
                                             >
-                                                Accept
+                                                Approve
                                             </button>
                                         )}
                                         
                                         <button 
                                             onClick={() => startNegotiation(req)} 
-                                            className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 rounded font-medium transition"
+                                            className="flex-1 bg-slate-800 border border-slate-700 text-amber-50 hover:bg-slate-700 py-2.5 rounded-lg font-bold transition-all"
                                         >
-                                            {req.status === 'rejected' ? 'Re-Open' : 'Counter'}
+                                            {req.status === 'rejected' ? 'Review' : 'Counter'}
                                         </button>
 
                                         {req.status !== 'rejected' && (
                                             <button 
                                                 onClick={() => handleAction(req.id, 'rejected')} 
-                                                className="flex-1 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2 rounded font-medium transition"
+                                                className="px-3 bg-transparent text-red-400 border border-red-900/50 hover:bg-red-900/20 py-2.5 rounded-lg font-medium transition-all"
                                             >
-                                                Reject
+                                                Decline
                                             </button>
                                         )}
                                     </div>

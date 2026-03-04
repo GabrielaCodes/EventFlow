@@ -76,7 +76,7 @@ export const sendEmployeeApprovalEmail = async (userEmail, userName) => {
                     <p style="margin-top: 20px; color: #666; font-size: 12px;">If you did not request this, please ignore this email.</p>
                 </div>
             `
-        };
+        }; //change href after deploying
 
         const info = await transporter.sendMail(mailOptions);
         console.log("✅ Approval email sent: " + info.response);

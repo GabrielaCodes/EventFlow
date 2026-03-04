@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { user, role, profile, loading, logout } = useAuth();
+    const { user, role, profile, loading, logout } = useAuth(); //defining allowedRoles also used in authorize.js
 
     // 1️⃣ Still resolving auth session
     if (loading) {

@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     // complex dashboards because it stops all background React processes.
     window.location.href = '/login';
 
-    // 4. Cleanup Supabase in the background (we don't need to 'await' this for the UI)
+    // 4. Cleanup Supabase in the background
     supabase.auth.signOut().catch(console.warn);
 };
   return (

@@ -213,7 +213,7 @@ const ManagerDashboard = () => {
                                                 <td className="font-medium">{emp.full_name}</td>
                                                 <td>{emp.email}</td>
                                                 <td>
-                                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-500 hover:text-green-400 font-medium text-xs border border-green-500 px-2 py-1 rounded transition">Re-Approve</button>
+                                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-900 hover:text-green-700 font-medium text-xs border border-green-500 px-2 py-1 rounded transition">Re-Approve</button>
                                                 </td>
                                             </tr>
                                         ))}
