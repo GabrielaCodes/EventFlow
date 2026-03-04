@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
 
     // 2️⃣ Not logged in → go to login
-    // ✅ FIX: Redirect to /login instead of / (Landing Page)
+    // Redirect to /login 
     if (!user) {
         return <Navigate to="/login" replace />;
     }
@@ -90,3 +90,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 export default ProtectedRoute;
+
+/* Without ProtectedRoute, users could manually visit URLs like:
+
+/manager-dashboard
+/admin-panel
+/employee-dashboard
+
+and see pages meant for other roles.
+
+ProtectedRoute prevents that at the UI level.
+
+This is frontend protection, not real security. This component only prevents unauthorized UI navigation.
+*/

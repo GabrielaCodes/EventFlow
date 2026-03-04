@@ -40,7 +40,7 @@ export const getAnalytics = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 2. MANAGER: Assign Staff to Event (SECURED)
+// 2. MANAGER: Assign Staff to Event
 // --------------------------------------------------------
 export const assignStaff = async (req, res) => {
     try {
@@ -140,7 +140,7 @@ export const getAttendanceLogs = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 5. MANAGER: Propose Modification (SECURED)
+// 5. MANAGER: Propose Modification
 // --------------------------------------------------------
 export const createModificationRequest = async (req, res) => {
     try {
@@ -194,7 +194,7 @@ export const createModificationRequest = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 6. MANAGER: Get ALL Assigned Employees (BULLETPROOF SHARED POOL)
+// 6. MANAGER: Get ALL Assigned Employees
 // --------------------------------------------------------
 export const getManagedEmployees = async (req, res) => {
     try {
@@ -227,7 +227,7 @@ export const getManagedEmployees = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 7. MANAGER: Verify/Reject Employee (BULLETPROOF)
+// 7. MANAGER: Verify/Reject Employee
 // --------------------------------------------------------
 export const verifyEmployee = async (req, res) => {
     try {

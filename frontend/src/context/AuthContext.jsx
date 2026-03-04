@@ -1,3 +1,4 @@
+// provides login & logout
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/api';
 
@@ -23,7 +24,7 @@ export const AuthProvider = ({ children }) => {
       let existingProfile = null;
 
       while (attempts < 5 && !existingProfile) {
-          // ✅ MODIFIED: Fetch profile AND the category name
+          // Fetch profile AND the category name
           const { data, error } = await supabase
             .from('profiles')
             .select(`
@@ -123,3 +124,17 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+/* 
+AuthContext.jsx manages authentication state and actions in the frontend UI layer.
+
+It does three main things:
+
+Triggers login/logout actions
+
+Tracks the current authentication session
+
+Provides user/profile data to all React components
+
+However, the actual authentication is still done by Supabase, not by the UI.
+*/

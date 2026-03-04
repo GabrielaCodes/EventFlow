@@ -14,4 +14,14 @@ export const getProfile = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+}; /*
+Client request
+↓
+authenticate middleware
+↓
+authController.getProfile
+↓
+Supabase query
+↓
+JSON response
+*/

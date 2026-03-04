@@ -56,8 +56,7 @@ const DashboardRedirect = () => {
 const Layout = ({ children }) => {
     const location = useLocation();
     
-    // ✅ FIX: Only hide Navbar on Landing ('/') and Gallery. 
-    // We removed '/login' and '/register' from this list so the Global Navbar shows up there.
+    
     const hideNavbarPaths = ['/', '/gallery']; 
     
     const showNavbar = !hideNavbarPaths.includes(location.pathname);
