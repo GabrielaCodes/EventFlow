@@ -58,13 +58,13 @@ export const getAssignedEvents = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 3. CLIENT: Get My Events (✅ FIXED REAL LOGIC)
+// 3. CLIENT: Get My Events
 // --------------------------------------------------------
 export const getMyEvents = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // ✅ Query updated to join tables (fetch Names instead of just IDs)
+        // Query updated to join tables 
         const { data, error } = await supabase
             .from('events')
             .select(`
@@ -108,9 +108,6 @@ export const requestModification = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 6. CLIENT: Respond to Modification
-// --------------------------------------------------------
-// --------------------------------------------------------
 // 6. CLIENT: Respond to Modification (Accepted/Rejected)
 // --------------------------------------------------------
 export const respondToModification = async (req, res) => {
@@ -139,10 +136,10 @@ export const respondToModification = async (req, res) => {
             return res.status(200).json({ message: "Request rejected" });
         }
 
-        // 3. Handle Acceptance (Call the SQL Function)
+        // 3. Handle Acceptance (calls the "apply_modification" SQL Function)
+        // It atomically updates the event AND the request status
         if (action === 'accept') {
-            // This calls the "apply_modification" function you created in SQL
-            // It atomically updates the event AND the request status
+        
             const { error: rpcError } = await supabase.rpc('apply_modification', {
                 mod_id: modification_id
             });

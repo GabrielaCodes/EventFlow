@@ -1,3 +1,4 @@
+/* fetches the profile with id=req.user.id when endpoint profiles/ is hit ,it is an express router */
 import supabase from '../config/supabaseClient.js';
 
 export const getProfile = async (req, res) => {

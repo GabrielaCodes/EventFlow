@@ -22,9 +22,9 @@ const LandingPage = () => {
         <WeddingSection />
       </section>
       
-      <section id="theatre">
+      {/* <section id="theatre">
         <TheatreSection />
-      </section>
+      </section> */}
       
       <section id="graduation">
         <GraduationSection />

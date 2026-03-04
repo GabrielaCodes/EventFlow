@@ -43,6 +43,8 @@ export const getMyRequests = async (req, res) => {
 };
 
 // 3. Fetch Requests (Supports 'pending' or 'history')
+/* Return requests from all managers, filtered by status depending on the view.
+This is intended for the chief coordinator dashboard. */
 export const getCoordinatorRequests = async (req, res) => {
     try {
         const { view } = req.query; // 'pending' or 'history'

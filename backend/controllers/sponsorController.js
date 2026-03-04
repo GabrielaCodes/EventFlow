@@ -2,7 +2,7 @@ import supabase from '../config/supabaseClient.js';
 
 /* ============================================================
    1. MANAGER: List Available Sponsors
-   (Global list is fine, as sponsors work across categories)
+   (Global list since sponsors work accross categories)
 ============================================================ */
 export const getSponsorsList = async (req, res) => {
     try {
@@ -61,7 +61,7 @@ export const sendSponsorshipRequest = async (req, res) => {
                 return res.status(400).json({ error: "Event and Sponsor are required." });
             }
 
-            // 🛑 SECURITY CHECK: Does Manager own this Event's Category?
+            // SECURITY CHECK: Does Manager own this Event's Category?
             // 1. Get Event's Category
             const { data: eventData, error: eventError } = await supabase
                 .from('events')
@@ -85,7 +85,7 @@ export const sendSponsorshipRequest = async (req, res) => {
                 return res.status(403).json({ error: "⛔ You are not assigned to this event's category." });
             }
 
-            // ✅ Proceed with Insert
+            // Proceed with Insert
             const { data, error } = await supabase
                 .from('sponsorships')
                 .insert([{
@@ -104,7 +104,7 @@ export const sendSponsorshipRequest = async (req, res) => {
             res.status(201).json(data[0]);
         }
     } catch (err) {
-        console.error("🔥 Error in sendSponsorshipRequest:", err.message);
+        console.error(" Error in sendSponsorshipRequest:", err.message);
         res.status(500).json({ error: err.message });
     }
 };
@@ -165,7 +165,6 @@ export const respondToSponsorship = async (req, res) => {
 
 /* ============================================================
    5. MANAGER: View Sent Requests (History)
-   ✅ FIXED: Only shows requests for Manager's Assigned Category
 ============================================================ */
 export const getManagerRequests = async (req, res) => {
     try {

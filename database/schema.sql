@@ -10,7 +10,6 @@ DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('client', 'manager', 'employee', 'sponsor', 'chief_coordinator');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'chief_coordinator';
 
 DO $$ BEGIN
   CREATE TYPE event_status AS ENUM ('consideration', 'in_progress', 'completed', 'cancelled');
@@ -214,7 +213,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 4.2 SECURITY "BLACK BOX" HELPER FUNCTIONS (✅ Prevents infinite RLS recursion)
+-- 4.2 SECURITY "BLACK BOX" HELPER FUNCTIONS (Prevents infinite RLS recursion)
 CREATE OR REPLACE FUNCTION public.can_manager_view_event_data(p_event_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -282,13 +281,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-DROP TRIGGER IF EXISTS trigger_auto_assign_event ON public.events;
+
 CREATE TRIGGER trigger_auto_assign_event
 BEFORE INSERT ON public.events
 FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_event_to_manager();
 
 
--- 4.4 USER SIGNUP HANDLER (✅ Updated for Shared Employee Pool)
+-- 4.4 USER SIGNUP HANDLER 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -324,10 +323,11 @@ EXCEPTION WHEN OTHERS THEN RAISE LOG 'Error in handle_new_user(): %', SQLERRM; R
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 4.5 UPDATED_AT TRIGGER
+-- Automatically sets updated_at to the current timestamp
+-- whenever a row in public.events is updated.
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -364,7 +364,6 @@ FROM public.events WHERE created_at >= NOW() - INTERVAL '12 months' GROUP BY 1 O
 CREATE OR REPLACE VIEW public.analytics_status_distribution AS
 SELECT status, COUNT(id) AS count FROM public.events GROUP BY status;
 
--- ✅ FIXED: Removed is_chief_coordinator() and added explicit enum casting
 CREATE OR REPLACE VIEW public.view_coordinator_pending_actions AS
 SELECT 
     id, 
@@ -389,7 +388,7 @@ WHERE
   AND (status = 'consideration' OR venue_id IS NULL)
 ORDER BY event_date ASC;
 
--- ✅ FIXED: Removed is_chief_coordinator() and added explicit enum casting
+
 CREATE OR REPLACE VIEW public.view_coordinator_recent_alerts AS
 SELECT 
     id, 
@@ -418,23 +417,15 @@ ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.master_data_requests ENABLE ROW LEVEL SECURITY;
 
 -- --- PROFILES ---
-DROP POLICY IF EXISTS "Public profiles access" ON public.profiles;
 CREATE POLICY "Public profiles access" ON public.profiles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 CREATE POLICY "Coordinator manage all" ON public.profiles FOR ALL TO authenticated USING (is_chief_coordinator());
 
--- --- MANAGER ASSIGNMENTS (✅ Fix for backend reads) ---
-DROP POLICY IF EXISTS "Public read manager assignments" ON public.manager_category_assignments;
+-- --- MANAGER ASSIGNMENTS ---
 CREATE POLICY "Public read manager assignments" ON public.manager_category_assignments FOR SELECT TO authenticated USING (true);
 
--- --- EVENTS (✅ Client Lockout + Manager Scope) ---
-DROP POLICY IF EXISTS "Clients view own events" ON public.events;
-DROP POLICY IF EXISTS "Clients create events" ON public.events;
-DROP POLICY IF EXISTS "Clients update own events" ON public.events;
-DROP POLICY IF EXISTS "Managers view category events" ON public.events;
-DROP POLICY IF EXISTS "Managers update assigned events" ON public.events;
-
+-- --- EVENTS (Client Lockout + Manager Scope) ---
 CREATE POLICY "Clients view own events" ON public.events FOR SELECT TO authenticated USING (client_id = auth.uid());
 CREATE POLICY "Clients create events" ON public.events FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid());
 CREATE POLICY "Clients update own events" ON public.events FOR UPDATE TO authenticated USING (client_id = auth.uid() AND status = 'consideration' AND assigned_manager_id IS NULL);
@@ -453,35 +444,22 @@ CREATE POLICY "Coord manage categories" ON public.event_categories FOR ALL TO au
 CREATE POLICY "Coord manage subtypes" ON public.event_subtypes FOR ALL TO authenticated USING (is_chief_coordinator());
 CREATE POLICY "Coord manage venues" ON public.venues FOR ALL TO authenticated USING (is_chief_coordinator());
 
--- --- MODIFICATION REQUESTS (✅ Uses Black Box functions) ---
-DROP POLICY IF EXISTS "Managers view category modifications" ON public.modification_requests;
+-- --- MODIFICATION REQUESTS---
 CREATE POLICY "Managers view category modifications" ON public.modification_requests FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
-
-DROP POLICY IF EXISTS "Assigned managers create modifications" ON public.modification_requests;
 CREATE POLICY "Assigned managers create modifications" ON public.modification_requests FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
 
--- --- SPONSORSHIPS (✅ Uses Black Box functions) ---
-DROP POLICY IF EXISTS "Sponsors view own requests" ON public.sponsorships;
+-- --- SPONSORSHIPS---
 CREATE POLICY "Sponsors view own requests" ON public.sponsorships FOR SELECT TO authenticated USING (sponsor_id = auth.uid());
 CREATE POLICY "Sponsors update own requests" ON public.sponsorships FOR UPDATE TO authenticated USING (sponsor_id = auth.uid());
-
-DROP POLICY IF EXISTS "Managers view category sponsorships" ON public.sponsorships;
 CREATE POLICY "Managers view category sponsorships" ON public.sponsorships FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
-
-DROP POLICY IF EXISTS "Managers create sponsorships" ON public.sponsorships;
 CREATE POLICY "Managers create sponsorships" ON public.sponsorships FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
-
-DROP POLICY IF EXISTS "Managers update sponsorships" ON public.sponsorships;
 CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE TO authenticated USING (public.can_manager_edit_event_data(event_id));
 
--- --- ASSIGNMENTS & ATTENDANCE (✅ Uses Black Box functions) ---
-DROP POLICY IF EXISTS "Managers view category assignments" ON public.assignments;
+-- --- ASSIGNMENTS & ATTENDANCE---
 CREATE POLICY "Managers view category assignments" ON public.assignments FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
 
-DROP POLICY IF EXISTS "Managers create assignments" ON public.assignments;
 CREATE POLICY "Managers create assignments" ON public.assignments FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
 
-DROP POLICY IF EXISTS "Managers view category attendance" ON public.attendance;
 CREATE POLICY "Managers view category attendance" ON public.attendance FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
 
 -- --- MASTER DATA REQUESTS ---

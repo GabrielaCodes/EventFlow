@@ -6,7 +6,7 @@ import { sendEmployeeApprovalEmail } from '../services/emailService.js';
 // --------------------------------------------------------
 export const getAnalytics = async (req, res) => {
     try {
-        // 1. Use your existing SQL View for the overview stats!
+        // 1. Use existing SQL View for the overview stats
         const { data: overview, error: overviewError } = await supabase
             .from('analytics_overview')
             .select('*')
@@ -14,7 +14,7 @@ export const getAnalytics = async (req, res) => {
             
         if (overviewError) throw overviewError;
 
-        // 2. Use your existing SQL View for category performance to get the top category
+        // 2. Use existing SQL View for category performance to get the top category
         const { data: performance, error: perfError } = await supabase
             .from('analytics_category_performance')
             .select('*')
@@ -86,7 +86,7 @@ export const assignStaff = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 3. MANAGER: Update Event Status (SECURED)
+// 3. MANAGER: Update Event Status
 // --------------------------------------------------------
 export const updateEventStatus = async (req, res) => {
     try {
@@ -286,7 +286,7 @@ export const verifyEmployee = async (req, res) => {
 };
 
 // --------------------------------------------------------
-// 8. MANAGER: Approve Event (Accept As-Is) (SECURED)
+// 8. MANAGER: Approve Event (Accept As-Is)
 // --------------------------------------------------------
 export const approveEvent = async (req, res) => {
     try {
@@ -374,7 +374,7 @@ export const getPendingEmployees = async (req, res) => {
             .select('id, full_name, email, created_at')
             .eq('role', 'employee')
             .eq('verification_status', 'pending')
-            .eq('category_id', managerProfile.category_id); // ✅ Direct Match
+            .eq('category_id', managerProfile.category_id); // Direct Match
 
         if (error) throw error;
         res.json(data || []);
