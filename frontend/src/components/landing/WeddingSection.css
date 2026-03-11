@@ -8,17 +8,18 @@
 .wedding-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 1rem;
   width: 100%;
-  height: 100%;
-  max-height: 80vh;
+  height: calc(100vh - 9rem);
+  min-height: 0;
 }
 
 /* ===== FLIP CARD WRAPPER ===== */
 .flip-card-wrapper {
   width: 100%;
   height: 100%;
-  max-height: 38vh;
+  min-height: 0;
   perspective: 1200px;
 }
 
@@ -28,7 +29,7 @@
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.75s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  transition: transform 1.4s cubic-bezier(0.4, 0.0, 0.2, 1.0);
   border-radius: 12px;
   cursor: pointer;
 }
@@ -59,23 +60,19 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  /* Preserve the original 736×552 ratio while filling the card */
   object-position: center center;
+  display: block;
 }
 
 .flip-card-front-overlay {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 1rem 1rem 0.9rem;
-  background: linear-gradient(transparent, rgba(0,0,0,0.72));
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
 }
 
 .flip-card-wrapper:hover .flip-card-front-overlay {
@@ -84,11 +81,16 @@
 
 .flip-hint {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 0.9rem;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
   font-style: italic;
-  letter-spacing: 0.14em;
-  color: rgba(255, 220, 130, 0.92);
+  letter-spacing: 0.18em;
+  color: rgba(255, 220, 130, 0.95);
   text-align: center;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid rgba(231, 201, 111, 0.4);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
 }
 
 /* ===== BACK FACE ===== */
@@ -98,14 +100,14 @@
   border: 1px solid rgba(231, 201, 111, 0.25);
   box-shadow:
     inset 0 0 60px rgba(231, 201, 111, 0.04),
-    0 0 30px rgba(0,0,0,0.6);
+    0 0 30px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.4rem 1.6rem;
+  padding: 1.4rem 1.8rem;
+  overflow: hidden;
 }
 
-/* corner accents */
 .flip-card-back::before,
 .flip-card-back::after {
   content: '';
@@ -130,24 +132,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   width: 100%;
+  height: 100%;
 }
 
 .flip-card-ornament {
-  font-size: 1.1rem;
-  color: rgba(231, 201, 111, 0.6);
+  font-size: 1.3rem;
+  color: rgba(231, 201, 111, 0.85);
   line-height: 1;
+  font-family: 'Georgia', serif;
+  /* ❧ is a text glyph — ensure it renders */
+  font-style: normal;
 }
 
 .flip-card-ornament-bottom {
-  font-size: 0.7rem;
-  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: rgba(231, 201, 111, 0.7);
+  margin-top: 0.1rem;
 }
 
 .flip-card-couple {
   font-family: 'Cinzel', serif;
-  font-size: clamp(1.1rem, 1.8vw, 1.55rem);
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
   font-weight: 600;
   letter-spacing: 0.1em;
   margin: 0;
@@ -160,8 +168,8 @@
 .flip-card-divider {
   width: 50%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(231,201,111,0.5), transparent);
-  margin: 0.1rem 0;
+  background: linear-gradient(90deg, transparent, rgba(231, 201, 111, 0.5), transparent);
+  margin: 0.05rem 0;
 }
 
 .flip-card-meta {
@@ -177,7 +185,7 @@
   justify-content: center;
   align-items: baseline;
   gap: 0.4rem;
-  font-size: clamp(0.82rem, 1.2vw, 1rem);
+  font-size: clamp(0.78rem, 1.1vw, 0.95rem);
 }
 
 .meta-label {
@@ -196,10 +204,10 @@
 }
 
 .flip-card-experience {
-  margin: 0.2rem 0 0;
+  margin: 0.1rem 0 0;
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(0.82rem, 1.15vw, 1rem);
-  line-height: 1.6;
+  font-size: clamp(0.75rem, 1.05vw, 0.9rem);
+  line-height: 1.5;
   color: rgba(220, 205, 170, 0.82);
   font-style: italic;
   text-align: center;
@@ -215,18 +223,18 @@
 
   .wedding-section h2 {
     font-size: 2rem !important;
-    margin-bottom: 2rem !important;
+    margin-bottom: 1.5rem !important;
   }
 
   .wedding-grid {
     grid-template-columns: 1fr !important;
+    grid-template-rows: none !important;
+    height: auto !important;
     gap: 1rem !important;
-    max-height: none !important;
   }
 
   .flip-card-wrapper {
-    max-height: 300px;
-    height: 300px;
+    height: 280px;
   }
 
   .flip-card-back {
@@ -234,7 +242,7 @@
   }
 
   .flip-card-experience {
-    font-size: 0.88rem;
+    font-size: 0.95rem;
   }
 }
 

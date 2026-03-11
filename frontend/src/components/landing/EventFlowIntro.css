@@ -1,97 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+
 .eventflow-intro-container {
-  /* Define the height of a single line of text */
-  --item-height: 3.5rem; 
+  --item-height: 3.5rem;
 
   height: 100vh;
   width: 100%;
   background-color: #000000;
-  color: #e7c96f; 
-  font-family: 'Playfair Display', 'Georgia', serif;
-  
+  color: #e7c96f;
+
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
 }
 
-/* New 2-Column Wrapper Layout */
+/* ================================
+   WRAPPER LAYOUT
+================================ */
+
 .intro-wrapper {
   display: flex;
   align-items: center;
-  justify-content: flex-start; /* Anchors the logo to the left */
-  gap: 5rem; /* Generous spacing between the tall logo and the text */
+  justify-content: flex-start;
+  gap: 5rem;
   width: 100%;
   max-width: 1200px;
   padding: 0 2rem;
 }
 
-/* ==================================
-   THE LOGO STYLING (PORTRAIT OPTIMIZED)
-================================== */
+/* ================================
+   LOGO
+================================ */
+
 .logo-container {
   flex: 0 0 auto;
 }
 
 .intro-logo {
-  /* ===== SIZE CONTROL ===== */
-
-  /* 🔧 Make logo slightly wider (increase values slowly) */
-  height: clamp(520px, 62vh, 680px); 
-  /* try: clamp(540px, 65vh, 700px) */
-
-  width: auto; /* keep auto to avoid distortion */
+  height: clamp(520px, 62vh, 680px);
+  width: auto;
 
   object-fit: contain;
   display: block;
 
-  /* ===== MOVE DOWNWARD ===== */
+  margin-top: 100px;
 
-  /* 🔧 Push logo lower */
-  margin-top: 100px; 
-  /* try: 70px / 90px */
-
-  /* Alternative smoother shift (use instead of margin-top if needed) */
-  /* transform: translateY(50px); */ /* try 70px */
-
-  /* ===== VISUAL WIDTH (without stretching height) ===== */
-
-  /* 🔧 Subtle widen effect */
-  /* transform: scaleX(1.06); */ 
-  /* try: 1.08 max (avoid >1.1 or it looks fake) */
-
-  /* ===== CLEAN LOOK ===== */
   filter: none;
   box-shadow: none;
+
+  transform: translateZ(0);
 }
 
-/* ==================================
-   TEXT & SCROLLER STYLING
-================================== */
+/* ================================
+   TEXT WRAPPER
+================================ */
+
+.text-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  gap: 0.6rem;
+}
+
+/* ================================
+   TICKER
+================================ */
+
 .ticker-container {
   display: flex;
-  align-items: center; 
-  font-size: clamp(1.5rem, 3vw, 2.5rem); /* Slightly larger, elegant text */
+  align-items: center;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
   font-weight: 300;
-  gap: 1.5rem; 
-  flex: 1; /* Takes up the remaining space on the right */
+  gap: 1.5rem;
 }
 
+/* "We craft:" */
+
 .static-text {
-  opacity: 0.8;
-  white-space: nowrap; 
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
+/* ================================
+   SCROLLER WINDOW
+================================ */
+
 .scroller-window {
-  height: calc(var(--item-height) * 3); 
+  height: calc(var(--item-height) * 3);
   overflow: hidden;
   position: relative;
-  min-width: 350px; 
+  min-width: 350px;
   width: 100%;
-  
-  /* Creates the faded "cylinder/roll" depth effect */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 35%,
+    black 65%,
+    transparent 100%
+  );
+
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 35%,
+    black 65%,
+    transparent 100%
+  );
+
+  isolation: isolate;
 }
 
 .scrolling-list {
@@ -102,61 +126,94 @@
 }
 
 .scrolling-list li {
-  height: var(--item-height); 
+  height: var(--item-height);
   display: flex;
   align-items: center;
-  white-space: nowrap; 
-  
+  white-space: nowrap;
+
   background: linear-gradient(135deg, #FFFACD, #e7c96f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  /* Text still has a soft glow, but the image does not */
-  text-shadow: 0 0 20px rgba(255, 215, 150, 0.2); 
+
+  text-shadow: 0 0 20px rgba(255, 215, 150, 0.2);
 }
 
-/* THE ANIMATION MATH */
+/* ================================
+   SCROLL CTA
+================================ */
+
+.scroll-cta {
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  color: #e7c96f;
+
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+
+  opacity: 0.7;
+  padding-left: 0.2rem;
+
+  animation: gentlePulse 3s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* ================================
+   ROLL ANIMATION
+================================ */
+
 @keyframes rollCylinder {
-  0%, 12%   { transform: translateY(0); }                                    
-  20%, 32%  { transform: translateY(calc(var(--item-height) * -1)); }        
-  40%, 52%  { transform: translateY(calc(var(--item-height) * -2)); }        
-  60%, 72%  { transform: translateY(calc(var(--item-height) * -3)); }        
-  80%, 92%  { transform: translateY(calc(var(--item-height) * -4)); }        
-  100%      { transform: translateY(calc(var(--item-height) * -5)); }        
+  0%, 12%   { transform: translateY(0); }
+  20%, 32%  { transform: translateY(calc(var(--item-height) * -1)); }
+  40%, 52%  { transform: translateY(calc(var(--item-height) * -2)); }
+  60%, 72%  { transform: translateY(calc(var(--item-height) * -3)); }
+  80%, 92%  { transform: translateY(calc(var(--item-height) * -4)); }
+  100%      { transform: translateY(calc(var(--item-height) * -5)); }
 }
 
-/* Mobile & Tablet adjustments */
+/* ================================
+   MOBILE
+================================ */
+
 @media (max-width: 992px) {
+
   .intro-wrapper {
-    flex-direction: column; /* Stacks logo on top of text for smaller screens */
+    flex-direction: column;
     justify-content: center;
     gap: 2rem;
   }
-  
+
   .intro-logo {
-    height: clamp(200px, 40vh, 350px); /* Smaller logo on mobile */
+    height: clamp(200px, 40vh, 350px);
+    margin-top: 0;
+  }
+
+  .text-wrapper {
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
   }
 
   .ticker-container {
     flex-direction: column;
-    text-align: center;
     gap: 1rem;
   }
-  
+
   .scroller-window {
     min-width: 100%;
     display: flex;
     justify-content: center;
   }
-  
+
   .scrolling-list li {
     justify-content: center;
   }
-}
-/*Logo is grey*/
-.intro-logo {
-  transform: translateZ(0);
-}
 
-.scroller-window {
-  isolation: isolate;
+  .scroll-cta {
+    padding-left: 0;
+  }
 }

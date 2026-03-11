@@ -408,7 +408,7 @@ const WeddingSection = () => {
         }}
       />
 
-      <div style={{ maxWidth: '1200px', width: '100%', height: '100%', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ maxWidth: '1200px', width: '100%', height: '100%', minHeight: 0, position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
 
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
@@ -431,7 +431,7 @@ const WeddingSection = () => {
           ETERNAL UNIONS
         </motion.h2>
 
-        <div style={{ position: 'relative', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flexGrow: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
           <div className="wedding-grid">
             {images.map((src, index) => {
               const timing = imageTimings[index];
@@ -464,7 +464,7 @@ const WeddingSection = () => {
                     {/* BACK */}
                     <div className="flip-card-back">
                       <div className="flip-card-back-content">
-                        <div className="flip-card-ornament">❧</div>
+                        <div className="flip-card-ornament">&#10087;</div>
                         <h3 className="flip-card-couple">{data.couple}</h3>
                         <div className="flip-card-divider" />
                         <div className="flip-card-meta">
