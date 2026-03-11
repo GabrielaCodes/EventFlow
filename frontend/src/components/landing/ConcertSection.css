@@ -1,27 +1,31 @@
 /* Overrides the global button rule in theme.css */
 button.concert-nav-btn {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  border-radius: 50% !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  color: #ffffff !important;
-  padding: 0 !important;
+  height: 38px;
+  min-width: 64px;
+  border-radius: 999px !important;
+  border: none !important;
+  background: #1ed760 !important;
+  color: #000000 !important;
+  padding: 0 18px !important;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   cursor: pointer;
   flex-shrink: 0;
-  backdrop-filter: blur(10px);
-  transition: background 0.2s ease, border-color 0.2s ease;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 14px rgba(30, 215, 96, 0.35);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 button.concert-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border-color: rgba(255, 255, 255, 1) !important;
+  background: #23f26a !important;
+  box-shadow: 0 6px 20px rgba(30, 215, 96, 0.55) !important;
 }
 
 button.concert-nav-btn:active {
-  transform: scale(0.93);
+  transform: scale(0.96);
+  background: #17b84e !important;
 }

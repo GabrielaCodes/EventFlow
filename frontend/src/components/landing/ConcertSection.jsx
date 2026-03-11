@@ -218,18 +218,10 @@ const NavButton = ({ direction, onClick }) => (
   <motion.button
     className="concert-nav-btn"
     onClick={onClick}
-    whileHover={{ scale: 1.1 }}
-    whileTap={{ scale: 0.93 }}
+    whileHover={{ scale: 1.04 }}
+    whileTap={{ scale: 0.96 }}
   >
-    {direction === "prev" ? (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
-    ) : (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
-    )}
+    {direction === "prev" ? <span>|◁</span> : <span>▷|</span>}
   </motion.button>
 );
 
