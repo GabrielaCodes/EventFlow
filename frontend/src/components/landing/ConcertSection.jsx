@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import './ConcertSection.css';
 
 import img1 from "../../assets/concerts/1.jpg";
 import img2 from "../../assets/concerts/2.jpg";
@@ -35,11 +36,20 @@ const concertEvents = [
     title: "Amplify Arena Night",
     subtitle: "Sound louder than the moment",
     expanded: "We built a stadium-grade concert experience with precision acoustics and immersive visuals, delivering a night where every drop hit harder than the last."
+  },
+  {
+    id: 5,
+    src: img5,
+    title: "Crimson Stage Sessions",
+    subtitle: "Raw energy. Unfiltered nights.",
+    expanded: "EventFlow curated an intimate stage takeover where the crowd and performers dissolved into one — no barriers, no scripts, just pure electric connection."
   }
 ];
 
-// Reusable Glass Card Component
-const ConcertCard = ({ event }) => {
+// How many cards visible at once
+const VISIBLE = 4;
+
+const ConcertCard = ({ event, isActive }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -47,34 +57,30 @@ const ConcertCard = ({ event }) => {
     <motion.div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      whileHover={{ 
-        y: -5,
-        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)",
-        boxShadow: "0 12px 40px 0 rgba(0, 0, 0, 0.6)"
+      whileHover={{
+        y: -6,
+        boxShadow: "0 20px 50px 0 rgba(0,0,0,0.7)"
       }}
       style={{
-        /* PREMIUM GLASSMORPHISM SETTINGS */
-        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.005) 100%)",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)",
         backdropFilter: "blur(20px) saturate(160%)",
-        WebkitBackdropFilter: "blur(20px) saturate(160%)", /* Safari support */
-        
-        /* Edge Lighting (Top/Left brighter, Bottom/Right darker) */
-        borderTop: "1px solid rgba(255, 255, 255, 0.12)",
-        borderLeft: "1px solid rgba(255, 255, 255, 0.12)",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.02)",
-        borderRight: "1px solid rgba(255, 255, 255, 0.02)",
-        
-        boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(160%)",
+        borderTop: "1px solid rgba(255,255,255,0.12)",
+        borderLeft: "1px solid rgba(255,255,255,0.12)",
+        borderBottom: "1px solid rgba(255,255,255,0.02)",
+        borderRight: "1px solid rgba(255,255,255,0.02)",
+        boxShadow: "0 8px 32px 0 rgba(0,0,0,0.4)",
         borderRadius: "16px",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
         gap: "16px",
         cursor: "pointer",
-        transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
+        minWidth: 0,
+        flex: "0 0 auto",
       }}
     >
-      {/* Top Image / Description Area */}
+      {/* Image / Description area */}
       <div
         style={{
           position: "relative",
@@ -82,7 +88,7 @@ const ConcertCard = ({ event }) => {
           aspectRatio: "1 / 1",
           borderRadius: "10px",
           overflow: "hidden",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", // Inner rim for the image
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
           background: "#0a0a0a"
         }}
       >
@@ -96,12 +102,7 @@ const ConcertCard = ({ event }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
             <motion.div
@@ -120,33 +121,31 @@ const ConcertCard = ({ event }) => {
                 backdropFilter: "blur(10px)"
               }}
             >
-              <p
-                style={{
-                  color: "#e5e5e5",
-                  fontSize: "1rem",
-                  lineHeight: "1.6",
-                  margin: 0,
-                  fontFamily: "'Playfair Display', 'Georgia', serif",
-                  fontWeight: 300,
-                  letterSpacing: "0.02em"
-                }}
-              >
+              <p style={{
+                color: "#e5e5e5",
+                fontSize: "1rem",
+                lineHeight: "1.6",
+                margin: 0,
+                fontFamily: "'Playfair Display', 'Georgia', serif",
+                fontWeight: 300,
+                letterSpacing: "0.02em"
+              }}>
                 {event.expanded}
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Spotify-style Action Button */}
+        {/* Play / Close button */}
         <motion.button
           onClick={(e) => {
             e.stopPropagation();
             setIsExpanded(!isExpanded);
           }}
           initial={{ opacity: 0, y: 10 }}
-          animate={{ 
-            opacity: isHovered || isExpanded ? 1 : 0, 
-            y: isHovered || isExpanded ? 0 : 10 
+          animate={{
+            opacity: isHovered || isExpanded ? 1 : 0,
+            y: isHovered || isExpanded ? 0 : 10
           }}
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
@@ -156,9 +155,9 @@ const ConcertCard = ({ event }) => {
             right: "12px",
             width: "48px",
             height: "48px",
-            padding: 0, // <--- ADD THIS LINE HERE
+            padding: 0,
             borderRadius: "50%",
-            background: isExpanded ? "#ffffff" : "#1ed760", 
+            background: isExpanded ? "#ffffff" : "#1ed760",
             color: "#000000",
             border: "none",
             display: "flex",
@@ -170,48 +169,43 @@ const ConcertCard = ({ event }) => {
           }}
         >
           {isExpanded ? (
-            // Close / Back Icon
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
             </svg>
           ) : (
-            // Play Icon
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style={{ marginLeft: "4px" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style={{ marginLeft: "3px" }}>
               <path d="M8 5.14v14l11-7-11-7z" />
             </svg>
           )}
         </motion.button>
       </div>
 
-      {/* Bottom Text Area */}
+      {/* Title + subtitle */}
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "0 4px" }}>
-        <h3
-          style={{
-            margin: 0,
-            color: "#ffffff",
-            fontSize: "1.1rem",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            letterSpacing: "-0.01em"
-          }}
-        >
+        <h3 style={{
+          margin: 0,
+          color: "#ffffff",
+          fontSize: "1.05rem",
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          fontFamily: "'Playfair Display', Georgia, serif",
+          letterSpacing: "0.01em"
+        }}>
           {event.title}
         </h3>
-        <p
-          style={{
-            margin: 0,
-            color: "#a7a7a7",
-            fontSize: "0.875rem",
-            fontWeight: 400,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "system-ui, -apple-system, sans-serif"
-          }}
-        >
+        <p style={{
+          margin: 0,
+          color: "#a7a7a7",
+          fontSize: "0.825rem",
+          fontWeight: 400,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontStyle: "italic"
+        }}>
           {event.subtitle}
         </p>
       </div>
@@ -219,7 +213,47 @@ const ConcertCard = ({ event }) => {
   );
 };
 
+// Nav button
+const NavButton = ({ direction, onClick }) => (
+  <motion.button
+    className="concert-nav-btn"
+    onClick={onClick}
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.93 }}
+  >
+    {direction === "prev" ? (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    )}
+  </motion.button>
+);
+
 const ConcertSection = () => {
+  const total = concertEvents.length;
+  // offset = index of leftmost visible card
+  const [offset, setOffset] = useState(0);
+  const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
+
+  const goNext = () => {
+    setDirection(1);
+    setOffset((prev) => (prev + 1) % total);
+  };
+
+  const goPrev = () => {
+    setDirection(-1);
+    setOffset((prev) => (prev - 1 + total) % total);
+  };
+
+  // Build the visible window of cards (wraps infinitely)
+  const visibleCards = Array.from({ length: VISIBLE }, (_, i) =>
+    concertEvents[(offset + i) % total]
+  );
+
   return (
     <section
       style={{
@@ -235,46 +269,132 @@ const ConcertSection = () => {
         overflow: "hidden",
       }}
     >
-      {/* Very faint ambient light behind the cards to make the glass effect visible */}
-      <div 
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "60vw",
-          height: "60vh",
-          background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
-          filter: "blur(60px)",
-          pointerEvents: "none",
-          zIndex: 0
-        }}
-      />
+      {/* Ambient glow */}
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "60vw",
+        height: "60vh",
+        background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
+        filter: "blur(60px)",
+        pointerEvents: "none",
+        zIndex: 0
+      }} />
 
       <div style={{ width: "100%", maxWidth: "1200px", position: "relative", zIndex: 1 }}>
-        <h2 style={{ 
-          color: "#fff", 
-          fontSize: "2.5rem", 
-          fontWeight: 700, 
-          marginBottom: "3rem",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          paddingLeft: "8px",
-          letterSpacing: "-0.02em"
-        }}>
-          Live Experiences
-        </h2>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "24px",
-            width: "100%",
-          }}
-        >
-          {concertEvents.map((event) => (
-            <ConcertCard key={event.id} event={event} />
-          ))}
+        {/* Header row: title + nav buttons */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "2.5rem",
+          paddingLeft: "4px",
+        }}>
+          <h2 style={{
+            color: "#fff",
+            fontSize: "2.5rem",
+            fontWeight: 700,
+            margin: 0,
+            fontFamily: "'Playfair Display', Georgia, serif",
+            letterSpacing: "-0.01em"
+          }}>
+            Live Experiences
+          </h2>
+
+          {/* Prev / Next + dot indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* Dot indicators */}
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              {concertEvents.map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{
+                    width: i === offset ? 20 : 6,
+                    background: i === offset ? "#1ed760" : "rgba(255,255,255,0.25)"
+                  }}
+                  transition={{ duration: 0.3 }}
+                  style={{
+                    height: "6px",
+                    borderRadius: "3px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setDirection(i > offset ? 1 : -1);
+                    setOffset(i);
+                  }}
+                />
+              ))}
+            </div>
+            <NavButton direction="prev" onClick={goPrev} />
+            <NavButton direction="next" onClick={goNext} />
+          </div>
+        </div>
+
+        {/* Carousel viewport */}
+        <div style={{ overflow: "hidden", width: "100%" }}>
+          <AnimatePresence mode="popLayout" custom={direction}>
+            <motion.div
+              key={offset}
+              custom={direction}
+              variants={{
+                enter: (dir) => ({
+                  x: dir > 0 ? "25%" : "-25%",
+                  opacity: 0,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                },
+                exit: (dir) => ({
+                  x: dir > 0 ? "-25%" : "25%",
+                  opacity: 0,
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 280, damping: 32 },
+                opacity: { duration: 0.25 }
+              }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${VISIBLE}, 1fr)`,
+                gap: "24px",
+                width: "100%",
+              }}
+            >
+              {visibleCards.map((event, i) => (
+                <ConcertCard key={`${event.id}-${offset}-${i}`} event={event} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Track label */}
+        <div style={{
+          marginTop: "2rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          opacity: 0.45,
+          paddingLeft: "4px",
+        }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">
+            <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
+          </svg>
+          <span style={{
+            color: "#fff",
+            fontSize: "0.75rem",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase"
+          }}>
+            {offset + 1} of {total} &nbsp;·&nbsp; Scroll to explore
+          </span>
         </div>
       </div>
     </section>
