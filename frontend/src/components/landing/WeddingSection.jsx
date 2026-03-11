@@ -384,16 +384,16 @@ const WeddingSection = () => {
       ref={sectionRef}
       className="wedding-section"
       style={{
-        height: '100vh',
         width: '100vw',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: '3rem 1.5rem',
         position: 'relative',
         overflow: 'hidden',
         background: '#000000',
+        minHeight: '100vh',
       }}
     >
       <canvas
@@ -408,7 +408,7 @@ const WeddingSection = () => {
         }}
       />
 
-      <div style={{ maxWidth: '1200px', width: '100%', height: '100%', minHeight: 0, position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ maxWidth: '1200px', width: '100%', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
 
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
@@ -417,7 +417,7 @@ const WeddingSection = () => {
           style={{
             textAlign: 'center',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
-            marginBottom: '2vh',
+            marginBottom: '1.5rem',
             marginTop: '0',
             fontWeight: '300',
             letterSpacing: '0.15em',
@@ -431,8 +431,7 @@ const WeddingSection = () => {
           ETERNAL UNIONS
         </motion.h2>
 
-        <div style={{ position: 'relative', flexGrow: 1, minHeight: 0, display: 'flex', alignItems: 'stretch' }}>
-          <div className="wedding-grid">
+        <div className="wedding-grid">
             {images.map((src, index) => {
               const timing = imageTimings[index];
               const data = cardData[index];
@@ -480,7 +479,6 @@ const WeddingSection = () => {
               );
             })}
           </div>
-        </div>
       </div>
     </section>
   );
