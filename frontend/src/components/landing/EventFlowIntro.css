@@ -1,18 +1,85 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap');
+
+/* ================================
+   ROOT & CONTAINER
+================================ */
 
 .eventflow-intro-container {
   --item-height: 3.5rem;
+  --gold: #e7c96f;
+  --gold-bright: #FFFACD;
+  --gold-dim: rgba(231, 201, 111, 0.45);
+  --gold-glow: rgba(231, 201, 111, 0.12);
 
   height: 100vh;
   width: 100%;
   background-color: #000000;
-  color: #e7c96f;
+  color: var(--gold);
   font-family: 'Cormorant Garamond', 'Georgia', serif;
-
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  position: relative;
+}
+
+/* ================================
+   BACKGROUND ATMOSPHERE
+================================ */
+
+/* Radial glow — left-center, behind logo */
+.eventflow-intro-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 18%;
+  transform: translate(-50%, -50%);
+  width: 55vw;
+  height: 80vh;
+  background: radial-gradient(ellipse at center,
+    rgba(231, 201, 111, 0.07) 0%,
+    rgba(231, 201, 111, 0.03) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle horizontal grain overlay */
+.eventflow-intro-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ================================
+   DECORATIVE CORNER RULES
+================================ */
+
+.intro-corner {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-color: rgba(231, 201, 111, 0.3);
+  border-style: solid;
+  z-index: 2;
+  animation: cornerFadeIn 2s ease forwards;
+  opacity: 0;
+}
+
+.intro-corner--tl { top: 28px; left: 28px; border-width: 1px 0 0 1px; animation-delay: 0.4s; }
+.intro-corner--tr { top: 28px; right: 28px; border-width: 1px 1px 0 0; animation-delay: 0.55s; }
+.intro-corner--bl { bottom: 28px; left: 28px; border-width: 0 0 1px 1px; animation-delay: 0.7s; }
+.intro-corner--br { bottom: 28px; right: 28px; border-width: 0 1px 1px 0; animation-delay: 0.85s; }
+
+@keyframes cornerFadeIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ================================
@@ -27,6 +94,8 @@
   width: 100%;
   max-width: 1200px;
   padding: 0 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 /* ================================
@@ -35,6 +104,32 @@
 
 .logo-container {
   flex: 0 0 auto;
+  position: relative;
+  animation: logoReveal 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  animation-delay: 0.1s;
+}
+
+/* Hairline vertical separator to the right of logo */
+.logo-container::after {
+  content: '';
+  position: absolute;
+  right: -2.5rem;
+  top: 10%;
+  height: 80%;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(231, 201, 111, 0.35) 25%,
+    rgba(231, 201, 111, 0.35) 75%,
+    transparent 100%
+  );
+}
+
+@keyframes logoReveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .intro-logo {
@@ -57,7 +152,35 @@
   flex-direction: column;
   justify-content: center;
   flex: 1;
-  gap: 0.8rem;
+  gap: 1rem;
+}
+
+/* ================================
+   EYEBROW LABEL
+================================ */
+
+.intro-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: textReveal 1s ease forwards;
+  opacity: 0;
+  animation-delay: 0.5s;
+}
+
+.intro-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold-dim);
+  flex-shrink: 0;
 }
 
 /* ================================
@@ -70,9 +193,10 @@
   font-size: clamp(1.5rem, 3vw, 2.5rem);
   font-weight: 300;
   gap: 1.5rem;
+  animation: textReveal 1s ease forwards;
+  opacity: 0;
+  animation-delay: 0.75s;
 }
-
-/* "We craft:" */
 
 .static-text {
   font-family: 'Cinzel', serif;
@@ -81,7 +205,7 @@
   opacity: 0.85;
   white-space: nowrap;
   flex-shrink: 0;
-  text-transform: none; /* ensures normal case */
+  text-transform: none;
 }
 
 /* ================================
@@ -102,7 +226,6 @@
     black 65%,
     transparent 100%
   );
-
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
@@ -130,8 +253,29 @@
   background: linear-gradient(135deg, #FFFACD, #e7c96f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 
   text-shadow: 0 0 20px rgba(255, 215, 150, 0.2);
+}
+
+/* ================================
+   TAGLINE BELOW TICKER
+================================ */
+
+.intro-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 1.6vw, 1.8rem);
+  font-weight: 300;
+  font-style: italic;
+  color: rgba(231, 201, 111, 0.55);
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  max-width: 420px;
+  animation: textReveal 1s ease forwards;
+  opacity: 0;
+  animation-delay: 1s;
+  padding-top: 0.2rem;
+  border-top: 1px solid rgba(231, 201, 111, 0.15);
 }
 
 /* ================================
@@ -139,42 +283,68 @@
 ================================ */
 
 .scroll-cta {
-  font-family: 'Cinzel', serif; /* same as "We craft" */
-  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.72rem, 1vw, 0.85rem);
   font-style: italic;
-  letter-spacing: 0.08em;
-  color: rgba(231,201,111,0.75);
+  letter-spacing: 0.14em;
+  color: rgba(231, 201, 111, 0.6);
   position: relative;
   width: fit-content;
-  margin-top: 0.4rem;
+  margin-top: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 
-  animation: gentleFade 4s ease-in-out infinite;
+  animation: textReveal 1s ease forwards, gentleFade 4s ease-in-out 2s infinite;
+  opacity: 0;
+  animation-delay: 1.3s, 1.3s;
+}
+
+/* animated chevron down */
+.scroll-cta::after {
+  content: '↓';
+  font-style: normal;
+  font-size: 0.9em;
+  animation: bobDown 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes bobDown {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(4px); }
 }
 
 /* decorative divider above text */
-
 .scroll-cta::before {
   content: "";
   position: absolute;
   left: 0;
-  top: -10px;
-  width: 70px;
+  top: -12px;
+  width: 48px;
   height: 1px;
   background: linear-gradient(
     90deg,
-    transparent,
-    rgba(231,201,111,0.6),
+    rgba(231, 201, 111, 0.5),
     transparent
   );
 }
 
+/* ================================
+   SHARED REVEAL ANIMATION
+================================ */
+
+@keyframes textReveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes gentleFade {
-  0%,100% { opacity: 0.45; }
-  50% { opacity: 0.9; }
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.9; }
 }
 
 /* ================================
-   ROLL ANIMATION
+   ROLL ANIMATION (unchanged)
 ================================ */
 
 @keyframes rollCylinder {
@@ -191,11 +361,14 @@
 ================================ */
 
 @media (max-width: 992px) {
-
   .intro-wrapper {
     flex-direction: column;
     justify-content: center;
     gap: 2rem;
+  }
+
+  .logo-container::after {
+    display: none;
   }
 
   .intro-logo {
@@ -207,6 +380,14 @@
     align-items: center;
     text-align: center;
     gap: 1.5rem;
+  }
+
+  .intro-eyebrow {
+    justify-content: center;
+  }
+
+  .intro-eyebrow::before {
+    display: none;
   }
 
   .ticker-container {
@@ -224,8 +405,22 @@
     justify-content: center;
   }
 
+  .intro-tagline {
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .scroll-cta {
+    justify-content: center;
+  }
+
   .scroll-cta::before {
     left: 50%;
     transform: translateX(-50%);
+  }
+
+  .intro-corner {
+    width: 36px;
+    height: 36px;
   }
 }
