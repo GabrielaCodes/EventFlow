@@ -5,6 +5,7 @@ import img1 from "../../assets/concerts/1.jpg";
 import img2 from "../../assets/concerts/2.jpg";
 import img3 from "../../assets/concerts/3.jpg";
 import img4 from "../../assets/concerts/4.jpg";
+import img5 from "../../assets/concerts/c5.jpg";
 
 const concertEvents = [
   {

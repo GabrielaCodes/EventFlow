@@ -3,9 +3,11 @@ import img1 from "../../assets/graduation/1.jpg";
 import img2 from "../../assets/graduation/2.jpg";
 import img3 from "../../assets/graduation/3.jpg";
 import img4 from "../../assets/graduation/4.jpg";
+import img5 from "../../assets/graduation/g5.jpg";
+import img6 from "../../assets/graduation/g6.jpg";
 
 /* ─────────────────────────────────────────
-   PAGE DATA
+   PAGE DATA  (6 images = 3 spreads of 2)
 ───────────────────────────────────────── */
 const PAGES = [
   {
@@ -35,6 +37,20 @@ const PAGES = [
     image: img4,
     year: "2024",
     num: "IV",
+  },
+  {
+    title: "Honours & Beyond",
+    subtitle: "A life shaped by years of dedication",
+    image: img5,
+    year: "2024",
+    num: "V",
+  },
+  {
+    title: "Into the Light",
+    subtitle: "Every step forward was earned",
+    image: img6,
+    year: "2024",
+    num: "VI",
   },
 ];
 
@@ -87,7 +103,7 @@ const DustParticles = () => {
 /* ─────────────────────────────────────────
    BOOK PAGE (single spread)
 ───────────────────────────────────────── */
-const BookPage = ({ page, side, isFlipping, flipDir, zIndex, style = {} }) => {
+const BookPage = ({ page, side, zIndex, style = {} }) => {
   const isLeft = side === "left";
 
   return (
@@ -264,14 +280,13 @@ const BookPage = ({ page, side, isFlipping, flipDir, zIndex, style = {} }) => {
 /* ─────────────────────────────────────────
    FLIPPING PAGE (the animated leaf)
 ───────────────────────────────────────── */
-const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
+const FlippingLeaf = ({ page, direction, onDone }) => {
   const isForward = direction === "forward";
   const ref = useRef(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Tiny delay so browser paints before animating
     const raf = requestAnimationFrame(() => {
       el.style.transform = isForward
         ? "perspective(2000px) rotateY(-180deg)"
@@ -282,7 +297,9 @@ const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
   }, []);
 
-  const startRotate = isForward ? "perspective(2000px) rotateY(0deg)" : "perspective(2000px) rotateY(-180deg)";
+  const startRotate = isForward
+    ? "perspective(2000px) rotateY(0deg)"
+    : "perspective(2000px) rotateY(-180deg)";
 
   return (
     <div
@@ -293,7 +310,7 @@ const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
         left: "50%",
         width: "50%",
         height: "100%",
-        transformOrigin: isForward ? "left center" : "left center",
+        transformOrigin: "left center",
         transform: startRotate,
         transition: "transform 0.78s cubic-bezier(0.645, 0.045, 0.355, 1.000)",
         transformStyle: "preserve-3d",
@@ -301,7 +318,7 @@ const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
         pointerEvents: "none",
       }}
     >
-      {/* Front face of flipping page */}
+      {/* Front face */}
       <div
         style={{
           position: "absolute",
@@ -311,13 +328,11 @@ const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
           overflow: "hidden",
         }}
       >
-        {/* shadow sweep on front */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 40%)",
+            background: "linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 40%)",
             zIndex: 1,
           }}
         />
@@ -339,8 +354,7 @@ const FlippingLeaf = ({ page, direction, onDone, fromSide }) => {
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(to left, rgba(0,0,0,0.45) 0%, transparent 40%)",
+            background: "linear-gradient(to left, rgba(0,0,0,0.45) 0%, transparent 40%)",
             zIndex: 1,
           }}
         />
@@ -367,7 +381,6 @@ const CTASpread = () => (
       padding: "3rem",
     }}
   >
-    {/* Centre ornament */}
     <div style={{ textAlign: "center" }}>
       <div
         style={{
@@ -433,15 +446,13 @@ const CTASpread = () => (
    MAIN SECTION
 ───────────────────────────────────────── */
 const GraduationSection = () => {
-  // pageIndex: which spread is showing (0 = pages 0&1, 1 = pages 2&3, 2 = CTA)
+  // spread 0 = pages 0&1, spread 1 = pages 2&3, spread 2 = pages 4&5, spread 3 = CTA
   const [spread, setSpread] = useState(0);
-  const [flipping, setFlipping] = useState(null); // { direction, page }
-  const [hoverSide, setHoverSide] = useState(null); // 'left' | 'right' | null
-  const totalSpreads = 2; // 0,1 = photo spreads, 2 = CTA
+  const [flipping, setFlipping] = useState(null);
+  const [hoverSide, setHoverSide] = useState(null);
+  const totalSpreads = 3; // 0,1,2 = photo spreads, 3 = CTA
   const isAnimating = useRef(false);
   const bookRef = useRef(null);
-
-  /* touch handling */
   const touchStartX = useRef(null);
 
   const canGoNext = spread < totalSpreads;
@@ -450,7 +461,7 @@ const GraduationSection = () => {
   const flipForward = useCallback(() => {
     if (isAnimating.current || !canGoNext) return;
     isAnimating.current = true;
-    const pageIdx = spread * 2; // right page of current spread becomes the flipping leaf
+    const pageIdx = spread * 2;
     setFlipping({ direction: "forward", pageIdx });
   }, [spread, canGoNext]);
 
@@ -470,17 +481,14 @@ const GraduationSection = () => {
     setTimeout(() => { isAnimating.current = false; }, 50);
   }, []);
 
-  /* click zones */
   const handleClick = useCallback((e) => {
     const rect = bookRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left;
-    const mid = rect.width / 2;
-    if (x > mid) flipForward();
+    if (x > rect.width / 2) flipForward();
     else flipBackward();
   }, [flipForward, flipBackward]);
 
-  /* touch */
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
@@ -491,7 +499,6 @@ const GraduationSection = () => {
     else flipBackward();
   };
 
-  /* cursor tracking */
   const handleMouseMove = useCallback((e) => {
     const rect = bookRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -499,13 +506,14 @@ const GraduationSection = () => {
     setHoverSide(x > rect.width / 2 ? "right" : "left");
   }, []);
 
-  /* current spread pages */
   const leftPage = PAGES[spread * 2];
   const rightPage = PAGES[spread * 2 + 1];
 
+  // dot indicators: 4 dots for spreads 0–3
+  const dotCount = totalSpreads + 1;
+
   return (
     <>
-      {/* Google Font */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
@@ -565,7 +573,6 @@ const GraduationSection = () => {
             ✦ &nbsp; Graduation &nbsp; ✦
           </p>
           <h1
-            className="gold-gradient-text"
             style={{
               fontFamily: "'Playfair Display', 'Georgia', serif",
               fontSize: "clamp(1.8rem, 4vw, 3.2rem)",
@@ -575,7 +582,6 @@ const GraduationSection = () => {
               background: "linear-gradient(135deg, #c9a84c, #e7c96f 40%, #f5e09a 60%, #e7c96f)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              textShadow: "none",
               lineHeight: 1.15,
             }}
           >
@@ -594,11 +600,7 @@ const GraduationSection = () => {
         {/* ── THE BOOK ── */}
         <div
           className="grad-book-wrap"
-          style={{
-            position: "relative",
-            zIndex: 10,
-            width: "min(900px, 92vw)",
-          }}
+          style={{ position: "relative", zIndex: 10, width: "min(900px, 92vw)" }}
         >
           {/* book shadow */}
           <div
@@ -627,13 +629,13 @@ const GraduationSection = () => {
               position: "relative",
               width: "100%",
               aspectRatio: "2 / 1.3",
-              cursor: hoverSide === "right" && canGoNext
-                ? "e-resize"
-                : hoverSide === "left" && canGoPrev
-                ? "w-resize"
-                : "default",
+              cursor:
+                hoverSide === "right" && canGoNext
+                  ? "e-resize"
+                  : hoverSide === "left" && canGoPrev
+                  ? "w-resize"
+                  : "default",
               userSelect: "none",
-              /* outer book border */
               boxShadow: `
                 0 0 0 2px rgba(231,201,111,0.18),
                 0 0 0 4px rgba(0,0,0,0.9),
@@ -660,7 +662,7 @@ const GraduationSection = () => {
             />
 
             {/* ── CURRENT SPREAD ── */}
-            {spread < 2 ? (
+            {spread < totalSpreads ? (
               <>
                 {leftPage && <BookPage page={leftPage} side="left" zIndex={1} />}
                 {rightPage && <BookPage page={rightPage} side="right" zIndex={1} />}
@@ -724,7 +726,7 @@ const GraduationSection = () => {
               </div>
             )}
 
-            {/* subtle vignette on top of everything */}
+            {/* vignette */}
             <div
               style={{
                 position: "absolute",
@@ -745,7 +747,7 @@ const GraduationSection = () => {
               marginTop: "1.6rem",
             }}
           >
-            {[0, 1, 2].map((i) => (
+            {Array.from({ length: dotCount }, (_, i) => (
               <div
                 key={i}
                 style={{
