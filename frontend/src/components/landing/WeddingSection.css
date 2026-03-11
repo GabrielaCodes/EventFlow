@@ -27,7 +27,7 @@
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 2.2s cubic-bezier(0.37, 0.0, 0.13, 1.0);
+  transition: transform 3.5s cubic-bezier(0.37, 0.0, 0.13, 1.0);
   border-radius: 12px;
   cursor: pointer;
 }
@@ -137,23 +137,22 @@
 }
 
 .flip-card-ornament {
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   color: rgba(231, 201, 111, 0.85);
   line-height: 1;
   font-family: 'Georgia', serif;
-  /* ❧ is a text glyph — ensure it renders */
   font-style: normal;
 }
 
 .flip-card-ornament-bottom {
-  font-size: 0.85rem;
+  font-size: 1.1rem;
   color: rgba(231, 201, 111, 0.7);
   margin-top: 0.1rem;
 }
 
 .flip-card-couple {
   font-family: 'Cinzel', serif;
-  font-size: clamp(1rem, 1.6vw, 1.4rem);
+  font-size: clamp(1.4rem, 2.2vw, 1.9rem);
   font-weight: 600;
   letter-spacing: 0.1em;
   margin: 0;
@@ -183,7 +182,7 @@
   justify-content: center;
   align-items: baseline;
   gap: 0.4rem;
-  font-size: clamp(0.78rem, 1.1vw, 0.95rem);
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
 }
 
 .meta-label {
@@ -204,8 +203,8 @@
 .flip-card-experience {
   margin: 0.1rem 0 0;
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(0.75rem, 1.05vw, 0.9rem);
-  line-height: 1.5;
+  font-size: clamp(0.95rem, 1.35vw, 1.15rem);
+  line-height: 1.6;
   color: rgba(220, 205, 170, 0.82);
   font-style: italic;
   text-align: center;

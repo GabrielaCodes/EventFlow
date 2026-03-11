@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&display=swap');
 
 .eventflow-intro-container {
   --item-height: 3.5rem;
@@ -7,7 +7,6 @@
   width: 100%;
   background-color: #000000;
   color: #e7c96f;
-
   font-family: 'Cormorant Garamond', 'Georgia', serif;
 
   display: flex;
@@ -41,15 +40,11 @@
 .intro-logo {
   height: clamp(520px, 62vh, 680px);
   width: auto;
-
   object-fit: contain;
   display: block;
-
   margin-top: 100px;
-
   filter: none;
   box-shadow: none;
-
   transform: translateZ(0);
 }
 
@@ -62,7 +57,7 @@
   flex-direction: column;
   justify-content: center;
   flex: 1;
-  gap: 0.6rem;
+  gap: 0.8rem;
 }
 
 /* ================================
@@ -82,10 +77,11 @@
 .static-text {
   font-family: 'Cinzel', serif;
   font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   opacity: 0.85;
   white-space: nowrap;
   flex-shrink: 0;
+  text-transform: none; /* ensures normal case */
 }
 
 /* ================================
@@ -143,22 +139,37 @@
 ================================ */
 
 .scroll-cta {
-  font-family: 'Playfair Display', 'Georgia', serif;
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
-  color: #e7c96f;
-
+  font-family: 'Cinzel', serif; /* same as "We craft" */
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
   font-style: italic;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  color: rgba(231,201,111,0.75);
+  position: relative;
+  width: fit-content;
+  margin-top: 0.4rem;
 
-  opacity: 0.7;
-  padding-left: 0.2rem;
-
-  animation: gentlePulse 3s ease-in-out infinite;
+  animation: gentleFade 4s ease-in-out infinite;
 }
 
-@keyframes gentlePulse {
-  0%, 100% { opacity: 0.5; }
+/* decorative divider above text */
+
+.scroll-cta::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -10px;
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(231,201,111,0.6),
+    transparent
+  );
+}
+
+@keyframes gentleFade {
+  0%,100% { opacity: 0.45; }
   50% { opacity: 0.9; }
 }
 
@@ -213,7 +224,8 @@
     justify-content: center;
   }
 
-  .scroll-cta {
-    padding-left: 0;
+  .scroll-cta::before {
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
