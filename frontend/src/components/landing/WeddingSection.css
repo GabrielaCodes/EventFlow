@@ -1,8 +1,212 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cinzel:wght@400;600&display=swap');
+
 .wedding-section {
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
 }
 
-/* Mobile */
+/* ===== GRID ===== */
+.wedding-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+  max-height: 80vh;
+}
+
+/* ===== FLIP CARD WRAPPER ===== */
+.flip-card-wrapper {
+  width: 100%;
+  height: 100%;
+  max-height: 38vh;
+  perspective: 1200px;
+}
+
+/* ===== FLIP CARD CONTAINER ===== */
+.flip-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.flip-card-wrapper:hover .flip-card {
+  transform: rotateY(180deg);
+}
+
+/* ===== SHARED FACE STYLES ===== */
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+
+/* ===== FRONT FACE ===== */
+.flip-card-front {
+  background: #0a0604;
+}
+
+.flip-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Preserve the original 736×552 ratio while filling the card */
+  object-position: center center;
+}
+
+.flip-card-front-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 1rem 0.9rem;
+  background: linear-gradient(transparent, rgba(0,0,0,0.72));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.flip-card-wrapper:hover .flip-card-front-overlay {
+  opacity: 1;
+}
+
+.flip-hint {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  letter-spacing: 0.14em;
+  color: rgba(255, 220, 130, 0.92);
+  text-align: center;
+}
+
+/* ===== BACK FACE ===== */
+.flip-card-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #0e0a04 0%, #1a1105 40%, #100c05 100%);
+  border: 1px solid rgba(231, 201, 111, 0.25);
+  box-shadow:
+    inset 0 0 60px rgba(231, 201, 111, 0.04),
+    0 0 30px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.4rem 1.6rem;
+}
+
+/* corner accents */
+.flip-card-back::before,
+.flip-card-back::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(231, 201, 111, 0.4);
+  border-style: solid;
+}
+.flip-card-back::before {
+  top: 10px; left: 10px;
+  border-width: 1px 0 0 1px;
+}
+.flip-card-back::after {
+  bottom: 10px; right: 10px;
+  border-width: 0 1px 1px 0;
+}
+
+/* ===== BACK CONTENT ===== */
+.flip-card-back-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.flip-card-ornament {
+  font-size: 1.1rem;
+  color: rgba(231, 201, 111, 0.6);
+  line-height: 1;
+}
+
+.flip-card-ornament-bottom {
+  font-size: 0.7rem;
+  margin-top: 0.25rem;
+}
+
+.flip-card-couple {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.1rem, 1.8vw, 1.55rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin: 0;
+  background: linear-gradient(135deg, #FFFACD, #e7c96f, #FFFACD);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.flip-card-divider {
+  width: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(231,201,111,0.5), transparent);
+  margin: 0.1rem 0;
+}
+
+.flip-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+}
+
+.flip-card-meta p {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: clamp(0.82rem, 1.2vw, 1rem);
+}
+
+.meta-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(231, 201, 111, 0.55);
+}
+
+.meta-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: rgba(255, 240, 190, 0.85);
+  font-size: 1em;
+}
+
+.flip-card-experience {
+  margin: 0.2rem 0 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(0.82rem, 1.15vw, 1rem);
+  line-height: 1.6;
+  color: rgba(220, 205, 170, 0.82);
+  font-style: italic;
+  text-align: center;
+  max-width: 95%;
+}
+
+/* ===== MOBILE ===== */
 @media (max-width: 768px) {
   .wedding-section {
     padding: 3rem 1rem !important;
@@ -14,13 +218,27 @@
     margin-bottom: 2rem !important;
   }
 
-  .wedding-section > div > div:last-child > div {
+  .wedding-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
+    max-height: none !important;
+  }
+
+  .flip-card-wrapper {
+    max-height: 300px;
+    height: 300px;
+  }
+
+  .flip-card-back {
+    padding: 1rem 1.2rem;
+  }
+
+  .flip-card-experience {
+    font-size: 0.88rem;
   }
 }
 
-/* Print */
+/* ===== PRINT ===== */
 @media print {
   .wedding-section {
     background: white !important;
@@ -28,5 +246,9 @@
 
   .wedding-section canvas {
     display: none;
+  }
+
+  .flip-card {
+    transform: rotateY(0deg) !important;
   }
 }

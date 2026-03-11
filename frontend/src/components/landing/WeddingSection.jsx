@@ -1,34 +1,59 @@
 import { useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import img1 from "../../assets/weddings/1.jpg";
-import img2 from "../../assets/weddings/2.jpg";
-import img3 from "../../assets/weddings/3.jpg";
-import img4 from "../../assets/weddings/4.jpg";
+import img1 from "../../assets/weddings/w1.jpg";
+import img2 from "../../assets/weddings/w2.jpg";
+import img3 from "../../assets/weddings/w3.jpg";
+import img4 from "../../assets/weddings/w4.jpg";
+import './WeddingSection.css';
 
 const images = [img1, img2, img3, img4];
+
+const cardData = [
+  {
+    couple: "Aarav & Meera",
+    date: "12 February 2025",
+    place: "Kochi, Kerala",
+    experience: "They used EventFlow to organize their guest list and schedule. The smooth timeline feature helped every ceremony happen on time, making their day feel calm and well-planned.",
+  },
+  {
+    couple: "Rahul & Ananya",
+    date: "28 June 2024",
+    place: "Bangalore, Karnataka",
+    experience: "EventFlow helped them manage RSVPs and send updates to guests. They said it reduced last-minute confusion and made coordination effortless.",
+  },
+  {
+    couple: "Karthik & Devika",
+    date: "15 December 2024",
+    place: "Chennai, Tamil Nadu",
+    experience: "The couple used EventFlow to track vendors and event schedules. They felt everything stayed organized, allowing them to focus on enjoying the celebration.",
+  },
+  {
+    couple: "Arjun & Nisha",
+    date: "9 January 2025",
+    place: "Hyderabad, Telangana",
+    experience: "EventFlow made planning simple by keeping all event details in one place. They described the experience as stress-free and memorable for both them and their guests.",
+  },
+];
+
+// Timing configuration
+const imageRevealDuration = 1.4;
+const imageTimings = [
+  { start: 0.8 },
+  { start: 3.4 },
+  { start: 2.0 },
+  { start: 4.6 },
+];
 
 const WeddingSection = () => {
   const sectionRef = useRef(null);
   const canvasRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
 
-  // Timing configuration
-  const imageRevealDuration = 1.4;
-  
-  // Image reveal timings
-  const imageTimings = [
-    { start: 0.8, complete: 0.8 + imageRevealDuration },      // Top-Left
-    { start: 3.4, complete: 3.4 + imageRevealDuration },      // Top-Right
-    { start: 2.0, complete: 2.0 + imageRevealDuration },      // Bottom-Left
-    { start: 4.6, complete: 4.6 + imageRevealDuration },      // Bottom-Right
-  ];
-
-  // Love Confetti Particle Engine
+  // Love Confetti Particle Engine (unchanged)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // --- UTILS (Minified) ---
     const Vector3 = {
       create: (x, y, z) => ({ x, y, z }),
       arrayForm: (v) => {
@@ -42,7 +67,7 @@ const WeddingSection = () => {
       loadProjection: (m, aspect, vdeg, near, far) => {
         let h = near * Math.tan(vdeg * Math.PI / 180.0 * 0.5) * 2.0;
         let w = h * aspect;
-        m[0] = 2.0 * near / w; m[5] = 2.0 * near / h; m[10] = -(far + near) / (far - near); m[11] = -1.0; m[14] = -2.0 * far * near / (far - near); 
+        m[0] = 2.0 * near / w; m[5] = 2.0 * near / h; m[10] = -(far + near) / (far - near); m[11] = -1.0; m[14] = -2.0 * far * near / (far - near);
         m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[12] = m[13] = m[15] = 0;
       },
       loadLookAt: (m, vpos, vlook, vup) => {
@@ -56,7 +81,6 @@ const WeddingSection = () => {
       }
     };
 
-    // --- SHADERS ---
     const sakura_point_vsh = `
     uniform mat4 uProjection; uniform mat4 uModelview; uniform vec3 uResolution; uniform vec3 uOffset; uniform vec3 uDOF; uniform vec3 uFade;
     attribute vec3 aPosition; attribute vec3 aEuler; attribute vec2 aMisc;
@@ -105,8 +129,7 @@ const WeddingSection = () => {
         mat2 flwrm = mat2(flwrcs, -flwrsn, flwrsn, flwrcs); vec2 flwrp = vec2(abs(coord.x), coord.y) * flwrm;
         float r; if(flwrp.x < 0.0) { r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5); } else { r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5); }
         if(r > rstop) discard;
-        // GOLD COLORS
-        vec3 col = mix(vec3(0.8, 0.5, 0.0), vec3(1.0, 0.9, 0.3), r); 
+        vec3 col = mix(vec3(0.8, 0.5, 0.0), vec3(1.0, 0.9, 0.3), r);
         float grady = mix(0.0, 1.0, pow(coord.y * 0.5 + 0.5, 0.35)); col *= vec3(1.0, grady * 0.95, grady * 0.2);
         col *= mix(0.8, 1.0, pow(abs(coord.x), 0.3)); col = col * diffuse + specular;
         col = mix(fadeCol, col, distancefade);
@@ -120,7 +143,7 @@ const WeddingSection = () => {
     precision highp float;
     #endif
     uniform vec2 uTimes; varying vec2 texCoord; varying vec2 screenCoord;
-    void main(void) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); }`; // FULL BLACK BACKGROUND
+    void main(void) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); }`;
     const fx_brightbuf_fsh = `#ifdef GL_ES
     precision highp float;
     #endif
@@ -138,7 +161,6 @@ const WeddingSection = () => {
     uniform sampler2D uSrc; uniform sampler2D uBloom; uniform vec2 uDelta; varying vec2 texCoord; varying vec2 screenCoord;
     void main(void) { vec4 srccol = texture2D(uSrc, texCoord) * 2.0; vec4 bloomcol = texture2D(uBloom, texCoord); vec4 col; col = srccol + bloomcol * (vec4(1.0) + srccol); col *= smoothstep(1.0, 0.0, pow(length((texCoord - vec2(0.5)) * 2.0), 1.2) * 0.5); col = pow(col, vec4(0.45454545454545)); gl_FragColor = vec4(col.rgb, 1.0); gl_FragColor.a = 1.0; }`;
 
-    // --- ENGINE VARS ---
     let gl;
     let renderSpec = { width: 0, height: 0, aspect: 1, array: new Float32Array(3), halfWidth: 0, halfHeight: 0, halfArray: new Float32Array(3) };
     renderSpec.setSize = (w, h) => {
@@ -155,7 +177,6 @@ const WeddingSection = () => {
     let timeInfo = { start: new Date(), prev: new Date(), delta: 0, elapsed: 0 };
     let animationId;
 
-    // --- HELPERS ---
     const createProgram = (vtx, frg, unifs, attrs) => {
       let v = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(v, vtx); gl.compileShader(v);
       let f = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(f, frg); gl.compileShader(f);
@@ -179,17 +200,16 @@ const WeddingSection = () => {
       return rt;
     };
 
-    // --- INIT ---
     try {
       gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     } catch (e) { console.error(e); return; }
-    
+
     const createFrag = (v, f, u, a) => {
-        let fx = createProgram(v, f, ['uResolution', 'uSrc', 'uDelta', ...(u || [])], ['aPosition', ...(a || [])]);
-        let buf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-        return { program: fx.program, uniforms: fx.uniforms, attributes: fx.attributes, buffer: buf };
+      let fx = createProgram(v, f, ['uResolution', 'uSrc', 'uDelta', ...(u || [])], ['aPosition', ...(a || [])]);
+      let buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      return { program: fx.program, uniforms: fx.uniforms, attributes: fx.attributes, buffer: buf };
     };
     effectLib.sceneBg = createFrag(fx_common_vsh, bg_fsh, ['uTimes']);
     effectLib.mkBrightBuf = createFrag(fx_common_vsh, fx_brightbuf_fsh);
@@ -197,169 +217,165 @@ const WeddingSection = () => {
     effectLib.finalComp = createFrag(pp_final_vsh, pp_final_fsh, ['uBloom']);
 
     pointFlower.program = createProgram(sakura_point_vsh, sakura_point_fsh, ['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uDOF', 'uFade'], ['aPosition', 'aEuler', 'aMisc']);
-    pointFlower.numFlowers = 1200; 
+    pointFlower.numFlowers = 1200;
     pointFlower.particles = [];
     pointFlower.dataArray = new Float32Array(pointFlower.numFlowers * 8);
     pointFlower.buffer = gl.createBuffer();
     pointFlower.fader = Vector3.create(0.0, 10.0, 0.0);
-    pointFlower.offset = new Float32Array([0,0,0]);
+    pointFlower.offset = new Float32Array([0, 0, 0]);
     pointFlower.area = Vector3.create(20.0, 20.0, 20.0);
 
-    for(let i=0; i<pointFlower.numFlowers; i++) {
-        let p = { pos: [0,0,0], vel: [0,0,0], rot: [0,0,0], euler: [0,0,0], size: 1.0, alpha: 1.0, zkey: 0 };
-        let rand = () => Math.random() * 2.0 - 1.0;
-        p.vel = [rand() * 0.3 + 0.8, rand() * 0.2 - 1.0, rand() * 0.3 + 0.5];
-        let vlen = Math.sqrt(p.vel[0]**2 + p.vel[1]**2 + p.vel[2]**2);
-        p.vel = p.vel.map(v => v/vlen * (2.0 + Math.random()));
-        p.rot = [rand()*Math.PI, rand()*Math.PI, rand()*Math.PI];
-        p.pos = [rand()*20, rand()*20, rand()*20];
-        p.euler = [Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2];
-        p.size = 0.6 + Math.random() * 0.6;
-        pointFlower.particles.push(p);
+    for (let i = 0; i < pointFlower.numFlowers; i++) {
+      let p = { pos: [0, 0, 0], vel: [0, 0, 0], rot: [0, 0, 0], euler: [0, 0, 0], size: 1.0, alpha: 1.0, zkey: 0 };
+      let rand = () => Math.random() * 2.0 - 1.0;
+      p.vel = [rand() * 0.3 + 0.8, rand() * 0.2 - 1.0, rand() * 0.3 + 0.5];
+      let vlen = Math.sqrt(p.vel[0] ** 2 + p.vel[1] ** 2 + p.vel[2] ** 2);
+      p.vel = p.vel.map(v => v / vlen * (2.0 + Math.random()));
+      p.rot = [rand() * Math.PI, rand() * Math.PI, rand() * Math.PI];
+      p.pos = [rand() * 20, rand() * 20, rand() * 20];
+      p.euler = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
+      p.size = 0.6 + Math.random() * 0.6;
+      pointFlower.particles.push(p);
     }
 
-    // --- ANIMATION LOOP ---
     const animateLoop = () => {
-        let now = new Date();
-        timeInfo.elapsed = (now - timeInfo.start) / 1000.0;
-        timeInfo.delta = (now - timeInfo.prev) / 1000.0;
-        timeInfo.prev = now;
+      let now = new Date();
+      timeInfo.elapsed = (now - timeInfo.start) / 1000.0;
+      timeInfo.delta = (now - timeInfo.prev) / 1000.0;
+      timeInfo.prev = now;
 
-        renderSpec.setSize(gl.canvas.width, gl.canvas.height);
-        gl.viewport(0, 0, renderSpec.width, renderSpec.height);
-        pointFlower.area.x = pointFlower.area.y * renderSpec.aspect;
-        pointFlower.fader.x = 10.0; pointFlower.fader.y = pointFlower.area.z; pointFlower.fader.z = 0.1;
-        
-        camera.position.z = pointFlower.area.z + 0.1; 
-        projection.angle = Math.atan2(pointFlower.area.y, camera.position.z + pointFlower.area.z) * 180.0 / Math.PI * 2.0;
-        Matrix44.loadProjection(projection.matrix, renderSpec.aspect, projection.angle, 0.1, 100.0);
-        Matrix44.loadLookAt(camera.matrix, camera.position, camera.lookat, camera.up);
+      renderSpec.setSize(gl.canvas.width, gl.canvas.height);
+      gl.viewport(0, 0, renderSpec.width, renderSpec.height);
+      pointFlower.area.x = pointFlower.area.y * renderSpec.aspect;
+      pointFlower.fader.x = 10.0; pointFlower.fader.y = pointFlower.area.z; pointFlower.fader.z = 0.1;
 
-        ['mainRT', 'wFullRT0', 'wFullRT1'].forEach(k => { if(!renderSpec[k]) renderSpec[k] = createRt(renderSpec.width, renderSpec.height); });
-        ['wHalfRT0', 'wHalfRT1'].forEach(k => { if(!renderSpec[k]) renderSpec[k] = createRt(renderSpec.halfWidth, renderSpec.halfHeight); });
+      camera.position.z = pointFlower.area.z + 0.1;
+      projection.angle = Math.atan2(pointFlower.area.y, camera.position.z + pointFlower.area.z) * 180.0 / Math.PI * 2.0;
+      Matrix44.loadProjection(projection.matrix, renderSpec.aspect, projection.angle, 0.1, 100.0);
+      Matrix44.loadLookAt(camera.matrix, camera.position, camera.lookat, camera.up);
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.mainRT.frameBuffer);
-        gl.viewport(0, 0, renderSpec.mainRT.width, renderSpec.mainRT.height);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      ['mainRT', 'wFullRT0', 'wFullRT1'].forEach(k => { if (!renderSpec[k]) renderSpec[k] = createRt(renderSpec.width, renderSpec.height); });
+      ['wHalfRT0', 'wHalfRT1'].forEach(k => { if (!renderSpec[k]) renderSpec[k] = createRt(renderSpec.halfWidth, renderSpec.halfHeight); });
 
-        gl.disable(gl.DEPTH_TEST);
-        let bgFx = effectLib.sceneBg;
-        gl.useProgram(bgFx.program);
-        gl.uniform3fv(bgFx.uniforms.uResolution, renderSpec.array);
-        gl.uniform2f(bgFx.uniforms.uTimes, timeInfo.elapsed, timeInfo.delta);
-        gl.bindBuffer(gl.ARRAY_BUFFER, bgFx.buffer);
-        gl.vertexAttribPointer(bgFx.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(bgFx.attributes.aPosition);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.mainRT.frameBuffer);
+      gl.viewport(0, 0, renderSpec.mainRT.width, renderSpec.mainRT.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // Draw Flowers / Particles
-        gl.enable(gl.DEPTH_TEST);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        let prog = pointFlower.program.program;
-        gl.useProgram(prog);
-        gl.uniformMatrix4fv(pointFlower.program.uniforms.uProjection, false, projection.matrix);
-        gl.uniformMatrix4fv(pointFlower.program.uniforms.uModelview, false, camera.matrix);
-        gl.uniform3fv(pointFlower.program.uniforms.uResolution, renderSpec.array);
-        gl.uniform3fv(pointFlower.program.uniforms.uDOF, Vector3.arrayForm(camera.dof));
-        gl.uniform3fv(pointFlower.program.uniforms.uFade, Vector3.arrayForm(pointFlower.fader));
-        
-        let off = 0; let pdata = pointFlower.dataArray;
-        pointFlower.particles.forEach(p => {
-            p.pos[0] += p.vel[0] * timeInfo.delta; p.pos[1] += p.vel[1] * timeInfo.delta; p.pos[2] += p.vel[2] * timeInfo.delta;
-            p.euler[0] += p.rot[0] * timeInfo.delta; p.euler[1] += p.rot[1] * timeInfo.delta; p.euler[2] += p.rot[2] * timeInfo.delta;
-            [0,1,2].forEach(k => {
-                let lim = k===0? pointFlower.area.x : pointFlower.area.y; if(k===2) lim=pointFlower.area.z;
-                if(Math.abs(p.pos[k]) - p.size*0.5 > lim) { if(p.pos[k]>0) p.pos[k] -= lim*2; else p.pos[k] += lim*2; }
-            });
-            pdata[off++] = p.pos[0]; pdata[off++] = p.pos[1]; pdata[off++] = p.pos[2];
-            pdata[off++] = p.euler[0]; pdata[off++] = p.euler[1]; pdata[off++] = p.euler[2];
-            pdata[off++] = p.size; pdata[off++] = p.alpha;
+      gl.disable(gl.DEPTH_TEST);
+      let bgFx = effectLib.sceneBg;
+      gl.useProgram(bgFx.program);
+      gl.uniform3fv(bgFx.uniforms.uResolution, renderSpec.array);
+      gl.uniform2f(bgFx.uniforms.uTimes, timeInfo.elapsed, timeInfo.delta);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bgFx.buffer);
+      gl.vertexAttribPointer(bgFx.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(bgFx.attributes.aPosition);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      let prog = pointFlower.program.program;
+      gl.useProgram(prog);
+      gl.uniformMatrix4fv(pointFlower.program.uniforms.uProjection, false, projection.matrix);
+      gl.uniformMatrix4fv(pointFlower.program.uniforms.uModelview, false, camera.matrix);
+      gl.uniform3fv(pointFlower.program.uniforms.uResolution, renderSpec.array);
+      gl.uniform3fv(pointFlower.program.uniforms.uDOF, Vector3.arrayForm(camera.dof));
+      gl.uniform3fv(pointFlower.program.uniforms.uFade, Vector3.arrayForm(pointFlower.fader));
+
+      let off = 0; let pdata = pointFlower.dataArray;
+      pointFlower.particles.forEach(p => {
+        p.pos[0] += p.vel[0] * timeInfo.delta; p.pos[1] += p.vel[1] * timeInfo.delta; p.pos[2] += p.vel[2] * timeInfo.delta;
+        p.euler[0] += p.rot[0] * timeInfo.delta; p.euler[1] += p.rot[1] * timeInfo.delta; p.euler[2] += p.rot[2] * timeInfo.delta;
+        [0, 1, 2].forEach(k => {
+          let lim = k === 0 ? pointFlower.area.x : pointFlower.area.y; if (k === 2) lim = pointFlower.area.z;
+          if (Math.abs(p.pos[k]) - p.size * 0.5 > lim) { if (p.pos[k] > 0) p.pos[k] -= lim * 2; else p.pos[k] += lim * 2; }
         });
+        pdata[off++] = p.pos[0]; pdata[off++] = p.pos[1]; pdata[off++] = p.pos[2];
+        pdata[off++] = p.euler[0]; pdata[off++] = p.euler[1]; pdata[off++] = p.euler[2];
+        pdata[off++] = p.size; pdata[off++] = p.alpha;
+      });
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, pointFlower.buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, pdata, gl.DYNAMIC_DRAW);
-        gl.vertexAttribPointer(pointFlower.program.attributes.aPosition, 3, gl.FLOAT, false, 32, 0);
-        gl.enableVertexAttribArray(pointFlower.program.attributes.aPosition);
-        gl.vertexAttribPointer(pointFlower.program.attributes.aEuler, 3, gl.FLOAT, false, 32, 12);
-        gl.enableVertexAttribArray(pointFlower.program.attributes.aEuler);
-        gl.vertexAttribPointer(pointFlower.program.attributes.aMisc, 2, gl.FLOAT, false, 32, 24);
-        gl.enableVertexAttribArray(pointFlower.program.attributes.aMisc);
-        gl.uniform3fv(pointFlower.program.uniforms.uOffset, new Float32Array([0,0,0]));
-        gl.drawArrays(gl.POINT, 0, pointFlower.numFlowers);
+      gl.bindBuffer(gl.ARRAY_BUFFER, pointFlower.buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, pdata, gl.DYNAMIC_DRAW);
+      gl.vertexAttribPointer(pointFlower.program.attributes.aPosition, 3, gl.FLOAT, false, 32, 0);
+      gl.enableVertexAttribArray(pointFlower.program.attributes.aPosition);
+      gl.vertexAttribPointer(pointFlower.program.attributes.aEuler, 3, gl.FLOAT, false, 32, 12);
+      gl.enableVertexAttribArray(pointFlower.program.attributes.aEuler);
+      gl.vertexAttribPointer(pointFlower.program.attributes.aMisc, 2, gl.FLOAT, false, 32, 24);
+      gl.enableVertexAttribArray(pointFlower.program.attributes.aMisc);
+      gl.uniform3fv(pointFlower.program.uniforms.uOffset, new Float32Array([0, 0, 0]));
+      gl.drawArrays(gl.POINT, 0, pointFlower.numFlowers);
 
-        // --- POST PROCESS ---
-        gl.disable(gl.DEPTH_TEST);
-        
-        const drawFrag = (fx, src, delta) => {
-            gl.useProgram(fx.program);
-            gl.uniform3fv(fx.uniforms.uResolution, renderSpec.array);
-            if(src) {
-                gl.uniform2fv(fx.uniforms.uDelta, delta || src.dtxArray);
-                gl.uniform1i(fx.uniforms.uSrc, 0);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, src.texture);
-            }
-            gl.bindBuffer(gl.ARRAY_BUFFER, fx.buffer);
-            gl.vertexAttribPointer(fx.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(fx.attributes.aPosition);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        };
-        
-        gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT0.frameBuffer);
-        gl.viewport(0, 0, renderSpec.halfWidth, renderSpec.halfHeight);
-        drawFrag(effectLib.mkBrightBuf, renderSpec.mainRT);
-        
-        for(let i=0; i<2; i++) {
-            let p = 1.5 + i; let s = 2.0 + i;
-            gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT1.frameBuffer);
-            drawFrag(effectLib.dirBlur, renderSpec.wHalfRT0);
-            gl.uniform4f(effectLib.dirBlur.uniforms.uBlurDir, p, 0, s, 0);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.disable(gl.DEPTH_TEST);
 
-            gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT0.frameBuffer);
-            drawFrag(effectLib.dirBlur, renderSpec.wHalfRT1);
-            gl.uniform4f(effectLib.dirBlur.uniforms.uBlurDir, 0, p, 0, s);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      const drawFrag = (fx, src, delta) => {
+        gl.useProgram(fx.program);
+        gl.uniform3fv(fx.uniforms.uResolution, renderSpec.array);
+        if (src) {
+          gl.uniform2fv(fx.uniforms.uDelta, delta || src.dtxArray);
+          gl.uniform1i(fx.uniforms.uSrc, 0);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, src.texture);
         }
+        gl.bindBuffer(gl.ARRAY_BUFFER, fx.buffer);
+        gl.vertexAttribPointer(fx.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(fx.attributes.aPosition);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      };
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, renderSpec.width, renderSpec.height);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        
-        gl.useProgram(effectLib.finalComp.program);
-        gl.uniform3fv(effectLib.finalComp.uniforms.uResolution, renderSpec.array);
-        gl.uniform1i(effectLib.finalComp.uniforms.uSrc, 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, renderSpec.mainRT.texture);
-        
-        gl.uniform1i(effectLib.finalComp.uniforms.uBloom, 1);
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, renderSpec.wHalfRT0.texture);
-        
-        gl.bindBuffer(gl.ARRAY_BUFFER, effectLib.finalComp.buffer);
-        gl.vertexAttribPointer(effectLib.finalComp.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(effectLib.finalComp.attributes.aPosition);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT0.frameBuffer);
+      gl.viewport(0, 0, renderSpec.halfWidth, renderSpec.halfHeight);
+      drawFrag(effectLib.mkBrightBuf, renderSpec.mainRT);
+
+      for (let i = 0; i < 2; i++) {
+        let p = 1.5 + i; let s = 2.0 + i;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT1.frameBuffer);
+        drawFrag(effectLib.dirBlur, renderSpec.wHalfRT0);
+        gl.uniform4f(effectLib.dirBlur.uniforms.uBlurDir, p, 0, s, 0);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        animationId = requestAnimationFrame(animateLoop);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderSpec.wHalfRT0.frameBuffer);
+        drawFrag(effectLib.dirBlur, renderSpec.wHalfRT1);
+        gl.uniform4f(effectLib.dirBlur.uniforms.uBlurDir, 0, p, 0, s);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, renderSpec.width, renderSpec.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      gl.useProgram(effectLib.finalComp.program);
+      gl.uniform3fv(effectLib.finalComp.uniforms.uResolution, renderSpec.array);
+      gl.uniform1i(effectLib.finalComp.uniforms.uSrc, 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, renderSpec.mainRT.texture);
+
+      gl.uniform1i(effectLib.finalComp.uniforms.uBloom, 1);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, renderSpec.wHalfRT0.texture);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, effectLib.finalComp.buffer);
+      gl.vertexAttribPointer(effectLib.finalComp.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(effectLib.finalComp.attributes.aPosition);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      animationId = requestAnimationFrame(animateLoop);
     };
 
     const onResize = () => {
-        let b = document.body; let d = document.documentElement;
-        let w = Math.max(b.clientWidth, b.scrollWidth, d.scrollWidth, d.clientWidth);
-        let h = Math.max(b.clientHeight, b.scrollHeight, d.scrollHeight, d.clientHeight);
-        canvas.width = w; canvas.height = canvas.parentElement ? canvas.parentElement.clientHeight : h;
+      let b = document.body; let d = document.documentElement;
+      let w = Math.max(b.clientWidth, b.scrollWidth, d.scrollWidth, d.clientWidth);
+      let h = Math.max(b.clientHeight, b.scrollHeight, d.scrollHeight, d.clientHeight);
+      canvas.width = w; canvas.height = canvas.parentElement ? canvas.parentElement.clientHeight : h;
     };
     window.addEventListener('resize', onResize);
     onResize();
-
     animateLoop();
 
     return () => {
-        window.removeEventListener('resize', onResize);
-        cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(animationId);
     };
   }, []);
 
@@ -377,7 +393,7 @@ const WeddingSection = () => {
         padding: '1rem',
         position: 'relative',
         overflow: 'hidden',
-        background: '#000000', // FULL BLACK
+        background: '#000000',
       }}
     >
       <canvas
@@ -385,7 +401,7 @@ const WeddingSection = () => {
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: 1, 
+          zIndex: 1,
           pointerEvents: "none",
           width: "100%",
           height: "100%"
@@ -408,7 +424,7 @@ const WeddingSection = () => {
             background: 'linear-gradient(135deg, #FFFACD, #e7c96f, #FFFACD)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            textShadow: '0 0 40px rgba(255,215,150,0.5), 0 0 20px rgba(255,215,150,0.3)', 
+            textShadow: '0 0 40px rgba(255,215,150,0.5), 0 0 20px rgba(255,215,150,0.3)',
             flexShrink: 0,
           }}
         >
@@ -416,60 +432,54 @@ const WeddingSection = () => {
         </motion.h2>
 
         <div style={{ position: 'relative', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-
-          {/* ================= IMAGE GRID ================= */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '1.5rem',
-              width: '100%',
-              height: '100%', 
-              maxHeight: '80vh',
-            }}
-          >
+          <div className="wedding-grid">
             {images.map((src, index) => {
               const timing = imageTimings[index];
+              const data = cardData[index];
               return (
                 <motion.div
                   key={index}
+                  className="flip-card-wrapper"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={isInView ? { scale: 1, opacity: 1 } : {}}
                   transition={{ delay: timing.start, duration: imageRevealDuration, ease: "easeOut" }}
-                  style={{
-                    width: '100%',
-                    height: '100%', 
-                    maxHeight: '38vh',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    background: '#0a0604',
-                    zIndex: 10,
-                  }}
                 >
-                  <motion.img
-                    src={src}
-                    alt={`Wedding ${index + 1}`}
-                    draggable={false}
-                    initial={{ filter: 'brightness(0.3) grayscale(0.8)' }}
-                    animate={{
-                      filter: 'brightness(1) grayscale(0)',
-                    }}
-                    transition={{
-                      filter: { delay: timing.start, duration: imageRevealDuration },
-                    }}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
+                  <div className="flip-card">
+                    {/* FRONT */}
+                    <div className="flip-card-front">
+                      <motion.img
+                        src={src}
+                        alt={`Wedding ${index + 1}`}
+                        draggable={false}
+                        initial={{ filter: 'brightness(0.3) grayscale(0.8)' }}
+                        animate={{ filter: 'brightness(1) grayscale(0)' }}
+                        transition={{ filter: { delay: timing.start, duration: imageRevealDuration } }}
+                        className="flip-card-img"
+                      />
+                      <div className="flip-card-front-overlay">
+                        <span className="flip-hint">hover to discover ✦</span>
+                      </div>
+                    </div>
+
+                    {/* BACK */}
+                    <div className="flip-card-back">
+                      <div className="flip-card-back-content">
+                        <div className="flip-card-ornament">❧</div>
+                        <h3 className="flip-card-couple">{data.couple}</h3>
+                        <div className="flip-card-divider" />
+                        <div className="flip-card-meta">
+                          <p><span className="meta-label">Date</span><span className="meta-value">{data.date}</span></p>
+                          <p><span className="meta-label">Place</span><span className="meta-value">{data.place}</span></p>
+                        </div>
+                        <p className="flip-card-experience">{data.experience}</p>
+                        <div className="flip-card-ornament flip-card-ornament-bottom">✦</div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
-
         </div>
       </div>
     </section>

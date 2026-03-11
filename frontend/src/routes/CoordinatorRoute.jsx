@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // ✅ Correct import based on your App.jsx
+import { useAuth } from '../context/AuthContext'; 
 
 const CoordinatorRoute = () => {
     const { user, role, loading } = useAuth();
