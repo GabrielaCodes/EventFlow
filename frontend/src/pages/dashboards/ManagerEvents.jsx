@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../services/api';
 
-const ManagerEvents = () => {
+// Accept the filterStatus prop passed from ManagerDashboard
+const ManagerEvents = ({ filterStatus }) => {
     const [consideration, setConsideration] = useState([]);
     const [inProgress, setInProgress] = useState([]);
     const [completed, setCompleted] = useState([]);
@@ -26,21 +27,17 @@ const ManagerEvents = () => {
             if (data) {
                 // 1. Consideration
                 setConsideration(
-                    data.filter(e =>
-                        e.status === 'consideration' || e.has_pending_request
-                    )
+                    data.filter(e => e.status === 'consideration' || e.has_pending_request)
                 );
 
-                // 2. Completed
+                // 2. In Progress
+                setInProgress(
+                    data.filter(e => e.status === 'in_progress' && !e.has_pending_request)
+                );
+
+                // 3. Completed
                 setCompleted(
                     data.filter(e => e.status === 'completed')
-                );
-
-                // 3. In Progress
-                setInProgress(
-                    data.filter(e =>
-                        e.status === 'in_progress' && !e.has_pending_request
-                    )
                 );
             }
         } catch (err) {
@@ -50,41 +47,39 @@ const ManagerEvents = () => {
         }
     };
 
-    // Reusable table renderer adapted for Dark/Gold Theme
-    const EventTable = ({ title, events, accentColor, textColor }) => (
-        <div className="dash-table-container mb-8">
-            <div className={`p-4 border-b border-[#222] bg-[#111] border-l-4 ${accentColor}`}>
-                <h3 className={`font-bold tracking-wide ${textColor}`}>
-                    {title} ({events.length})
-                </h3>
-            </div>
-
-            {events.length === 0 ? (
-                <div className="p-6 text-center text-gray-500 italic bg-[#050505]">
+    // Reusable, minimalist table renderer
+    const EventTable = ({ events }) => {
+        if (events.length === 0) {
+            return (
+                <div className="p-6 text-center text-[#B0B0B0] text-sm italic">
                     No events in this category.
                 </div>
-            ) : (
-                <table className="dash-table">
+            );
+        }
+
+        return (
+            <div className="overflow-x-auto">
+                <table className="dash-table w-full">
                     <thead>
                         <tr>
                             <th>Event</th>
                             <th>Date</th>
                             <th>Type</th>
-                            <th>Action</th>
+                            <th className="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {events.map(ev => (
                             <tr key={ev.id}>
-                                <td className="font-medium text-gray-200">{ev.title}</td>
-                                <td>
+                                <td className="font-medium text-[#E5E5E5] pl-4">{ev.title}</td>
+                                <td className="text-[#B0B0B0] text-sm">
                                     {new Date(ev.event_date).toLocaleDateString()}
                                 </td>
-                                <td>{ev.subtype_name}</td>
-                                <td>
+                                <td className="text-[#B0B0B0] text-sm">{ev.subtype_name}</td>
+                                <td className="text-right pr-4">
                                     <Link
                                         to={`/event-modifications/${ev.id}`}
-                                        className="dash-btn-outline !py-1 !px-3 !text-xs !border-[#d4af37] !text-[#d4af37] hover:!bg-[#d4af37] hover:!text-black"
+                                        className="text-[#C5A46D] hover:text-[#E5E5E5] text-xs font-medium uppercase tracking-wider transition-colors"
                                     >
                                         Manage
                                     </Link>
@@ -93,38 +88,46 @@ const ManagerEvents = () => {
                         ))}
                     </tbody>
                 </table>
-            )}
-        </div>
-    );
+            </div>
+        );
+    };
 
     if (loading) {
         return (
-            <div className="p-8 text-center text-[#d4af37]">
+            <div className="p-6 text-center text-xs uppercase tracking-widest text-[#B0B0B0]">
                 Loading events...
             </div>
         );
     }
 
+    // CONDITIONAL RENDERING: Only return the table requested by the Dashboard
+    if (filterStatus === 'consideration') {
+        return <EventTable events={consideration} />;
+    }
+    
+    if (filterStatus === 'in_progress') {
+        return <EventTable events={inProgress} />;
+    }
+    
+    if (filterStatus === 'completed') {
+        return <EventTable events={completed} />;
+    }
+
+    // Fallback if no prop is provided (renders everything, useful for testing standalone)
     return (
-        <div className="animate-fade-in">
-            <EventTable
-                title="⚠️ Consideration"
-                events={consideration}
-                accentColor="border-yellow-500"
-                textColor="text-yellow-500"
-            />
-            <EventTable
-                title="▶️ In Progress / Upcoming"
-                events={inProgress}
-                accentColor="border-[#d4af37]" // Gold
-                textColor="text-[#d4af37]"
-            />
-            <EventTable
-                title="✅ Completed"
-                events={completed}
-                accentColor="border-green-500"
-                textColor="text-green-500"
-            />
+        <div className="space-y-6">
+            <div>
+                <h4 className="text-[#C5A46D] text-xs uppercase tracking-wider mb-2 pl-2">Consideration</h4>
+                <EventTable events={consideration} />
+            </div>
+            <div>
+                <h4 className="text-[#C5A46D] text-xs uppercase tracking-wider mb-2 pl-2">In Progress</h4>
+                <EventTable events={inProgress} />
+            </div>
+            <div>
+                <h4 className="text-[#C5A46D] text-xs uppercase tracking-wider mb-2 pl-2">Completed</h4>
+                <EventTable events={completed} />
+            </div>
         </div>
     );
 };
