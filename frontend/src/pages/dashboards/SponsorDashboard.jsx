@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import TicketViewer from '../../components/common/TicketViewer';
+import EventMessaging from '../../components/common/EventMessaging';
 
 const SponsorDashboard = () => {
+    const { user } = useAuth();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     
     // Negotiation State
     const [negotiatingId, setNegotiatingId] = useState(null);
     const [negForm, setNegForm] = useState({ amount: '', note: '' });
+
+    // UI State for expanding chat/tickets
+    const [expandedEventId, setExpandedEventId] = useState(null);
 
     useEffect(() => { fetchRequests(); }, []);
 
@@ -24,22 +31,16 @@ const SponsorDashboard = () => {
 
     const handleAction = async (id, action) => {
         if (action !== 'negotiating' && !window.confirm(`Confirm ${action}?`)) return;
-
         try {
             const payload = { sponsorship_id: id, action };
-            
             if (action === 'negotiating') {
                 payload.amount = negForm.amount;
                 payload.sponsor_note = negForm.note;
             }
-
             await api.patch('/sponsors/respond', payload);
-            alert("Updated!");
             setNegotiatingId(null);
             fetchRequests(); 
-        } catch (err) {
-            alert('Error processing request');
-        }
+        } catch (err) { alert('Error processing request'); }
     };
 
     const startNegotiation = (req) => {
@@ -59,17 +60,17 @@ const SponsorDashboard = () => {
     if (loading) return <div className="p-10 text-center text-amber-500 bg-slate-950 min-h-screen">Loading Excellence...</div>;
 
     return (
-        <div className="p-6 max-w-6xl mx-auto bg-slate-950 min-h-screen text-slate-200">
+        <div className="p-6 max-w-7xl mx-auto bg-slate-950 min-h-screen text-slate-200">
             <h1 className="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200">
                 Sponsorship Portal
             </h1>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {requests.map((req) => (
                     <div key={req.id} className={`bg-slate-900 rounded-2xl shadow-2xl border transition-all duration-300 ${req.status === 'pending' ? 'border-amber-500/50 shadow-amber-500/10 ring-1 ring-amber-500/20' : 'border-slate-800'}`}>
                         
                         {/* Header */}
-                        <div className="bg-slate-800/50 p-5 flex justify-between items-start border-b border-slate-700">
+                        <div className="bg-slate-800/50 p-5 flex justify-between items-start border-b border-slate-700 rounded-t-2xl">
                             <div>
                                 <h3 className="text-amber-50 font-bold truncate w-40" title={req.events?.title}>{req.events?.title}</h3>
                                 <p className="text-amber-500/70 text-xs font-medium uppercase tracking-wider">{new Date(req.events?.event_date).toDateString()}</p>
@@ -110,7 +111,7 @@ const SponsorDashboard = () => {
                                         </p>
                                     </div>
                                     
-                                    <div className="space-y-3 mb-8 text-sm">
+                                    <div className="space-y-3 mb-6 text-sm">
                                         {req.request_note && (
                                             <div className="bg-slate-800/80 p-4 rounded-xl border-l-4 border-amber-600">
                                                 <span className="font-black text-[10px] text-amber-500 block mb-1 uppercase tracking-tighter">Event Memo</span>
@@ -125,30 +126,32 @@ const SponsorDashboard = () => {
                                         )}
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-3 mb-6">
                                         {req.status !== 'accepted' && (
-                                            <button 
-                                                onClick={() => handleAction(req.id, 'accepted')} 
-                                                className="flex-1 bg-gradient-to-b from-amber-400 to-amber-600 text-slate-950 py-2.5 rounded-lg font-bold shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all"
-                                            >
-                                                Approve
-                                            </button>
+                                            <button onClick={() => handleAction(req.id, 'accepted')} className="flex-1 bg-gradient-to-b from-amber-400 to-amber-600 text-slate-950 py-2.5 rounded-lg font-bold shadow-lg hover:scale-[1.02] transition-all">Approve</button>
                                         )}
-                                        
-                                        <button 
-                                            onClick={() => startNegotiation(req)} 
-                                            className="flex-1 bg-slate-800 border border-slate-700 text-amber-50 hover:bg-slate-700 py-2.5 rounded-lg font-bold transition-all"
-                                        >
+                                        <button onClick={() => startNegotiation(req)} className="flex-1 bg-slate-800 border border-slate-700 text-amber-50 hover:bg-slate-700 py-2.5 rounded-lg font-bold transition-all">
                                             {req.status === 'rejected' ? 'Review' : 'Counter'}
                                         </button>
-
                                         {req.status !== 'rejected' && (
-                                            <button 
-                                                onClick={() => handleAction(req.id, 'rejected')} 
-                                                className="px-3 bg-transparent text-red-400 border border-red-900/50 hover:bg-red-900/20 py-2.5 rounded-lg font-medium transition-all"
-                                            >
-                                                Decline
-                                            </button>
+                                            <button onClick={() => handleAction(req.id, 'rejected')} className="px-3 bg-transparent text-red-400 border border-red-900/50 hover:bg-red-900/20 rounded-lg transition-all">Decline</button>
+                                        )}
+                                    </div>
+
+                                    {/* EXPANDABLE TICKETS & CHAT */}
+                                    <div className="border-t border-slate-800 pt-4">
+                                        <button 
+                                            onClick={() => setExpandedEventId(expandedEventId === req.events.id ? null : req.events.id)}
+                                            className="w-full text-center text-xs font-bold uppercase tracking-wider text-amber-500/70 hover:text-amber-400 transition-colors flex justify-center items-center gap-2"
+                                        >
+                                            {expandedEventId === req.events.id ? 'Hide Event Details' : 'View Tickets & Chat'}
+                                        </button>
+                                        
+                                        {expandedEventId === req.events.id && (
+                                            <div className="mt-6 space-y-6 animate-in slide-in-from-top-2">
+                                                <TicketViewer eventId={req.events.id} />
+                                                <EventMessaging eventId={req.events.id} currentUserId={user?.id} />
+                                            </div>
                                         )}
                                     </div>
                                 </>
