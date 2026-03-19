@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api'; 
+import { useAuth } from '../../context/AuthContext';
 import ManagerEvents from './ManagerEvents';
 import ManagerSponsorships from './ManagerSponsorships';
 import MasterDataRequest from '../../components/manager/MasterDataRequest';
 
 import '../../styles/DashboardStyles.css';
 
-// =====================================================================
-// TIER 1: Main Top-Level Panel
-// =====================================================================
 const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -41,9 +39,6 @@ const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children
     );
 };
 
-// =====================================================================
-// TIER 2: Nested Sub-Panel (Sleeker, flat design for inner content)
-// =====================================================================
 const NestedPanel = ({ title, defaultOpen = false, children }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -69,23 +64,16 @@ const NestedPanel = ({ title, defaultOpen = false, children }) => {
     );
 };
 
-// =====================================================================
-// MAIN DASHBOARD COMPONENT
-// =====================================================================
 const ManagerDashboard = () => {
-    // Tab State
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('dashboard');
 
-    // Events & Core Data
     const [events, setEvents] = useState([]); 
     const [assignments, setAssignments] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [activeEventsList, setActiveEventsList] = useState([]);
     
-    // Team State
     const [teamData, setTeamData] = useState({ pending: [], verified: [], rejected: [] });
-    
-    // UI State
     const [loading, setLoading] = useState(true);
     const [teamView, setTeamView] = useState('verified'); 
     const [formData, setFormData] = useState({ employee_id: '', event_id: '', role_description: '' });
@@ -96,15 +84,21 @@ const ManagerDashboard = () => {
         try {
             setLoading(true);
 
-            // 1. Fetch Events & Overview
+            // FIX: Query events directly to ensure assigned_manager_id is loaded
             const { data: eventData } = await supabase
-                .from('manager_event_overview')
-                .select('id, title, subtype_name')
+                .from('events')
+                .select('id, title, assigned_manager_id, status, event_subtypes(name)')
                 .neq('status', 'completed')
                 .order('event_date', { ascending: true });
-            if (eventData) setActiveEventsList(eventData);
+                
+            if (eventData) {
+                const formattedEvents = eventData.map(ev => ({
+                    ...ev,
+                    subtype_name: ev.event_subtypes?.name
+                }));
+                setActiveEventsList(formattedEvents);
+            }
 
-            // 2. Fetch Team
             try {
                 const res = await api.get('/admin/employees/managed');
                 const allEmployees = res.data || [];
@@ -115,7 +109,6 @@ const ManagerDashboard = () => {
                 });
             } catch (err) { console.error("Team fetch error", err); }
 
-            // 3. Fetch Attendance & Assignments
             const { data: attData } = await supabase.from('attendance')
                 .select(`id, check_in, check_out, profiles(full_name), events(title)`)
                 .order('check_in', { ascending: false }).limit(20);
@@ -161,7 +154,6 @@ const ManagerDashboard = () => {
             
             <h1 className="dash-title">Manager <span>Dashboard</span></h1>
 
-            {/* --- PRIMARY TAB NAVIGATION --- */}
             <div className="flex gap-8 border-b border-[#2A2A2A] mb-8">
                 <button
                     onClick={() => setActiveTab('dashboard')}
@@ -181,16 +173,13 @@ const ManagerDashboard = () => {
                 </button>
             </div>
 
-            {/* --- TAB CONTENT --- */}
             {activeTab === 'requests' ? (
                 <div className="animate-fade-in">
-                    {/* Kept exactly as requested - no nested panels here */}
                     <MasterDataRequest />
                 </div>
             ) : (
                 <div className="animate-fade-in space-y-2">
 
-                    {/* PANEl 1: TEAM & APPROVALS */}
                     <CollapsiblePanel 
                         title="Team Directory & Approvals" 
                         defaultOpen={true} 
@@ -263,9 +252,7 @@ const ManagerDashboard = () => {
                         </div>
                     </CollapsiblePanel>
 
-                    {/* PANEL 2: EVENTS */}
                     <CollapsiblePanel title="Event Management" defaultOpen={false}>
-                        {/* Note: Ensure ManagerEvents component accepts a filterStatus prop to isolate data */}
                         <NestedPanel title="1. Events in Consideration" defaultOpen={true}>
                             <ManagerEvents filterStatus="consideration" />
                         </NestedPanel>
@@ -279,23 +266,25 @@ const ManagerDashboard = () => {
                         </NestedPanel>
                     </CollapsiblePanel>
 
-                    {/* PANEL 3: SPONSORSHIPS */}
                     <CollapsiblePanel title="Sponsorships & Funding" defaultOpen={false}>
                         <NestedPanel title="Request New Sponsorship" defaultOpen={true}>
                             <ManagerSponsorships activeEvents={activeEventsList} />
                         </NestedPanel>
-
-                        
                     </CollapsiblePanel>
 
-                    {/* PANEL 4: STAFF OPERATIONS & LOGS */}
                     <CollapsiblePanel title="Staff Operations & Logs" defaultOpen={false}>
-                        
                         <NestedPanel title="Assign Staff to Event" defaultOpen={true}>
                             <form onSubmit={handleAssign} className="flex flex-col gap-4 max-w-2xl">
                                 <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Active Event --</option>
-                                    {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
+                                    {activeEventsList.map(ev => {
+                                        const isMine = ev.assigned_manager_id === user?.id;
+                                        return (
+                                            <option key={ev.id} value={ev.id} disabled={!isMine} className={!isMine ? "text-[#555]" : ""}>
+                                                {ev.title} {ev.subtype_name && `(${ev.subtype_name})`} {!isMine && '- (Read Only)'}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                                 <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Employee --</option>
@@ -309,8 +298,6 @@ const ManagerDashboard = () => {
                         </NestedPanel>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                            
-                            {/* Nested Assignments Log */}
                             <NestedPanel title="Recent Assignments" defaultOpen={false}>
                                 <div className="overflow-x-auto">
                                     <table className="dash-table w-full">
@@ -332,7 +319,6 @@ const ManagerDashboard = () => {
                                 </div>
                             </NestedPanel>
 
-                            {/* Nested Attendance Log */}
                             <NestedPanel title="Live Attendance" defaultOpen={false}>
                                 <div className="overflow-x-auto">
                                     <table className="dash-table w-full">
@@ -349,7 +335,6 @@ const ManagerDashboard = () => {
                                     </table>
                                 </div>
                             </NestedPanel>
-
                         </div>
                     </CollapsiblePanel>
 
