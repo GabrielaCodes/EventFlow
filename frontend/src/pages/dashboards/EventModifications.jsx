@@ -37,6 +37,7 @@ const EventModifications = () => {
     const [event, setEvent] = useState(null);
     const [requests, setRequests] = useState([]);
     const [venues, setVenues] = useState([]);
+    const [hasSponsorships, setHasSponsorships] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const [form, setForm] = useState({ date: '', venue_id: '', notes: '' });
@@ -46,16 +47,22 @@ const EventModifications = () => {
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            const [ev, reqs, vens] = await Promise.all([
+            const [ev, reqs, vens, spons] = await Promise.all([
                 supabase.from('events').select('*, venues(name)').eq('id', id).single(),
                 supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
-                supabase.from('venues').select('id, name')
+                supabase.from('venues').select('id, name'),
+                supabase.from('sponsorships').select('id').eq('event_id', id).limit(1)
             ]);
+            
             if (ev.data) setEvent(ev.data);
             if (reqs.data) setRequests(reqs.data);
             if (vens.data) setVenues(vens.data);
-        } catch (err) { console.error("Fetch error:", err); } 
-        finally { setLoading(false); }
+            if (spons.data && spons.data.length > 0) setHasSponsorships(true);
+        } catch (err) { 
+            console.error("Fetch error:", err); 
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const hasPendingRequest = requests.some(r => r.status === 'pending');
@@ -154,7 +161,6 @@ const EventModifications = () => {
                 <div className="space-y-6">
                     {/* 1. OPERATIONS & MODIFICATIONS */}
                     <CollapsibleSection title="Event Logistics & Modifications" defaultOpen={true}>
-                        {/* MODIFICATION HISTORY */}
                         {requests.length > 0 && (
                             <div className="space-y-4 mb-8">
                                 {requests.map(req => (
@@ -182,7 +188,6 @@ const EventModifications = () => {
                             </div>
                         )}
 
-                        {/* ASSIGNED MANAGER ACTIONS */}
                         {isAssignedManager && !hasPendingRequest && (
                             <div className="bg-[#121212] p-6 rounded-sm border border-[#2A2A2A]">
                                 
@@ -225,15 +230,15 @@ const EventModifications = () => {
                         )}
                     </CollapsibleSection>
 
-                    {/* 2. TICKET ALLOCATIONS & FINANCE (Visible only to Assigned Manager) */}
-                    {isAssignedManager && (
+                    {/* 2. TICKET ALLOCATIONS & FINANCE (Visible only if sponsorships exist) */}
+                    {isAssignedManager && hasSponsorships && (
                         <CollapsibleSection title="Ticket Allocations & Finance" defaultOpen={true}>
                             <TicketManager eventId={event.id} />
                         </CollapsibleSection>
                     )}
 
-                    {/* 3. EVENT DISCUSSION & NOTES (Visible only to Assigned Manager) */}
-                    {isAssignedManager && (
+                    {/* 3. EVENT DISCUSSION & NOTES (Visible only if sponsorships exist) */}
+                    {isAssignedManager && hasSponsorships && (
                         <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={true}>
                             <EventMessaging eventId={event.id} currentUserId={user?.id} />
                         </CollapsibleSection>
