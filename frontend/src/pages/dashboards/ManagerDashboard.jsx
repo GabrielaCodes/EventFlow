@@ -4,8 +4,44 @@ import ManagerEvents from './ManagerEvents';
 import ManagerSponsorships from './ManagerSponsorships';
 import MasterDataRequest from '../../components/manager/MasterDataRequest';
 
-// ✅ IMPORT THE DARK/GOLD DASHBOARD THEME
 import '../../styles/DashboardStyles.css';
+
+// =====================================================================
+// REUSABLE UI COMPONENT: Collapsible Panel
+// =====================================================================
+const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <div className="dash-card mb-6 p-0 overflow-hidden border-[#2A2A2A]">
+            <div 
+                className={`p-5 flex justify-between items-center cursor-pointer transition-colors ${isOpen ? 'bg-[#121212] border-b border-[#2A2A2A]' : 'bg-[#121212] hover:bg-[#181818]'}`}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-4">
+                    <h2 className="text-sm uppercase tracking-widest text-[#E5E5E5] font-medium mb-0">{title}</h2>
+                    {badgeCount > 0 && (
+                        <span className="bg-[#C5A46D] text-[#0B0B0B] text-[10px] font-bold px-2 py-0.5 rounded-[3px]">
+                            {badgeCount} Action Required
+                        </span>
+                    )}
+                </div>
+                <div className="text-[#C5A46D] transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+            {/* Smooth transition wrapper */}
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                <div className="p-6">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const ManagerDashboard = () => {
     // Tab State
@@ -18,25 +54,14 @@ const ManagerDashboard = () => {
     const [activeEventsList, setActiveEventsList] = useState([]);
     
     // Team State
-    const [teamData, setTeamData] = useState({
-        pending: [],
-        verified: [],
-        rejected: []
-    });
+    const [teamData, setTeamData] = useState({ pending: [], verified: [], rejected: [] });
     
     // UI State
     const [loading, setLoading] = useState(true);
     const [teamView, setTeamView] = useState('verified'); 
+    const [formData, setFormData] = useState({ employee_id: '', event_id: '', role_description: '' });
 
-    const [formData, setFormData] = useState({
-        employee_id: '',
-        event_id: '',
-        role_description: ''
-    });
-
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
+    useEffect(() => { fetchDashboardData(); }, []);
 
     const fetchDashboardData = async () => {
         try {
@@ -54,15 +79,12 @@ const ManagerDashboard = () => {
             try {
                 const res = await api.get('/admin/employees/managed');
                 const allEmployees = res.data || [];
-                
                 setTeamData({
                     pending: allEmployees.filter(e => e.verification_status === 'pending'),
                     verified: allEmployees.filter(e => e.verification_status === 'verified'),
                     rejected: allEmployees.filter(e => e.verification_status === 'rejected')
                 });
-            } catch (err) {
-                console.error("Team fetch error", err);
-            }
+            } catch (err) { console.error("Team fetch error", err); }
 
             // 3. Fetch Attendance & Assignments
             const { data: attData } = await supabase.from('attendance')
@@ -84,16 +106,12 @@ const ManagerDashboard = () => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // Handle Approve / Reject
     const handleVerify = async (employeeId, action) => {
         if (!window.confirm(`Are you sure you want to ${action} this employee?`)) return;
-        
         try {
             await api.post('/admin/employees/verify', { employee_id: employeeId, action });
             fetchDashboardData(); 
-        } catch (err) {
-            alert(err.response?.data?.error || "Action failed");
-        }
+        } catch (err) { alert(err.response?.data?.error || "Action failed"); }
     };
 
     const handleAssign = async (e) => {
@@ -104,34 +122,30 @@ const ManagerDashboard = () => {
             alert("Task assigned!");
             setFormData({ employee_id: '', event_id: '', role_description: '' });
             fetchDashboardData(); 
-        } catch (err) {
-            alert(err.response?.data?.error);
-        }
+        } catch (err) { alert(err.response?.data?.error); }
     };
 
-    if (loading) return <div className="dash-wrapper flex justify-center items-center text-xl text-[#d4af37]">Loading Dashboard...</div>;
+    if (loading) return <div className="dash-wrapper flex justify-center items-center text-sm uppercase tracking-widest text-[#B0B0B0]">Loading Dashboard...</div>;
 
     return (
-        // ✅ 1. Apply 'dash-wrapper' to set the pitch-black background and fonts
         <div className="dash-wrapper">
             
-            {/* ✅ 2. Apply 'dash-title' */}
             <h1 className="dash-title">Manager <span>Dashboard</span></h1>
 
-            {/* --- TAB NAVIGATION (Adapted for Dark Mode) --- */}
-            <div className="flex gap-4 border-b border-[#333] mb-8">
+            {/* --- PRIMARY TAB NAVIGATION --- */}
+            <div className="flex gap-8 border-b border-[#2A2A2A] mb-8">
                 <button
                     onClick={() => setActiveTab('dashboard')}
-                    className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'dashboard' ? 'border-[#090909] text-[#090909]' : 'border-transparent text-[#090909] hover:text-[#090909]'
+                    className={`pb-3 text-sm font-medium uppercase tracking-wider transition-colors border-b-2 ${
+                        activeTab === 'dashboard' ? 'border-[#C5A46D] text-[#E5E5E5]' : 'border-transparent text-[#B0B0B0] hover:text-[#E5E5E5]'
                     }`}
                 >
-                    Overview & Team
+                    Overview & Operations
                 </button>
                 <button
                     onClick={() => setActiveTab('requests')}
-                    className={`pb-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors border-b-4 ${
-                        activeTab === 'requests' ? 'border-[#d4af37] text-[#0612e6]' : 'border-transparent text-[#0612e6] hover:text-[#0612e6]'
+                    className={`pb-3 text-sm font-medium uppercase tracking-wider transition-colors border-b-2 ${
+                        activeTab === 'requests' ? 'border-[#C5A46D] text-[#E5E5E5]' : 'border-transparent text-[#B0B0B0] hover:text-[#E5E5E5]'
                     }`}
                 >
                     Resource Requests
@@ -141,162 +155,175 @@ const ManagerDashboard = () => {
             {/* --- TAB CONTENT --- */}
             {activeTab === 'requests' ? (
                 <div className="animate-fade-in">
-                    {/* Note: Ensure MasterDataRequest component also gets updated styling eventually */}
                     <MasterDataRequest />
                 </div>
             ) : (
-                <div className="animate-fade-in">
+                <div className="animate-fade-in space-y-2">
 
-                    {/* SECTION 1: URGENT PENDING APPROVALS */}
-                    {teamData.pending.length > 0 && (
-                        <div className="dash-card mb-8 border-l-4 border-l-red-500">
-                            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
-                                🔔 Pending Approvals ({teamData.pending.length})
-                            </h2>
-                            <div className="grid gap-3">
-                                {teamData.pending.map(emp => (
-                                    <div key={emp.id} className="flex justify-between items-center bg-[#111] border border-[#222] p-4 rounded shadow-sm">
-                                        <div>
-                                            <p className="font-bold text-gray-200">{emp.full_name}</p>
-                                            <p className="text-sm text-gray-500">{emp.email} • Signed up: {new Date(emp.created_at).toLocaleDateString()}</p>
+                    {/* PANEl 1: TEAM & APPROVALS */}
+                    <CollapsiblePanel 
+                        title="Team Directory & Approvals" 
+                        defaultOpen={true} 
+                        badgeCount={teamData.pending.length}
+                    >
+                        {/* Urgent Approvals Sub-section */}
+                        {teamData.pending.length > 0 && (
+                            <div className="mb-8 border-l-2 border-[#C5A46D] pl-4">
+                                <h3 className="text-xs uppercase tracking-wider text-[#C5A46D] mb-4 font-medium">Pending Approvals</h3>
+                                <div className="grid gap-3">
+                                    {teamData.pending.map(emp => (
+                                        <div key={emp.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm">
+                                            <div>
+                                                <p className="font-medium text-[#E5E5E5]">{emp.full_name}</p>
+                                                <p className="text-xs text-[#B0B0B0] mt-1">{emp.email} &bull; Applied: {new Date(emp.created_at).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => handleVerify(emp.id, 'approve')} className="dash-btn px-4 py-1.5 text-xs">Approve</button>
+                                                <button onClick={() => handleVerify(emp.id, 'reject')} className="dash-btn-outline px-4 py-1.5 text-xs border-[#555]">Reject</button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleVerify(emp.id, 'approve')} className="dash-btn px-4 py-1 text-xs">Approve</button>
-                                            <button onClick={() => handleVerify(emp.id, 'reject')} className="dash-btn-outline px-4 py-1 text-xs border-red-500 text-red-500 hover:bg-red-900/30">Reject</button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Directory Sub-section */}
+                        <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
+                            <div className="flex border-b border-[#2A2A2A] bg-[#161616]">
+                                <button 
+                                    onClick={() => setTeamView('verified')}
+                                    className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${
+                                        teamView === 'verified' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'
+                                    }`}
+                                >
+                                    Active Team ({teamData.verified.length})
+                                </button>
+                                <button 
+                                    onClick={() => setTeamView('rejected')}
+                                    className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${
+                                        teamView === 'rejected' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'
+                                    }`}
+                                >
+                                    Rejected ({teamData.rejected.length})
+                                </button>
+                            </div>
+
+                            <div className="max-h-64 overflow-y-auto bg-[#121212]">
+                                {teamView === 'verified' ? (
+                                    teamData.verified.length === 0 ? <p className="text-[#B0B0B0] text-sm text-center p-6">No active team members.</p> :
+                                    <table className="dash-table w-full">
+                                        <thead><tr><th>Name</th><th>Email</th><th className="text-right">Action</th></tr></thead>
+                                        <tbody>
+                                            {teamData.verified.map(emp => (
+                                                <tr key={emp.id}>
+                                                    <td className="font-medium pl-4">{emp.full_name}</td>
+                                                    <td>{emp.email}</td>
+                                                    <td className="text-right pr-4">
+                                                        <button onClick={() => handleVerify(emp.id, 'reject')} className="text-[#B0B0B0] hover:text-[#E5E5E5] text-xs transition-colors">Deactivate</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <table className="dash-table w-full">
+                                        <thead><tr><th>Name</th><th>Email</th><th className="text-right">Action</th></tr></thead>
+                                        <tbody>
+                                            {teamData.rejected.map(emp => (
+                                                <tr key={emp.id}>
+                                                    <td className="font-medium pl-4">{emp.full_name}</td>
+                                                    <td>{emp.email}</td>
+                                                    <td className="text-right pr-4">
+                                                        <button onClick={() => handleVerify(emp.id, 'approve')} className="text-[#C5A46D] hover:text-[#E5E5E5] text-xs transition-colors">Re-Approve</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
-                    )}
+                    </CollapsiblePanel>
 
-                    {/* SECTION 2: TEAM MANAGEMENT */}
-                    <div className="dash-card mb-8 p-0 overflow-hidden">
-                        <div className="flex border-b border-[#333]">
-                            <button 
-                                onClick={() => setTeamView('verified')}
-                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'verified' ? 'bg-[#111] text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-gray-500 hover:bg-[#1a1a1a]'}`}
-                            >
-                                ✅ Active Team ({teamData.verified.length})
-                            </button>
-                            <button 
-                                onClick={() => setTeamView('rejected')}
-                                className={`flex-1 p-4 font-bold text-center transition ${teamView === 'rejected' ? 'bg-[#111] text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:bg-[#1a1a1a]'}`}
-                            >
-                                🚫 Rejected Applicants ({teamData.rejected.length})
-                            </button>
-                        </div>
-
-                        <div className="p-0 max-h-64 overflow-y-auto">
-                            {teamView === 'verified' ? (
-                                teamData.verified.length === 0 ? <p className="text-gray-500 italic text-center p-6">No active team members.</p> :
-                                <table className="dash-table">
-                                    <thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead>
-                                    <tbody>
-                                        {teamData.verified.map(emp => (
-                                            <tr key={emp.id}>
-                                                <td className="font-medium">{emp.full_name}</td>
-                                                <td>{emp.email}</td>
-                                                <td>
-                                                    <button onClick={() => handleVerify(emp.id, 'reject')} className="text-red-500 hover:text-red-400 font-medium text-xs border border-red-500 px-2 py-1 rounded transition">Deactivate</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <table className="dash-table">
-                                    <thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead>
-                                    <tbody>
-                                        {teamData.rejected.map(emp => (
-                                            <tr key={emp.id}>
-                                                <td className="font-medium">{emp.full_name}</td>
-                                                <td>{emp.email}</td>
-                                                <td>
-                                                    <button onClick={() => handleVerify(emp.id, 'approve')} className="text-green-900 hover:text-green-700 font-medium text-xs border border-green-500 px-2 py-1 rounded transition">Re-Approve</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* SECTION 3: EVENTS */}
-                    {/* Note: Ensure ManagerEvents is styled internally with dash-card and dash-table classes */}
-                    <ManagerEvents />
-
-                    {/* SECTION 4: ACTIONS & LISTS */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                        
-                        {/* LEFT COLUMN: FORMS */}
+                    {/* PANEL 2: EVENTS & SPONSORSHIPS */}
+                    <CollapsiblePanel title="Event Management" defaultOpen={false}>
                         <div className="flex flex-col gap-8">
+                            <ManagerEvents />
+                            <div className="border-t border-[#2A2A2A] pt-8">
+                                <ManagerSponsorships activeEvents={activeEventsList} />
+                            </div>
+                        </div>
+                    </CollapsiblePanel>
+
+                    {/* PANEL 3: STAFF OPERATIONS & LOGS */}
+                    <CollapsiblePanel title="Staff Operations & Logs" defaultOpen={false}>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             
-                            {/* A. Assign Staff Form */}
-                            <div className="dash-card h-fit">
-                                <h3 className="mb-4">Assign Staff</h3>
-                                <form onSubmit={handleAssign} className="flex flex-col gap-4">
-                                    <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input">
-                                        <option value="" className="text-gray-500">-- Select Active Event --</option>
-                                        {activeEventsList.map(ev => <option key={ev.id} value={ev.id} className="bg-black">{ev.title} ({ev.subtype_name})</option>)}
+                            {/* Left: Assignment Form */}
+                            <div>
+                                <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-4">Assign Staff to Event</h3>
+                                <form onSubmit={handleAssign} className="flex flex-col gap-4 bg-[#181818] p-5 rounded-sm border border-[#2A2A2A]">
+                                    <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input m-0">
+                                        <option value="">-- Select Active Event --</option>
+                                        {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
                                     </select>
-                                    <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input">
-                                        <option value="" className="text-gray-500">-- Select Employee --</option>
+                                    <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
+                                        <option value="">-- Select Employee --</option>
                                         {teamData.verified.map(emp => (
-                                            <option key={emp.id} value={emp.id} className="bg-black">{emp.full_name || emp.email}</option>
+                                            <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
                                         ))}
                                     </select>
-                                    <input name="role_description" placeholder="Role (e.g. Security)" value={formData.role_description} onChange={handleChange} className="dash-input" />
+                                    <input name="role_description" placeholder="Role (e.g. Security, Registration)" value={formData.role_description} onChange={handleChange} className="dash-input m-0" />
                                     <button type="submit" className="dash-btn mt-2">Assign to Event</button>
                                 </form>
                             </div>
 
-                            {/* B. Request Sponsorship */}
-                            <ManagerSponsorships activeEvents={activeEventsList} />
-                        </div>
-
-                        {/* RIGHT COLUMN: LISTS */}
-                        <div className="space-y-8">
-                            {/* Assignments Table */}
-                            <div className="dash-table-container">
-                                <div className="p-4 bg-[#111] border-b border-[#222]">
-                                    <h3 className="font-bold text-[#d4af37] text-sm uppercase tracking-wider">Recent Assignments</h3>
+                            {/* Right: Logs Tables */}
+                            <div className="space-y-6">
+                                <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
+                                    <div className="p-3 bg-[#161616] border-b border-[#2A2A2A]">
+                                        <h3 className="font-medium text-[#E5E5E5] text-xs uppercase tracking-wider mb-0">Recent Assignments</h3>
+                                    </div>
+                                    <table className="dash-table w-full">
+                                        <thead><tr><th>Staff</th><th>Event</th><th>Status</th></tr></thead>
+                                        <tbody>
+                                            {assignments.slice(0, 4).map(task => (
+                                                <tr key={task.id}>
+                                                    <td className="font-medium text-xs pl-3">{task.profiles?.full_name}</td>
+                                                    <td className="text-xs text-[#B0B0B0]">{task.events?.title}</td>
+                                                    <td className="pr-3">
+                                                        <span className="px-2 py-1 border border-[#C5A46D] text-[#C5A46D] rounded-[3px] text-[9px] uppercase tracking-wider bg-transparent">
+                                                            {task.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <table className="dash-table">
-                                    <thead><tr><th>Staff</th><th>Event</th><th>Status</th></tr></thead>
-                                    <tbody>
-                                        {assignments.map(task => (
-                                            <tr key={task.id}>
-                                                <td className="font-medium text-gray-200">{task.profiles?.full_name}</td>
-                                                <td>{task.events?.title}</td>
-                                                <td><span className="px-2 py-1 bg-[#222] text-[#d4af37] rounded text-xs border border-[#333]">{task.status}</span></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+
+                                <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
+                                    <div className="p-3 bg-[#161616] border-b border-[#2A2A2A]">
+                                        <h3 className="font-medium text-[#E5E5E5] text-xs uppercase tracking-wider mb-0">Live Attendance</h3>
+                                    </div>
+                                    <table className="dash-table w-full">
+                                        <thead><tr><th>Staff</th><th>Event</th><th>Time</th></tr></thead>
+                                        <tbody>
+                                            {attendance.slice(0, 4).map(log => (
+                                                <tr key={log.id}>
+                                                    <td className="font-medium text-xs pl-3">{log.profiles?.full_name}</td>
+                                                    <td className="text-[#B0B0B0] text-xs">{log.events?.title}</td>
+                                                    <td className="text-xs pr-3">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
-                            {/* Attendance Table */}
-                            <div className="dash-table-container">
-                                <div className="p-4 bg-[#111] border-b border-[#222]">
-                                    <h3 className="font-bold text-[#d4af37] text-sm uppercase tracking-wider">Recent Attendance</h3>
-                                </div>
-                                <table className="dash-table">
-                                    <thead><tr><th>Staff</th><th>Event</th><th>Time</th></tr></thead>
-                                    <tbody>
-                                        {attendance.map(log => (
-                                            <tr key={log.id}>
-                                                <td className="font-medium text-gray-200">{log.profiles?.full_name}</td>
-                                                <td className="text-gray-400">{log.events?.title}</td>
-                                                <td className="text-[#d4af37]">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
-                    </div>
+                    </CollapsiblePanel>
+
                 </div>
             )}
         </div>

@@ -1,108 +1,104 @@
 /* =========================================================
-   DASHBOARD THEME: PITCH BLACK & LUSTROUS GOLD
+   DASHBOARD THEME: MINIMALIST ENTERPRISE
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+/* Using Inter instead of Open Sans for a more modern structural feel */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 /* --- MAIN WRAPPER --- */
 .dash-wrapper {
   min-height: 100vh;
-  background-color: #000000; /* Pure Pitch Black */
-  color: #f5f5f5; /* Off-white text for readability */
-  font-family: 'Open Sans', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
   padding: 2rem;
 }
 
 /* --- HEADERS & TITLES --- */
 .dash-title {
-  color: #ffffff;
-  font-size: 2rem;
-  font-weight: bold;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid #333;
-  padding-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
 }
 
 .dash-title span {
-  color: #d4af37; /* Gold Accent */
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  color: var(--gold-main);
+  /* Removed text-shadow glow */
 }
 
 /* --- DASHBOARD CARDS (Panels/Stats) --- */
 .dash-card {
-  background: #050505; /* Slightly lighter than background */
-  border: 1px solid #222; /* Subtle dark border */
-  border-top: 3px solid #d4af37; /* Gold top accent */
-  border-radius: 8px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   padding: 1.5rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Very subtle structural shadow, no colored glows */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .dash-card:hover {
-  transform: translateY(-3px);
-  /* Soft gold glow on hover */
-  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.15), 
-              0 0 10px rgba(212, 175, 55, 0.1) inset;
-  border-color: #333;
+  transform: translateY(-2px);
+  border-color: #3A3A3A; /* Just a slight border lighten, no gold glow */
 }
 
 .dash-card h3 {
-  color: #d4af37;
-  font-size: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   margin-bottom: 1rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* --- BUTTONS --- */
 .dash-btn {
-  background: linear-gradient(to right, #b8860b, #ffd700, #b8860b);
-  background-size: 200% auto;
-  color: #000000; /* Black text for contrast */
-  border: none;
-  padding: 0.6rem 1.5rem;
-  font-size: 0.9rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  background: var(--surface-color);
+  color: var(--gold-main);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
   border-radius: 4px;
   cursor: pointer;
-  transition: 0.4s;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  transition: all 0.2s ease;
+  /* Removed gradients and intense box-shadows */
 }
 
 .dash-btn:hover {
-  background-position: right center;
-  box-shadow: 0 0 20px #ffd700;
-  transform: scale(1.02);
+  background: var(--gold-hover); /* Subtle gold tint */
+  border-color: var(--gold-main);
+  color: var(--gold-main);
 }
 
 .dash-btn-outline {
+  /* Merged visual style with primary button for minimalism */
   background: transparent;
-  color: #d4af37;
-  border: 1px solid #d4af37;
-  padding: 0.6rem 1.5rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.25rem;
   border-radius: 4px;
-  text-transform: uppercase;
-  font-weight: bold;
+  font-weight: 500;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .dash-btn-outline:hover {
-  background: rgba(212, 175, 55, 0.1);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  color: var(--text-primary);
+  border-color: #555;
 }
 
 /* --- TABLES --- */
 .dash-table-container {
-  background: #050505;
-  border-radius: 8px;
+  background: var(--surface-color);
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid #222;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
 }
 
 .dash-table {
@@ -112,46 +108,45 @@
 }
 
 .dash-table th {
-  background: #111111;
-  color: #d4af37;
+  background: #161616;
+  color: var(--text-secondary);
   padding: 1rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-  border-bottom: 2px solid #222;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .dash-table td {
   padding: 1rem;
-  border-bottom: 1px solid #1a1a1a;
-  color: #cccccc;
-  font-size: 0.95rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .dash-table tr:hover td {
-  background: rgba(212, 175, 55, 0.05); /* Very subtle gold highlight */
-  color: #ffffff;
+  background: #181818; /* Just a slight lighten on row hover, no gold */
 }
 
 /* --- INPUTS & FORMS --- */
 .dash-input {
   width: 100%;
-  background: #0a0a0a;
-  border: 1px solid #333;
-  color: #ffd700;
-  padding: 0.8rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.75rem;
   border-radius: 4px;
-  font-family: 'Open Sans', sans-serif;
-  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease;
 }
 
 .dash-input:focus {
   outline: none;
-  border-color: #d4af37;
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+  border-color: var(--gold-main);
+  /* Removed glowing box shadow */
 }
 
 .dash-input::placeholder {
-  color: #555;
+  color: var(--text-secondary);
 }

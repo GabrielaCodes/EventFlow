@@ -1,14 +1,14 @@
 /* src/theme.css */
 
 :root {
-  /* Core Color Palette */
-  --bg-color: #0a0a0a;
-  --surface-color: #1c1c1c;
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0a0;
-  --gold-main: #D4AF37;
-  --gold-hover: #f1d570;
-  --gold-dark: #aa8c2c;
+  /* Core Color Palette - Minimalist Corporate */
+  --bg-color: #0B0B0B;        /* Deep matte black */
+  --surface-color: #121212;   /* Charcoal for cards/containers */
+  --border-color: #2A2A2A;    /* Subtle dividers */
+  --text-primary: #E5E5E5;    /* Off-white */
+  --text-secondary: #B0B0B0;  /* Soft gray */
+  --gold-main: #C5A46D;       /* Muted metallic gold */
+  --gold-hover: rgba(197, 164, 109, 0.1); /* Very subtle gold fill */
 }
 
 /* Global Reset & Base Styles */
@@ -23,66 +23,48 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  color: var(--gold-main);
+  color: var(--text-primary); /* Default to white for cleaner hierarchy */
   margin-bottom: 1rem;
+  font-weight: 500;
 }
 
 a {
   color: var(--gold-main);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  color: var(--gold-hover);
+  color: var(--text-primary);
 }
 
 /* Forms & Inputs */
 input, textarea, select {
-  background-color: var(--surface-color);
+  background-color: var(--bg-color);
   color: var(--text-primary);
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   padding: 0.75rem;
   border-radius: 4px;
   width: 100%;
   margin-bottom: 1rem;
+  transition: border-color 0.2s ease;
 }
 
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--gold-main);
-  box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
-}
-
-/* Buttons */
-button {
-  background-color: var(--gold-main);
-  color: var(--bg-color);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: bold;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease;
-}
-
-button:hover {
-  background-color: var(--gold-hover);
-}
-
-button:active {
-  transform: scale(0.98);
+  /* Removed glow effect - strict flat UI */
 }
 
 /* Cards / Containers */
 .card, .container {
   background-color: var(--surface-color);
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px; /* Slightly sharper corners for corporate feel */
   padding: 2rem;
 }
