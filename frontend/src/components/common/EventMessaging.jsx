@@ -1,3 +1,4 @@
+// frontend/src/components/common/EventMessaging.jsx
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../services/api';
 
@@ -7,10 +8,7 @@ const EventMessaging = ({ eventId, currentUserId }) => {
     const chatEndRef = useRef(null);
 
     useEffect(() => {
-        if (eventId) {
-            fetchMessages();
-            // Optional: Subscribe to real-time updates via Supabase here
-        }
+        if (eventId) fetchMessages();
     }, [eventId]);
 
     const fetchMessages = async () => {
@@ -30,9 +28,6 @@ const EventMessaging = ({ eventId, currentUserId }) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
-        // Note: receiver_id is left null in this generic implementation 
-        // because the event ID acts as the "Chat Room". 
-        // Only Authorized managers/sponsors can read it due to RLS.
         const { error } = await supabase.from('event_messages').insert([{
             event_id: eventId,
             sender_id: currentUserId,
@@ -51,8 +46,7 @@ const EventMessaging = ({ eventId, currentUserId }) => {
                 <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-0">Event Discussion</h3>
             </div>
             
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {messages.length === 0 && <p className="text-center text-[#555] text-xs italic mt-4">No messages yet.</p>}
                 
                 {messages.map(msg => {
@@ -60,7 +54,7 @@ const EventMessaging = ({ eventId, currentUserId }) => {
                     return (
                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                             <span className="text-[10px] text-[#555] uppercase tracking-wider mb-1 px-1">
-                                {isMe ? 'You' : `${msg.sender?.full_name} (${msg.sender?.role})`}
+                                {isMe ? 'You' : `${msg.sender?.full_name || 'User'} (${msg.sender?.role || 'Role'})`}
                             </span>
                             <div className={`p-3 rounded-sm max-w-[80%] text-sm ${isMe ? 'bg-[#C5A46D] text-[#0B0B0B]' : 'bg-[#181818] text-[#E5E5E5] border border-[#2A2A2A]'}`}>
                                 {msg.message_text}
@@ -71,7 +65,6 @@ const EventMessaging = ({ eventId, currentUserId }) => {
                 <div ref={chatEndRef} />
             </div>
 
-            {/* Input Area */}
             <div className="p-3 border-t border-[#2A2A2A] bg-[#121212]">
                 <form onSubmit={handleSend} className="flex gap-2">
                     <input 
@@ -79,7 +72,7 @@ const EventMessaging = ({ eventId, currentUserId }) => {
                         value={newMessage} 
                         onChange={(e) => setNewMessage(e.target.value)} 
                         placeholder="Type a message..." 
-                        className="dash-input m-0 flex-1 text-sm bg-[#0B0B0B]"
+                        className="dash-input m-0 flex-1 text-sm bg-[#0B0B0B] focus:border-[#C5A46D]"
                     />
                     <button type="submit" className="dash-btn px-6 text-xs tracking-wider">Send</button>
                 </form>

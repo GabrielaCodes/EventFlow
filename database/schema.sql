@@ -10,7 +10,6 @@ DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('client', 'manager', 'employee', 'sponsor', 'chief_coordinator');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-
 DO $$ BEGIN
   CREATE TYPE event_status AS ENUM ('consideration', 'in_progress', 'completed', 'cancelled');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -81,7 +80,7 @@ CREATE TABLE IF NOT EXISTS public.event_subtypes (
   UNIQUE (category_id, name)
 );
 
--- 3.4 EVENTS (✅ Updated with assigned_manager_id)
+-- 3.4 EVENTS
 CREATE TABLE IF NOT EXISTS public.events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id UUID NOT NULL REFERENCES public.profiles(id),
@@ -170,7 +169,8 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   type_name TEXT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   quantity_available INT NOT NULL,
-  quantity_sold INT DEFAULT 0
+  quantity_sold INT DEFAULT 0,
+  sponsor_allocation_amount DECIMAL(10,2) DEFAULT 0.00 -- Added for Sponsor Feature
 );
 
 CREATE TABLE IF NOT EXISTS public.terms (
@@ -192,6 +192,16 @@ CREATE TABLE IF NOT EXISTS public.master_data_requests (
   status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3.11 EVENT MESSAGES (NEW)
+CREATE TABLE IF NOT EXISTS public.event_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  receiver_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  message_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =================================================
@@ -236,7 +246,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 4.3 LOAD BALANCING LOGIC (✅ Assigns Event to Manager with fewest live events)
+-- Check if current user is a sponsor for the event
+CREATE OR REPLACE FUNCTION public.is_sponsor_for_event(p_event_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.sponsorships
+        WHERE event_id = p_event_id AND sponsor_id = auth.uid()
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 4.3 LOAD BALANCING LOGIC 
 CREATE OR REPLACE FUNCTION public.get_best_manager_for_category(p_category_id UUID)
 RETURNS UUID AS $$
 DECLARE
@@ -280,7 +301,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
 
 CREATE TRIGGER trigger_auto_assign_event
 BEFORE INSERT ON public.events
@@ -326,8 +346,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 4.5 UPDATED_AT TRIGGER
--- Automatically sets updated_at to the current timestamp
--- whenever a row in public.events is updated.
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -388,7 +406,6 @@ WHERE
   AND (status = 'consideration' OR venue_id IS NULL)
 ORDER BY event_date ASC;
 
-
 CREATE OR REPLACE VIEW public.view_coordinator_recent_alerts AS
 SELECT 
     id, 
@@ -415,6 +432,7 @@ ALTER TABLE public.event_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_subtypes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manager_category_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.master_data_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_messages ENABLE ROW LEVEL SECURITY;
 
 -- --- PROFILES ---
 CREATE POLICY "Public profiles access" ON public.profiles FOR SELECT TO authenticated USING (true);
@@ -425,14 +443,12 @@ CREATE POLICY "Coordinator manage all" ON public.profiles FOR ALL TO authenticat
 -- --- MANAGER ASSIGNMENTS ---
 CREATE POLICY "Public read manager assignments" ON public.manager_category_assignments FOR SELECT TO authenticated USING (true);
 
--- --- EVENTS (Client Lockout + Manager Scope) ---
+-- --- EVENTS (Client Lockout, Sponsor Access, + Manager Scope) ---
 CREATE POLICY "Clients view own events" ON public.events FOR SELECT TO authenticated USING (client_id = auth.uid());
+CREATE POLICY "Sponsors view sponsored events" ON public.events FOR SELECT TO authenticated USING (public.is_sponsor_for_event(id));
 CREATE POLICY "Clients create events" ON public.events FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid());
 CREATE POLICY "Clients update own events" ON public.events FOR UPDATE TO authenticated USING (client_id = auth.uid() AND status = 'consideration' AND assigned_manager_id IS NULL);
-
-CREATE POLICY "Managers view category events" ON public.events FOR SELECT TO authenticated USING (
-  EXISTS (SELECT 1 FROM public.event_subtypes es JOIN public.manager_category_assignments mca ON es.category_id = mca.category_id WHERE es.id = events.subtype_id AND mca.manager_id = auth.uid())
-);
+CREATE POLICY "Managers view category events" ON public.events FOR SELECT TO authenticated USING (public.can_manager_view_event_data(id));
 CREATE POLICY "Managers update assigned events" ON public.events FOR UPDATE TO authenticated USING (assigned_manager_id = auth.uid());
 CREATE POLICY "Coordinator view all events" ON public.events FOR SELECT TO authenticated USING (is_chief_coordinator());
 
@@ -457,10 +473,21 @@ CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE T
 
 -- --- ASSIGNMENTS & ATTENDANCE---
 CREATE POLICY "Managers view category assignments" ON public.assignments FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
-
 CREATE POLICY "Managers create assignments" ON public.assignments FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
-
 CREATE POLICY "Managers view category attendance" ON public.attendance FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
+
+-- --- TICKETS (NEW ROLE-BASED RULES) ---
+CREATE POLICY "Sponsors view tickets for sponsored events" ON public.tickets FOR SELECT TO authenticated USING (public.is_sponsor_for_event(event_id));
+CREATE POLICY "Managers view tickets for category events" ON public.tickets FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
+CREATE POLICY "Coordinator view all tickets" ON public.tickets FOR SELECT TO authenticated USING (public.is_chief_coordinator());
+CREATE POLICY "Assigned managers can insert tickets" ON public.tickets FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
+CREATE POLICY "Assigned managers can update tickets" ON public.tickets FOR UPDATE TO authenticated USING (public.can_manager_edit_event_data(event_id));
+CREATE POLICY "Assigned managers can delete tickets" ON public.tickets FOR DELETE TO authenticated USING (public.can_manager_edit_event_data(event_id));
+CREATE POLICY "Coordinator manage all tickets" ON public.tickets FOR ALL TO authenticated USING (public.is_chief_coordinator());
+
+-- --- EVENT MESSAGES (NEW COLLABORATION RULES) ---
+CREATE POLICY "Event stakeholders can view messages" ON public.event_messages FOR SELECT TO authenticated USING (  public.is_sponsor_for_event(event_id) OR public.can_manager_view_event_data(event_id) OR public.is_chief_coordinator());
+CREATE POLICY "Authorized users can send messages" ON public.event_messages FOR INSERT TO authenticated WITH CHECK (sender_id = auth.uid() AND (public.is_sponsor_for_event(event_id) OR public.can_manager_edit_event_data(event_id)));
 
 -- --- MASTER DATA REQUESTS ---
 CREATE POLICY "Managers create requests" ON public.master_data_requests FOR INSERT TO authenticated WITH CHECK (auth.uid() = requested_by);

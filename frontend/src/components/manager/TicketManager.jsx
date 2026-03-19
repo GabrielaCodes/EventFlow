@@ -58,13 +58,29 @@ const TicketManager = ({ eventId }) => {
             </div>
             
             <div className="p-5">
-                {/* Form to Add Tickets */}
-                <form onSubmit={handleAddTicket} className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
-                    <input name="type_name" placeholder="Type (e.g. VIP)" value={formData.type_name} onChange={handleChange} required className="dash-input m-0 lg:col-span-2" />
-                    <input name="price" type="number" step="0.01" placeholder="Price ($)" value={formData.price} onChange={handleChange} required className="dash-input m-0" />
-                    <input name="quantity_available" type="number" placeholder="Total Qty" value={formData.quantity_available} onChange={handleChange} required className="dash-input m-0" />
-                    <input name="sponsor_allocation_amount" type="number" step="0.01" placeholder="Sponsor Alloc ($)" value={formData.sponsor_allocation_amount} onChange={handleChange} required className="dash-input m-0" />
-                    <button type="submit" className="dash-btn w-full">Add</button>
+                {/* Form to Add Tickets with Clear Labels */}
+                <form onSubmit={handleAddTicket} className="bg-[#0B0B0B] p-4 rounded-sm border border-[#2A2A2A] mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="md:col-span-2">
+                            <label className="block text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1.5">Ticket Type</label>
+                            <input name="type_name" placeholder="e.g. VIP" value={formData.type_name} onChange={handleChange} required className="dash-input m-0" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1.5">Price ($)</label>
+                            <input name="price" type="number" step="0.01" placeholder="0.00" value={formData.price} onChange={handleChange} required className="dash-input m-0" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1.5">Total Qty</label>
+                            <input name="quantity_available" type="number" placeholder="100" value={formData.quantity_available} onChange={handleChange} required className="dash-input m-0" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-[#C5A46D] uppercase tracking-wider mb-1.5">Sponsor Cut ($)</label>
+                            <input name="sponsor_allocation_amount" type="number" step="0.01" placeholder="0.00" value={formData.sponsor_allocation_amount} onChange={handleChange} required className="dash-input m-0 border-[#C5A46D]/50 focus:border-[#C5A46D]" />
+                        </div>
+                    </div>
+                    <div className="flex justify-end mt-4 pt-4 border-t border-[#2A2A2A]">
+                        <button type="submit" className="dash-btn !py-1.5 px-6">Add Ticket Tier</button>
+                    </div>
                 </form>
 
                 {/* Tickets Table */}
@@ -81,7 +97,7 @@ const TicketManager = ({ eventId }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {tickets.length === 0 && <tr><td colSpan="5" className="text-center text-[#B0B0B0] italic">No tickets added yet.</td></tr>}
+                                {tickets.length === 0 && <tr><td colSpan="5" className="text-center text-[#B0B0B0] italic py-6">No tickets added yet.</td></tr>}
                                 {tickets.map(t => (
                                     <tr key={t.id}>
                                         <td className="font-medium text-[#E5E5E5]">{t.type_name}</td>

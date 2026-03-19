@@ -22,7 +22,7 @@ const TicketViewer = ({ eventId }) => {
         setLoading(false);
     };
 
-    if (loading) return <div className="text-[#B0B0B0] text-xs">Loading tickets...</div>;
+    if (loading) return <div className="text-[#B0B0B0] text-xs p-4">Loading tickets...</div>;
 
     return (
         <div className="border border-[#2A2A2A] rounded-sm overflow-hidden bg-[#121212]">
@@ -35,17 +35,17 @@ const TicketViewer = ({ eventId }) => {
                         <tr>
                             <th>Type</th>
                             <th>Price</th>
-                            <th>Availability</th>
-                            <th>Sponsor Cut</th>
+                            <th>Total Availability</th>
+                            <th>Sponsor Cut ($)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {tickets.length === 0 && <tr><td colSpan="4" className="text-center text-[#B0B0B0] italic">No tickets allocated yet.</td></tr>}
+                        {tickets.length === 0 && <tr><td colSpan="4" className="text-center text-[#B0B0B0] italic py-6">No tickets allocated yet.</td></tr>}
                         {tickets.map(t => (
                             <tr key={t.id}>
                                 <td className="font-medium text-[#E5E5E5]">{t.type_name}</td>
                                 <td className="text-[#C5A46D]">${t.price}</td>
-                                <td className="text-[#B0B0B0]">{t.quantity_available} Total</td>
+                                <td className="text-[#B0B0B0]">{t.quantity_available} Tickets</td>
                                 <td className="text-[#B0B0B0]">${t.sponsor_allocation_amount}</td>
                             </tr>
                         ))}
