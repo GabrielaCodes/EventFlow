@@ -7,7 +7,7 @@ import MasterDataRequest from '../../components/manager/MasterDataRequest';
 import '../../styles/DashboardStyles.css';
 
 // =====================================================================
-// REUSABLE UI COMPONENT: Collapsible Panel
+// TIER 1: Main Top-Level Panel
 // =====================================================================
 const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -32,8 +32,7 @@ const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children
                     </svg>
                 </div>
             </div>
-            {/* Smooth transition wrapper */}
-            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2500px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                 <div className="p-6">
                     {children}
                 </div>
@@ -42,7 +41,37 @@ const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children
     );
 };
 
+// =====================================================================
+// TIER 2: Nested Sub-Panel (Sleeker, flat design for inner content)
+// =====================================================================
+const NestedPanel = ({ title, defaultOpen = false, children }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
 
+    return (
+        <div className="border border-[#2A2A2A] rounded-sm mb-4 bg-[#121212] overflow-hidden">
+            <div 
+                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#181818] transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-0">{title}</h3>
+                <div className="text-[#B0B0B0] transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="p-4 border-t border-[#2A2A2A] bg-[#0B0B0B]">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// =====================================================================
+// MAIN DASHBOARD COMPONENT
+// =====================================================================
 const ManagerDashboard = () => {
     // Tab State
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -155,6 +184,7 @@ const ManagerDashboard = () => {
             {/* --- TAB CONTENT --- */}
             {activeTab === 'requests' ? (
                 <div className="animate-fade-in">
+                    {/* Kept exactly as requested - no nested panels here */}
                     <MasterDataRequest />
                 </div>
             ) : (
@@ -166,7 +196,6 @@ const ManagerDashboard = () => {
                         defaultOpen={true} 
                         badgeCount={teamData.pending.length}
                     >
-                        {/* Urgent Approvals Sub-section */}
                         {teamData.pending.length > 0 && (
                             <div className="mb-8 border-l-2 border-[#C5A46D] pl-4">
                                 <h3 className="text-xs uppercase tracking-wider text-[#C5A46D] mb-4 font-medium">Pending Approvals</h3>
@@ -187,23 +216,12 @@ const ManagerDashboard = () => {
                             </div>
                         )}
 
-                        {/* Directory Sub-section */}
                         <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
                             <div className="flex border-b border-[#2A2A2A] bg-[#161616]">
-                                <button 
-                                    onClick={() => setTeamView('verified')}
-                                    className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${
-                                        teamView === 'verified' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'
-                                    }`}
-                                >
+                                <button onClick={() => setTeamView('verified')} className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${teamView === 'verified' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'}`}>
                                     Active Team ({teamData.verified.length})
                                 </button>
-                                <button 
-                                    onClick={() => setTeamView('rejected')}
-                                    className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${
-                                        teamView === 'rejected' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'
-                                    }`}
-                                >
+                                <button onClick={() => setTeamView('rejected')} className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${teamView === 'rejected' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'}`}>
                                     Rejected ({teamData.rejected.length})
                                 </button>
                             </div>
@@ -245,53 +263,64 @@ const ManagerDashboard = () => {
                         </div>
                     </CollapsiblePanel>
 
-                    {/* PANEL 2: EVENTS & SPONSORSHIPS */}
+                    {/* PANEL 2: EVENTS */}
                     <CollapsiblePanel title="Event Management" defaultOpen={false}>
-                        <div className="flex flex-col gap-8">
-                            <ManagerEvents />
-                            <div className="border-t border-[#2A2A2A] pt-8">
-                                <ManagerSponsorships activeEvents={activeEventsList} />
-                            </div>
-                        </div>
+                        {/* Note: Ensure ManagerEvents component accepts a filterStatus prop to isolate data */}
+                        <NestedPanel title="1. Events in Consideration" defaultOpen={true}>
+                            <ManagerEvents filterStatus="consideration" />
+                        </NestedPanel>
+
+                        <NestedPanel title="2. Events In Progress">
+                            <ManagerEvents filterStatus="in_progress" />
+                        </NestedPanel>
+
+                        <NestedPanel title="3. Completed Events">
+                            <ManagerEvents filterStatus="completed" />
+                        </NestedPanel>
                     </CollapsiblePanel>
 
-                    {/* PANEL 3: STAFF OPERATIONS & LOGS */}
-                    <CollapsiblePanel title="Staff Operations & Logs" defaultOpen={false}>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            
-                            {/* Left: Assignment Form */}
-                            <div>
-                                <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-4">Assign Staff to Event</h3>
-                                <form onSubmit={handleAssign} className="flex flex-col gap-4 bg-[#181818] p-5 rounded-sm border border-[#2A2A2A]">
-                                    <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input m-0">
-                                        <option value="">-- Select Active Event --</option>
-                                        {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
-                                    </select>
-                                    <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
-                                        <option value="">-- Select Employee --</option>
-                                        {teamData.verified.map(emp => (
-                                            <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
-                                        ))}
-                                    </select>
-                                    <input name="role_description" placeholder="Role (e.g. Security, Registration)" value={formData.role_description} onChange={handleChange} className="dash-input m-0" />
-                                    <button type="submit" className="dash-btn mt-2">Assign to Event</button>
-                                </form>
-                            </div>
+                    {/* PANEL 3: SPONSORSHIPS */}
+                    <CollapsiblePanel title="Sponsorships & Funding" defaultOpen={false}>
+                        <NestedPanel title="Request New Sponsorship" defaultOpen={true}>
+                            <ManagerSponsorships activeEvents={activeEventsList} />
+                        </NestedPanel>
 
-                            {/* Right: Logs Tables */}
-                            <div className="space-y-6">
-                                <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
-                                    <div className="p-3 bg-[#161616] border-b border-[#2A2A2A]">
-                                        <h3 className="font-medium text-[#E5E5E5] text-xs uppercase tracking-wider mb-0">Recent Assignments</h3>
-                                    </div>
+                        
+                    </CollapsiblePanel>
+
+                    {/* PANEL 4: STAFF OPERATIONS & LOGS */}
+                    <CollapsiblePanel title="Staff Operations & Logs" defaultOpen={false}>
+                        
+                        <NestedPanel title="Assign Staff to Event" defaultOpen={true}>
+                            <form onSubmit={handleAssign} className="flex flex-col gap-4 max-w-2xl">
+                                <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input m-0">
+                                    <option value="">-- Select Active Event --</option>
+                                    {activeEventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.subtype_name})</option>)}
+                                </select>
+                                <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
+                                    <option value="">-- Select Employee --</option>
+                                    {teamData.verified.map(emp => (
+                                        <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
+                                    ))}
+                                </select>
+                                <input name="role_description" placeholder="Role (e.g. Security, Registration)" value={formData.role_description} onChange={handleChange} className="dash-input m-0" />
+                                <button type="submit" className="dash-btn mt-2 w-fit">Assign to Event</button>
+                            </form>
+                        </NestedPanel>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                            
+                            {/* Nested Assignments Log */}
+                            <NestedPanel title="Recent Assignments" defaultOpen={false}>
+                                <div className="overflow-x-auto">
                                     <table className="dash-table w-full">
                                         <thead><tr><th>Staff</th><th>Event</th><th>Status</th></tr></thead>
                                         <tbody>
-                                            {assignments.slice(0, 4).map(task => (
+                                            {assignments.slice(0, 5).map(task => (
                                                 <tr key={task.id}>
-                                                    <td className="font-medium text-xs pl-3">{task.profiles?.full_name}</td>
+                                                    <td className="font-medium text-xs pl-2">{task.profiles?.full_name}</td>
                                                     <td className="text-xs text-[#B0B0B0]">{task.events?.title}</td>
-                                                    <td className="pr-3">
+                                                    <td className="pr-2">
                                                         <span className="px-2 py-1 border border-[#C5A46D] text-[#C5A46D] rounded-[3px] text-[9px] uppercase tracking-wider bg-transparent">
                                                             {task.status}
                                                         </span>
@@ -301,25 +330,25 @@ const ManagerDashboard = () => {
                                         </tbody>
                                     </table>
                                 </div>
+                            </NestedPanel>
 
-                                <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
-                                    <div className="p-3 bg-[#161616] border-b border-[#2A2A2A]">
-                                        <h3 className="font-medium text-[#E5E5E5] text-xs uppercase tracking-wider mb-0">Live Attendance</h3>
-                                    </div>
+                            {/* Nested Attendance Log */}
+                            <NestedPanel title="Live Attendance" defaultOpen={false}>
+                                <div className="overflow-x-auto">
                                     <table className="dash-table w-full">
                                         <thead><tr><th>Staff</th><th>Event</th><th>Time</th></tr></thead>
                                         <tbody>
-                                            {attendance.slice(0, 4).map(log => (
+                                            {attendance.slice(0, 5).map(log => (
                                                 <tr key={log.id}>
-                                                    <td className="font-medium text-xs pl-3">{log.profiles?.full_name}</td>
+                                                    <td className="font-medium text-xs pl-2">{log.profiles?.full_name}</td>
                                                     <td className="text-[#B0B0B0] text-xs">{log.events?.title}</td>
-                                                    <td className="text-xs pr-3">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                                    <td className="text-xs pr-2">{new Date(log.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </NestedPanel>
 
                         </div>
                     </CollapsiblePanel>
