@@ -1,0 +1,140 @@
+EventFlow/
+├── .gitignore
+├── backend/
+│   ├── config/
+│   │   └── supabaseClient.js
+│   ├── controllers/
+│   │   ├── adminController.js
+│   │   ├── analyticsController.js
+│   │   ├── authController.js
+│   │   ├── coordinatorController.js
+│   │   ├── coordinatorLandingController.js
+│   │   ├── eventController.js
+│   │   ├── masterRequestController.js
+│   │   └── sponsorController.js
+│   ├── middleware/
+│   │   ├── authenticate.js
+│   │   ├── authorize.js
+│   │   └── requireApproval.js
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── routes/
+│   │   ├── adminRoutes.js
+│   │   ├── analyticsRoutes.js
+│   │   ├── coordinatorRoutes.js
+│   │   ├── employeeRoutes.js
+│   │   ├── eventRoutes.js
+│   │   └── sponsorRoutes.js
+│   ├── server.js
+│   ├── services/
+│   │   └── emailService.js
+│   └── utils/
+│       └── analyticsQueries.js
+├── database/
+│   └── schema.sql
+├── frontend/
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── README.md
+│   ├── src/
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets/
+│   │   │   ├── concerts/
+│   │   │   │   ├── 1.jpg
+│   │   │   │   ├── 2.jpg
+│   │   │   │   ├── 3.jpg
+│   │   │   │   ├── 4.jpg
+│   │   │   │   └── c5.jpg
+│   │   │   ├── graduation/
+│   │   │   │   ├── 1.jpg
+│   │   │   │   ├── 2.jpg
+│   │   │   │   ├── 3.jpg
+│   │   │   │   ├── 4.jpg
+│   │   │   │   ├── g5.jpg
+│   │   │   │   └── g6.jpg
+│   │   │   ├── theatre/
+│   │   │   │   ├── 1.jpg
+│   │   │   │   ├── 2.jpg
+│   │   │   │   ├── 3.jpg
+│   │   │   │   ├── 4.jpg
+│   │   │   │   ├── 5.jpg
+│   │   │   │   ├── stagelight.png
+│   │   │   │   ├── theatrelightoff.png
+│   │   │   │   └── theatrelighton.jpeg
+│   │   │   └── weddings/
+│   │   │       ├── 1.jpeg
+│   │   │       ├── 1.jpg
+│   │   │       ├── 2.jpeg
+│   │   │       ├── 2.jpg
+│   │   │       ├── 3.jpeg
+│   │   │       ├── 3.jpg
+│   │   │       ├── 4.jpeg
+│   │   │       ├── 4.jpg
+│   │   │       ├── 5.jpeg
+│   │   │       ├── 6.jpeg
+│   │   │       ├── w1.jpg
+│   │   │       ├── w2.jpg
+│   │   │       ├── w3.jpg
+│   │   │       └── w4.jpg
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── LandingNavbar.jsx
+│   │   │   │   └── StatusBadge.jsx
+│   │   │   ├── coordinator/
+│   │   │   │   ├── analytics/
+│   │   │   │   │   └── AnalyticsDashboard.jsx
+│   │   │   │   ├── CoordinatorLanding.jsx
+│   │   │   │   ├── MasterDataCategories.jsx
+│   │   │   │   ├── MasterDataVenues.jsx
+│   │   │   │   ├── MasterRequestApprovals.jsx
+│   │   │   │   └── UserApprovals.jsx
+│   │   │   ├── landing/
+│   │   │   │   ├── ConcertSection.css
+│   │   │   │   ├── ConcertSection.jsx
+│   │   │   │   ├── ContactSection.jsx
+│   │   │   │   ├── EventFlowIntro.css
+│   │   │   │   ├── EventFlowIntro.jsx
+│   │   │   │   ├── GraduationSection.jsx
+│   │   │   │   ├── logo.png
+│   │   │   │   ├── TheatreSection.jsx
+│   │   │   │   ├── WeddingSection.css
+│   │   │   │   └── WeddingSection.jsx
+│   │   │   ├── manager/
+│   │   │   │   └── MasterDataRequest.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   └── ProtectedRoute.jsx
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages/
+│   │   │   ├── AuthStyles.css
+│   │   │   ├── dashboards/
+│   │   │   │   ├── ChiefCoordinatorDashboard.jsx
+│   │   │   │   ├── ClientDashboard.jsx
+│   │   │   │   ├── EmployeeDashboard.jsx
+│   │   │   │   ├── EventModifications.jsx
+│   │   │   │   ├── ManagerDashboard.jsx
+│   │   │   │   ├── ManagerEvents.jsx
+│   │   │   │   ├── ManagerSponsorships.jsx
+│   │   │   │   └── SponsorDashboard.jsx
+│   │   │   ├── Gallery.jsx
+│   │   │   ├── LandingPage.jsx
+│   │   │   ├── Login.jsx
+│   │   │   └── Register.jsx
+│   │   ├── routes/
+│   │   │   └── CoordinatorRoute.jsx
+│   │   ├── services/
+│   │   │   ├── api.js
+│   │   │   └── coordinatorService.js
+│   │   ├── styles/
+│   │   │   └── DashboardStyles.css
+│   │   └── theme.css
+│   ├── tailwind.config.js
+│   └── vite.config.js
+└── README.md
