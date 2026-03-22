@@ -148,6 +148,9 @@ export const deleteVenue = async (req, res) => {
 /* =======================
    5. MANAGER WORKLOADS & EVENTS
    ======================= */
+/* =======================
+   5. MANAGER WORKLOADS & EVENTS
+   ======================= */
 export const getAllEventsByManager = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -159,7 +162,7 @@ export const getAllEventsByManager = async (req, res) => {
                 event_date,
                 assigned_manager_id,
                 client:profiles!client_id(full_name),
-                manager:profiles!assigned_manager_id(full_name),
+                manager:profiles!assigned_manager_id(id, full_name, created_at),
                 venue:venues(name),
                 sponsorships(
                     amount,
@@ -171,6 +174,8 @@ export const getAllEventsByManager = async (req, res) => {
                     category:event_categories(name)
                 )
             `)
+            // THIS IS THE NEW LINE: Only fetch "live" events
+            .in('status', ['consideration', 'in_progress']) 
             .order('event_date', { ascending: true });
 
         if (error) throw error;

@@ -23,9 +23,10 @@ const ManagerWorkloads = () => {
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterSponsors, setFilterSponsors] = useState('All');
 
-    // Collapse States (Track which categories and managers are currently OPEN)
+    // Collapse States
     const [openCategories, setOpenCategories] = useState({});
     const [openManagers, setOpenManagers] = useState({});
+    const [openRankings, setOpenRankings] = useState({});
 
     useEffect(() => {
         fetchWorkloads();
@@ -38,7 +39,7 @@ const ManagerWorkloads = () => {
             setRawEvents(response.data || []);
             setError(null);
             
-            // Auto-open all categories by default when data loads
+            // Auto-open all categories by default
             const initialCats = {};
             response.data.forEach(e => {
                 const cat = e.subtype?.category?.name || 'Uncategorized';
@@ -55,7 +56,6 @@ const ManagerWorkloads = () => {
     };
 
     // --- DYNAMIC FILTER OPTIONS ---
-    // Extract unique categories and subtypes from the data to populate the dropdowns
     const uniqueCategories = useMemo(() => ['All', ...new Set(rawEvents.map(e => e.subtype?.category?.name).filter(Boolean))], [rawEvents]);
     const uniqueSubtypes = useMemo(() => {
         let subtypes = rawEvents.map(e => e.subtype?.name).filter(Boolean);
@@ -64,17 +64,14 @@ const ManagerWorkloads = () => {
 
     // --- FILTER & GROUPING ENGINE ---
     const groupedWorkloads = useMemo(() => {
-        // 1. Apply Filters
         const filtered = rawEvents.filter(event => {
             const catName = event.subtype?.category?.name || 'Uncategorized';
             const subName = event.subtype?.name || 'Unknown';
             const hasSponsors = event.sponsorships && event.sponsorships.length > 0;
             
-            // Search Text Match (Checks Title, Client, Venue, Manager)
             const searchString = `${event.title} ${event.client?.full_name} ${event.venue?.name} ${event.manager?.full_name}`.toLowerCase();
             const matchesSearch = searchString.includes(searchTerm.toLowerCase());
 
-            // Dropdown Matches
             const matchesCategory = filterCategory === 'All' || catName === filterCategory;
             const matchesSubtype = filterSubtype === 'All' || subName === filterSubtype;
             const matchesStatus = filterStatus === 'All' || event.status === filterStatus;
@@ -86,7 +83,6 @@ const ManagerWorkloads = () => {
             return matchesSearch && matchesCategory && matchesSubtype && matchesStatus && matchesSponsors;
         });
 
-        // 2. Group by Category -> Manager
         return filtered.reduce((acc, event) => {
             const catName = event.subtype?.category?.name || 'Uncategorized';
             const managerName = event.manager?.full_name || 'Unassigned';
@@ -102,6 +98,7 @@ const ManagerWorkloads = () => {
     // Toggle Handlers
     const toggleCategory = (cat) => setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
     const toggleManager = (catMgrKey) => setOpenManagers(prev => ({ ...prev, [catMgrKey]: !prev[catMgrKey] }));
+    const toggleRanking = (cat) => setOpenRankings(prev => ({ ...prev, [cat]: !prev[cat] }));
 
     if (loading) return <div style={{ color: 'var(--text-secondary)' }} className="p-6">Loading workloads...</div>;
     if (error) return <div className="text-red-500 font-bold p-6">Error: {error}</div>;
@@ -155,7 +152,27 @@ const ManagerWorkloads = () => {
                 <div className="space-y-4">
                     {Object.entries(groupedWorkloads).map(([categoryName, managers]) => {
                         const isCatOpen = openCategories[categoryName];
-                        
+                        const isRankingOpen = openRankings[categoryName];
+
+                        // --- RANKING LOGIC ---
+                        const rankedManagers = Object.entries(managers)
+                            .filter(([mName]) => mName !== 'Unassigned')
+                            .map(([mName, mEvents]) => {
+                                // Count ONLY 'in_progress' events for accurate current workload
+                                const inProgressCount = mEvents.filter(e => e.status === 'in_progress').length;
+                                return {
+                                    name: mName,
+                                    count: inProgressCount,
+                                    createdAt: mEvents[0]?.manager?.created_at || '1970-01-01T00:00:00Z' 
+                                };
+                            })
+                            .sort((a, b) => {
+                                // Primary Sort: Lowest active event count first
+                                if (a.count !== b.count) return a.count - b.count;
+                                // Tie-breaker: Oldest account first
+                                return new Date(a.createdAt) - new Date(b.createdAt);
+                            });
+
                         return (
                             <div key={categoryName} className="border border-[#333] rounded-lg overflow-hidden">
                                 {/* CATEGORY HEADER */}
@@ -168,43 +185,93 @@ const ManagerWorkloads = () => {
                                     </h3>
                                     <div className="flex items-center gap-4">
                                         <span className="text-sm px-3 py-1 bg-[#333] rounded-full text-[var(--text-secondary)]">
-                                            {Object.keys(managers).length} Manager{Object.keys(managers).length !== 1 ? 's' : ''}
+                                            {Object.keys(managers).length} Group{Object.keys(managers).length !== 1 ? 's' : ''}
                                         </span>
                                         <ChevronIcon isOpen={isCatOpen} />
                                     </div>
                                 </button>
 
-                                {/* MANAGERS WRAPPER (Collapsible) */}
+                                {/* CATEGORY CONTENT WRAPPER */}
                                 {isCatOpen && (
                                     <div className="p-4 bg-[#1a1a1a] space-y-4">
-                                        {Object.entries(managers).map(([managerName, events]) => {
+                                        
+                                        {/* --- RANKINGS COLLAPSIBLE --- */}
+                                        {rankedManagers.length > 0 && (
+                                            <div className="border border-[var(--gold-main)] rounded bg-[#1e1a15]">
+                                                <button 
+                                                    onClick={() => toggleRanking(categoryName)}
+                                                    className="w-full flex justify-between items-center p-3 hover:bg-[#251f18] transition-colors"
+                                                >
+                                                    <h4 className="font-semibold text-[var(--gold-main)] text-sm uppercase tracking-wide flex items-center gap-2">
+                                                        📊 Manager Rankings (Availability)
+                                                    </h4>
+                                                    <ChevronIcon isOpen={isRankingOpen} />
+                                                </button>
+                                                
+                                                {isRankingOpen && (
+                                                    <div className="p-3 border-t border-[var(--gold-main)]/30">
+                                                        <div className="flex flex-col gap-2">
+                                                            {rankedManagers.map((mgr, index) => (
+                                                                <div key={mgr.name} className="flex justify-between items-center bg-[#252525] p-2 rounded text-sm">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className={`font-bold w-6 h-6 rounded-full flex items-center justify-center ${index === 0 ? 'bg-[var(--gold-main)] text-black' : 'bg-[#444] text-[var(--text-secondary)]'}`}>
+                                                                            {index + 1}
+                                                                        </span>
+                                                                        <span className="font-medium text-[var(--text-primary)]">{mgr.name}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 text-[var(--text-secondary)]">
+                                                                        <span className="text-xs opacity-70" title="Account Creation Date">
+                                                                            Joined: {new Date(mgr.createdAt).toLocaleDateString()}
+                                                                        </span>
+                                                                        <span className="px-2 py-1 bg-[#333] rounded">
+                                                                            {mgr.count} In Progress
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* --- MANAGERS & EVENTS GROUPS --- */}
+                                        {Object.entries(managers)
+                                            .sort(([nameA], [nameB]) => {
+                                                if (nameA === 'Unassigned') return -1; // Pin Unassigned to the top
+                                                if (nameB === 'Unassigned') return 1;
+                                                return nameA.localeCompare(nameB);     // Sort the rest alphabetically
+                                            })
+                                            .map(([managerName, events]) => {
                                             const catMgrKey = `${categoryName}-${managerName}`;
-                                            const isMgrOpen = openManagers[catMgrKey] !== false; // Managers open by default
+                                            const isMgrOpen = openManagers[catMgrKey] !== false; 
+                                            const isUnassigned = managerName === 'Unassigned';
 
                                             return (
-                                                <div key={managerName} className="border border-[#444] rounded bg-[#1e1e1e]">
-                                                    {/* MANAGER HEADER */}
+                                                <div 
+                                                    key={managerName} 
+                                                    className={`border rounded ${isUnassigned ? 'border-orange-500/30 bg-[#2a1e15]' : 'border-[#444] bg-[#1e1e1e]'}`}
+                                                >
                                                     <button 
                                                         onClick={() => toggleManager(catMgrKey)}
-                                                        className="w-full flex justify-between items-center p-3 hover:bg-[#252525] transition-colors border-b border-[#444]"
+                                                        className={`w-full flex justify-between items-center p-3 hover:bg-[#252525] transition-colors border-b ${isUnassigned ? 'border-orange-500/30' : 'border-[#444]'}`}
                                                     >
-                                                        <h4 className="font-semibold text-[var(--text-primary)] text-lg">
-                                                            👤 {managerName}
+                                                        <h4 className={`font-semibold text-lg ${isUnassigned ? 'text-orange-400' : 'text-[var(--text-primary)]'}`}>
+                                                            {isUnassigned ? '⚠️ ' : '👤 '} {managerName}
                                                         </h4>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-xs px-2 py-1 bg-[#333] rounded text-[var(--text-secondary)]">
+                                                            <span className={`text-xs px-2 py-1 rounded ${isUnassigned ? 'bg-orange-500/20 text-orange-300' : 'bg-[#333] text-[var(--text-secondary)]'}`}>
                                                                 {events.length} Event{events.length !== 1 ? 's' : ''}
                                                             </span>
                                                             <ChevronIcon isOpen={isMgrOpen} />
                                                         </div>
                                                     </button>
 
-                                                    {/* EVENTS TABLE (Collapsible) */}
                                                     {isMgrOpen && (
                                                         <div className="overflow-x-auto">
                                                             <table className="w-full text-left border-collapse">
                                                                 <thead>
-                                                                    <tr className="bg-[#252525] text-[var(--text-secondary)] uppercase text-xs tracking-wider">
+                                                                    <tr className={`${isUnassigned ? 'bg-[#221810]' : 'bg-[#252525]'} text-[var(--text-secondary)] uppercase text-xs tracking-wider`}>
                                                                         <th className="p-3">Event Title</th>
                                                                         <th className="p-3">Subtype</th>
                                                                         <th className="p-3">Client</th>
@@ -214,12 +281,12 @@ const ManagerWorkloads = () => {
                                                                 </thead>
                                                                 <tbody>
                                                                     {events.map(event => (
-                                                                        <tr key={event.id} className="border-t border-[#444] hover:bg-[#2a2a2a] transition-colors">
+                                                                        <tr key={event.id} className={`border-t ${isUnassigned ? 'border-orange-500/20 hover:bg-[#302218]' : 'border-[#444] hover:bg-[#2a2a2a]'} transition-colors`}>
                                                                             <td className="p-3 font-semibold text-[var(--text-primary)]">{event.title}</td>
                                                                             <td className="p-3 text-[var(--text-secondary)]">{event.subtype?.name || 'N/A'}</td>
                                                                             <td className="p-3 text-[var(--text-secondary)]">{event.client?.full_name || 'N/A'}</td>
                                                                             <td className="p-3">
-                                                                                <span className="px-2 py-1 text-xs rounded uppercase bg-[#333] text-[var(--text-primary)] whitespace-nowrap">
+                                                                                <span className={`px-2 py-1 text-xs rounded uppercase ${isUnassigned ? 'bg-orange-500/20 text-orange-300' : 'bg-[#333] text-[var(--text-primary)]'} whitespace-nowrap`}>
                                                                                     {event.status.replace('_', ' ')}
                                                                                 </span>
                                                                             </td>

@@ -162,7 +162,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_one_pending_mod_per_event
 ON public.modification_requests (event_id)
 WHERE status = 'pending';
 
--- 3.9 TICKETS & TERMS
+-- 3.9 TICKETS 
 CREATE TABLE IF NOT EXISTS public.tickets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id),
@@ -173,13 +173,6 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   sponsor_allocation_amount DECIMAL(10,2) DEFAULT 0.00 -- Added for Sponsor Feature
 );
 
-CREATE TABLE IF NOT EXISTS public.terms (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  created_by UUID REFERENCES public.profiles(id),
-  created_at TIMESTAMP DEFAULT NOW()
-);
 
 -- 3.10 MASTER DATA REQUESTS (For Managers)
 CREATE TABLE IF NOT EXISTS public.master_data_requests (
@@ -266,46 +259,19 @@ BEGIN
     SELECT mca.manager_id INTO v_manager_id
     FROM public.manager_category_assignments mca
     JOIN public.profiles p ON p.id = mca.manager_id
+    -- CHANGE: We now ONLY count 'in_progress' events to match the frontend logic
     LEFT JOIN public.events e ON e.assigned_manager_id = mca.manager_id 
-        AND e.status IN ('consideration', 'in_progress') 
+        AND e.status = 'in_progress' 
     WHERE mca.category_id = p_category_id
       AND p.verification_status = 'verified' 
-    GROUP BY mca.manager_id
-    ORDER BY COUNT(e.id) ASC, random()
+    GROUP BY mca.manager_id, p.created_at  -- Added p.created_at to the group for the tie-breaker
+    -- CHANGE: Order by count first, then by the manager's creation date (oldest first)
+    ORDER BY COUNT(e.id) ASC, p.created_at ASC
     LIMIT 1;
 
     RETURN v_manager_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION public.auto_assign_event_to_manager()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_category_id UUID;
-    v_assigned_manager UUID;
-BEGIN
-    IF NEW.subtype_id IS NOT NULL THEN
-        SELECT category_id INTO v_category_id FROM public.event_subtypes WHERE id = NEW.subtype_id;
-
-        IF v_category_id IS NOT NULL THEN
-            PERFORM pg_advisory_xact_lock(hashtext(v_category_id::text));
-            v_assigned_manager := public.get_best_manager_for_category(v_category_id);
-            
-            IF v_assigned_manager IS NULL THEN
-                RAISE EXCEPTION 'Assignment Failed: No verified manager available for this category.';
-            END IF;
-
-            NEW.assigned_manager_id := v_assigned_manager;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE TRIGGER trigger_auto_assign_event
-BEFORE INSERT ON public.events
-FOR EACH ROW EXECUTE PROCEDURE public.auto_assign_event_to_manager();
-
 
 -- 4.4 USER SIGNUP HANDLER 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
