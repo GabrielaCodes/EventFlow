@@ -165,6 +165,10 @@ export const getAllEventsByManager = async (req, res) => {
                     amount,
                     status,
                     sponsor:profiles!sponsor_id(full_name)
+                ),
+                subtype:event_subtypes(
+                    name,
+                    category:event_categories(name)
                 )
             `)
             .order('event_date', { ascending: true });
