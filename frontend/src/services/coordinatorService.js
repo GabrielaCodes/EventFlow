@@ -22,3 +22,6 @@ export const deleteVenue = (id) => api.delete(`/coordinator/venues/${id}`);
 export const getSubtypes = () => api.get('/coordinator/subtypes');
 export const createSubtype = (data) => api.post('/coordinator/subtypes', data);
 export const deleteSubtype = (id) => api.delete(`/coordinator/subtypes/${id}`);
+
+// 5. Manager Workloads
+export const getManagerWorkloads = () => api.get('/coordinator/workloads');

@@ -5,21 +5,28 @@ import {
     getPendingUsers, verifyUser, getAllUsers,
     getCategories, createCategory, deleteCategory,
     getSubtypes, createSubtype, deleteSubtype,
-    getVenues, createVenue, deleteVenue
+    getVenues, createVenue, deleteVenue,
+    getAllEventsByManager // <-- Added import here
 } from '../controllers/coordinatorController.js';
+
 //Analytics
 import { getLandingData } from '../controllers/coordinatorLandingController.js';
+
 //Manager requests
 import { getCoordinatorRequests, processRequest } from '../controllers/masterRequestController.js';
+
 const router = express.Router();
 
+// --------------------------------------------------------
+// GLOBAL MIDDLEWARE FOR THIS ROUTER
+// Every route below this will automatically be protected!
+// --------------------------------------------------------
 router.use(authenticate);
-// Ensure only Chief Coordinator can hit these
 router.use(authorize(['chief_coordinator'])); 
 
 // User Mgmt
 router.get('/users', getAllUsers); 
-router.get('/users/pending', getPendingUsers); // Fixed path
+router.get('/users/pending', getPendingUsers); 
 router.patch('/users/verify', verifyUser);
 
 // Categories
@@ -40,6 +47,12 @@ router.delete('/venues/:id', deleteVenue);
 // Manager Requests
 router.get('/master-requests', getCoordinatorRequests);
 router.patch('/master-requests/process', processRequest);
+
 // Overview Landing page
 router.get('/landing-data', getLandingData);
+
+// Assigned Manager Workloads
+// Notice how clean this is since the middleware is handled globally above!
+router.get('/workloads', getAllEventsByManager);
+
 export default router;

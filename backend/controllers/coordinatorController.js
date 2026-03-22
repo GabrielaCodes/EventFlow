@@ -142,3 +142,38 @@ export const deleteVenue = async (req, res) => {
         res.json({ message: "Deleted" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+//Cheif Coordinator can view all events and manager assigned
+
+/* =======================
+   5. MANAGER WORKLOADS & EVENTS
+   ======================= */
+export const getAllEventsByManager = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('events')
+            .select(`
+                id,
+                title,
+                status,
+                event_date,
+                assigned_manager_id,
+                client:profiles!client_id(full_name),
+                manager:profiles!assigned_manager_id(full_name),
+                venue:venues(name),
+                sponsorships(
+                    amount,
+                    status,
+                    sponsor:profiles!sponsor_id(full_name)
+                )
+            `)
+            .order('event_date', { ascending: true });
+
+        if (error) throw error;
+
+        res.json(data);
+    } catch (err) {
+        console.error("Error fetching manager workloads:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
