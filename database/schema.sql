@@ -442,14 +442,41 @@ CREATE POLICY "Managers view category assignments" ON public.assignments FOR SEL
 CREATE POLICY "Managers create assignments" ON public.assignments FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
 CREATE POLICY "Managers view category attendance" ON public.attendance FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
 
--- --- TICKETS (NEW ROLE-BASED RULES) ---
-CREATE POLICY "Sponsors view tickets for sponsored events" ON public.tickets FOR SELECT TO authenticated USING (public.is_sponsor_for_event(event_id));
-CREATE POLICY "Managers view tickets for category events" ON public.tickets FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
-CREATE POLICY "Coordinator view all tickets" ON public.tickets FOR SELECT TO authenticated USING (public.is_chief_coordinator());
-CREATE POLICY "Assigned managers can insert tickets" ON public.tickets FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
-CREATE POLICY "Assigned managers can update tickets" ON public.tickets FOR UPDATE TO authenticated USING (public.can_manager_edit_event_data(event_id));
-CREATE POLICY "Assigned managers can delete tickets" ON public.tickets FOR DELETE TO authenticated USING (public.can_manager_edit_event_data(event_id));
-CREATE POLICY "Coordinator manage all tickets" ON public.tickets FOR ALL TO authenticated USING (public.is_chief_coordinator());
+-- --- TICKETS ---
+----RLS POLICIES----
+-- 1. FLIP THE MASTER SWITCH TO ENABLE RLS
+ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
+
+-- 2. Clear out any old policies just in case
+DROP POLICY IF EXISTS "Coordinator view all tickets" ON public.tickets;
+DROP POLICY IF EXISTS "Managers view tickets for category events" ON public.tickets;
+DROP POLICY IF EXISTS "Sponsors view tickets for sponsored events" ON public.tickets;
+DROP POLICY IF EXISTS "Clients view tickets for own events" ON public.tickets;
+
+-- 3. CHIEF COORDINATOR: Can view ALL tickets in the system
+CREATE POLICY "Coordinator view all tickets" 
+ON public.tickets FOR SELECT TO authenticated 
+USING (public.is_chief_coordinator());
+
+-- 4. MANAGER: Can view tickets for events in their assigned category
+CREATE POLICY "Managers view tickets for category events" 
+ON public.tickets FOR SELECT TO authenticated 
+USING (public.can_manager_view_event_data(event_id));
+
+-- 5. SPONSOR: Can view tickets ONLY for the specific events they are sponsoring
+CREATE POLICY "Sponsors view tickets for sponsored events" 
+ON public.tickets FOR SELECT TO authenticated 
+USING (public.is_sponsor_for_event(event_id));
+
+-- 6. CLIENT: Can view tickets ONLY for the events they booked themselves
+CREATE POLICY "Clients view tickets for own events" 
+ON public.tickets FOR SELECT TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM public.events 
+        WHERE id = event_id AND client_id = auth.uid()
+    )
+);
 
 -- --- EVENT MESSAGES (NEW COLLABORATION RULES) ---
 CREATE POLICY "Event stakeholders can view messages" ON public.event_messages FOR SELECT TO authenticated USING (  public.is_sponsor_for_event(event_id) OR public.can_manager_view_event_data(event_id) OR public.is_chief_coordinator());
