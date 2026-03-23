@@ -135,14 +135,14 @@ const ManagerDashboard = () => {
                 setLeaveRequests(leaves || []);
             } catch(e) { console.error("Leave fetch error", e); }
 
-            // 4. Attendance & Assignments
+            // 4. Attendance & Assignments — rejection_reason included
             const { data: attData } = await supabase.from('attendance')
                 .select(`id, check_in, check_out, profiles(full_name), events(title)`)
                 .order('check_in', { ascending: false }).limit(20);
             if (attData) setAttendance(attData);
 
             const { data: assignData } = await supabase.from('assignments')
-                .select(`id, status, role_description, assigned_at, profiles(full_name), events(id, title)`)
+                .select(`id, status, role_description, assigned_at, rejection_reason, profiles(full_name), events(id, title)`)
                 .order('assigned_at', { ascending: false });
             if (assignData) setAssignments(assignData);
 
@@ -169,7 +169,7 @@ const ManagerDashboard = () => {
         let denial_reason = null;
         if (status === 'rejected') {
             denial_reason = prompt("Please provide a reason for denying this leave request:");
-            if (denial_reason === null) return; // user cancelled the prompt
+            if (denial_reason === null) return;
         }
         try {
             await api.post('/admin/leave-requests/respond', { request_id, status, denial_reason });
@@ -218,16 +218,13 @@ const ManagerDashboard = () => {
     // --- RE-ASSIGN: Pre-fill form from a rejected assignment ---
     const handleReAssign = (task) => {
         setFormData({
-            employee_id: '',                         // clear employee so manager picks a new one
+            employee_id: '',
             event_id: task.events?.id || '',
             role_description: task.role_description || '',
             shift_start: '',
             shift_end: ''
         });
-        // Scroll to / open Staff Operations section by switching tab focus is not needed,
-        // but we alert the manager so they know the form is pre-filled.
         alert(`Form pre-filled for event "${task.events?.title}". Please select a new employee and submit.`);
-        // Scroll to the assign form
         document.getElementById('assign-staff-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
@@ -238,8 +235,9 @@ const ManagerDashboard = () => {
     const approvedLeaves = leaveRequests.filter(l => l.status === 'approved');
     const rejectedLeaves = leaveRequests.filter(l => l.status === 'rejected');
 
-    // Categorise assignments
+    // Categorise assignments — rejected get their own panel, excluded from recent
     const rejectedAssignments = assignments.filter(a => a.status === 'rejected');
+    const recentAssignments = assignments.filter(a => a.status !== 'rejected');
 
     const totalBadges = teamData.pending.length + pendingLeaves.length + rejectedAssignments.length;
 
@@ -289,8 +287,7 @@ const ManagerDashboard = () => {
                                             <div>
                                                 <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
                                                 <div className="text-xs text-[#B0B0B0] mt-1 space-y-1">
-                                                    <p>{new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}</p>
-                                                    {/* PRESERVED: reason field shown to manager */}
+                                                    <p> {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}</p>
                                                     <p>Reason: <span className="text-[#C5A46D]">{req.reason || 'None'}</span></p>
                                                 </div>
                                             </div>
@@ -304,7 +301,7 @@ const ManagerDashboard = () => {
                             </NestedPanel>
                         )}
 
-                        {/* APPROVED LEAVE REQUESTS — always shown as collapsible */}
+                        {/* APPROVED LEAVE REQUESTS */}
                         <NestedPanel title={`Approved Leave Requests (${approvedLeaves.length})`} defaultOpen={false}>
                             {approvedLeaves.length === 0 ? (
                                 <p className="text-[#B0B0B0] text-xs text-center py-4">No approved leave requests.</p>
@@ -314,7 +311,6 @@ const ManagerDashboard = () => {
                                         <div key={req.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-green-600">
                                             <div>
                                                 <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
-                                                {/* PRESERVED: full date range display */}
                                                 <p className="text-xs text-[#B0B0B0] mt-1">
                                                      {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
                                                 </p>
@@ -326,7 +322,7 @@ const ManagerDashboard = () => {
                             )}
                         </NestedPanel>
 
-                        {/* REJECTED LEAVE REQUESTS — always shown as collapsible, NEW: shows denial_reason */}
+                        {/* REJECTED LEAVE REQUESTS */}
                         <NestedPanel title={`Rejected Leave Requests (${rejectedLeaves.length})`} defaultOpen={false}>
                             {rejectedLeaves.length === 0 ? (
                                 <p className="text-[#B0B0B0] text-xs text-center py-4">No rejected leave requests.</p>
@@ -337,14 +333,12 @@ const ManagerDashboard = () => {
                                             <div className="flex justify-between items-center">
                                                 <div>
                                                     <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
-                                                    {/* PRESERVED: full date range */}
                                                     <p className="text-xs text-[#B0B0B0] mt-1">
                                                          {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
                                                     </p>
                                                 </div>
                                                 <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest bg-red-900/20 px-3 py-1 rounded">Rejected</span>
                                             </div>
-                                            {/* NEW: denial reason from Gemini */}
                                             {req.denial_reason && (
                                                 <p className="text-[11px] text-[#888] mt-2 italic border-t border-[#2A2A2A] pt-2">
                                                     Reason: {req.denial_reason}
@@ -387,7 +381,6 @@ const ManagerDashboard = () => {
                                     Rejected ({teamData.rejected.length})
                                 </button>
                             </div>
-
                             <div className="max-h-64 overflow-y-auto bg-[#121212]">
                                 {teamView === 'verified' ? (
                                     teamData.verified.length === 0 
@@ -454,7 +447,7 @@ const ManagerDashboard = () => {
                         defaultOpen={false}
                         badgeCount={rejectedAssignments.length}
                     >
-                        {/* NEW: Rejected Assignments — employee declined, manager can re-assign */}
+                        {/* REJECTED ASSIGNMENTS — employee declined, shows their reason */}
                         {rejectedAssignments.length > 0 && (
                             <NestedPanel 
                                 title="Rejected Assignments — Action Required" 
@@ -462,22 +455,31 @@ const ManagerDashboard = () => {
                                 badgeCount={rejectedAssignments.length}
                             >
                                 <p className="text-[11px] text-[#888] mb-3">
-                                    The following assignments were declined by the employee. Click "Re-Assign" to pre-fill the assignment form for the same event with a different employee.
+                                    The following assignments were declined by the employee. Click "Re-Assign" to pre-fill the form for the same event with a different employee.
                                 </p>
                                 <div className="grid gap-3">
                                     {rejectedAssignments.map(task => (
-                                        <div key={task.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-red-500">
-                                            <div>
+                                        <div key={task.id} className="flex justify-between items-start bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-red-500">
+                                            <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-[#E5E5E5]">{task.profiles?.full_name}</p>
                                                 <div className="text-xs text-[#B0B0B0] mt-1 space-y-0.5">
                                                     <p>Event: <span className="text-[#C5A46D]">{task.events?.title}</span></p>
                                                     {task.role_description && <p>Role: {task.role_description}</p>}
-                                                    <p>Assigned: {new Date(task.assigned_at).toLocaleDateString()} at {new Date(task.assigned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p>
+                                                        Assigned: {new Date(task.assigned_at).toLocaleDateString()} at {new Date(task.assigned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
                                                 </div>
+                                                {/* Employee's rejection reason */}
+                                                {task.rejection_reason && (
+                                                    <div className="mt-2 pt-2 border-t border-[#2A2A2A]">
+                                                        <p className="text-[10px] uppercase text-red-400 font-bold tracking-tighter">Employee's Reason:</p>
+                                                        <p className="text-[11px] text-[#aaa] italic mt-0.5">{task.rejection_reason}</p>
+                                                    </div>
+                                                )}
                                             </div>
                                             <button 
                                                 onClick={() => handleReAssign(task)} 
-                                                className="dash-btn px-4 py-1.5 text-xs"
+                                                className="dash-btn px-4 py-1.5 text-xs shrink-0 ml-4"
                                             >
                                                 Re-Assign
                                             </button>
@@ -490,7 +492,7 @@ const ManagerDashboard = () => {
                         {/* ASSIGN STAFF FORM */}
                         <NestedPanel title="Assign Staff to Event" defaultOpen={true}>
                             <form id="assign-staff-form" onSubmit={handleAssign} className="flex flex-col gap-4 max-w-2xl">
-                                {/* PRESERVED: manager-only event restriction */}
+                                {/* Manager-only event restriction */}
                                 <select name="event_id" value={formData.event_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Active Event --</option>
                                     {activeEventsList.map(ev => {
@@ -503,7 +505,7 @@ const ManagerDashboard = () => {
                                     })}
                                 </select>
                                 
-                                {/* PRESERVED: specific leave date ranges in dropdown */}
+                                {/* Specific leave date ranges in dropdown */}
                                 <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Employee --</option>
                                     {teamData.verified.map(emp => {
@@ -541,7 +543,7 @@ const ManagerDashboard = () => {
                         </NestedPanel>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                            {/* NEW: Recent Assignments shows assigned date + time AND status badge */}
+                            {/* RECENT ASSIGNMENTS — rejected excluded, shows date/time */}
                             <NestedPanel title="Recent Assignments" defaultOpen={false}>
                                 <div className="overflow-x-auto">
                                     <table className="dash-table w-full">
@@ -554,7 +556,7 @@ const ManagerDashboard = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {assignments.slice(0, 10).map(task => (
+                                            {recentAssignments.slice(0, 10).map(task => (
                                                 <tr key={task.id}>
                                                     <td className="font-medium text-xs pl-2">{task.profiles?.full_name}</td>
                                                     <td className="text-xs text-[#B0B0B0]">{task.events?.title}</td>
@@ -563,7 +565,6 @@ const ManagerDashboard = () => {
                                                             {task.status}
                                                         </span>
                                                     </td>
-                                                    {/* NEW: date + time of assignment */}
                                                     <td className="text-right text-[10px] text-[#888] pr-2 whitespace-nowrap">
                                                         {new Date(task.assigned_at).toLocaleDateString()}<br />
                                                         {new Date(task.assigned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

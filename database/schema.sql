@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS public.assignments (
   role_description TEXT DEFAULT 'General Staff',
   status assignment_status DEFAULT 'pending',
   assigned_at TIMESTAMP DEFAULT NOW(),
+  rejection_reason TEXT,
   UNIQUE (event_id, employee_id)
 );
 

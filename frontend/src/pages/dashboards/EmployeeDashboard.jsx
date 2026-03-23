@@ -12,7 +12,7 @@ const EmployeeDashboard = () => {
     const [myLeaves, setMyLeaves] = useState([]);
     const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', reason: '' });
     
-    // --- NEW: MANAGER STATE ---
+    // --- MANAGER STATE ---
     const [assignedManager, setAssignedManager] = useState(null);
 
     useEffect(() => {
@@ -20,7 +20,7 @@ const EmployeeDashboard = () => {
             fetchTasks();
             checkCurrentAttendance();
             fetchMyLeaves();
-            fetchAssignedManager(); // NEW
+            fetchAssignedManager();
         }
     }, [user]);
 
@@ -28,7 +28,7 @@ const EmployeeDashboard = () => {
         try {
             const { data, error } = await supabase
                 .from('assignments')
-                .select(`id, status, role_description, assigned_at, event:events (id, title, event_date, venue:venues(name, location))`)
+                .select(`id, status, role_description, assigned_at, rejection_reason, event:events (id, title, event_date, venue:venues(name, location))`)
                 .eq('employee_id', user.id)
                 .order('assigned_at', { ascending: false });
             if (error) throw error;
@@ -51,10 +51,8 @@ const EmployeeDashboard = () => {
         if (data) setMyLeaves(data);
     };
 
-    // --- NEW: Fetch the manager who will receive the request ---
     const fetchAssignedManager = async () => {
         try {
-            // 1. Get the employee's category_id
             const { data: myProfile } = await supabase
                 .from('profiles')
                 .select('category_id')
@@ -62,7 +60,6 @@ const EmployeeDashboard = () => {
                 .single();
 
             if (myProfile?.category_id) {
-                // 2. Get the oldest manager in the same category
                 const { data: manager } = await supabase
                     .from('profiles')
                     .select('full_name, email')
@@ -80,7 +77,23 @@ const EmployeeDashboard = () => {
     };
 
     const updateStatus = async (assignmentId, newStatus) => {
-        const { error } = await supabase.from('assignments').update({ status: newStatus }).eq('id', assignmentId);
+        // --- NEW: prompt for rejection reason if employee is rejecting ---
+        let rejection_reason = null;
+        if (newStatus === 'rejected') {
+            rejection_reason = prompt("Please provide a reason for rejecting this assignment (optional):");
+            // If user clicks Cancel (null), abort. Empty string is fine — they chose not to give a reason.
+            if (rejection_reason === null) return;
+            rejection_reason = rejection_reason.trim() || null; // store null if blank
+        }
+
+        const updatePayload = { status: newStatus };
+        if (rejection_reason !== null) updatePayload.rejection_reason = rejection_reason;
+
+        const { error } = await supabase
+            .from('assignments')
+            .update(updatePayload)
+            .eq('id', assignmentId);
+
         if (error) alert("Error updating status");
         else fetchTasks(); 
     };
@@ -114,6 +127,7 @@ const EmployeeDashboard = () => {
 
     const pendingTasks = tasks.filter(t => t.status === 'pending');
     const acceptedTasks = tasks.filter(t => t.status === 'accepted');
+    const rejectedTasks = tasks.filter(t => t.status === 'rejected');
 
     return (
         <div className="min-h-screen p-6 max-w-6xl mx-auto">
@@ -148,9 +162,9 @@ const EmployeeDashboard = () => {
                                 <p className="text-sm bg-[#111] border border-[#333] p-2 rounded mb-4 text-[var(--text-primary)]">
                                     Role: <strong className="text-[var(--gold-main)]">{task.role_description}</strong>
                                 </p>
-                                
                                 <div className="flex gap-2">
                                     <button onClick={() => updateStatus(task.id, 'accepted')} className="flex-1" style={{ padding: '0.5rem', backgroundColor: '#16a34a', color: 'white' }}>Accept</button>
+                                    {/* Reject now triggers a reason prompt */}
                                     <button onClick={() => updateStatus(task.id, 'rejected')} className="flex-1" style={{ padding: '0.5rem', backgroundColor: '#dc2626', color: 'white' }}>Reject</button>
                                 </div>
                             </div>
@@ -176,14 +190,12 @@ const EmployeeDashboard = () => {
                                        <span>💼 Role: <span className="text-[var(--gold-main)] font-semibold">{task.role_description}</span></span>
                                     </div>
                                 </div>
-
                                 <div className="mt-4 md:mt-0">
                                     {!activeAttendance && (
                                         <button onClick={() => task.event?.id && handleCheckIn(task.event.id)}>
                                             📍 Check In Here
                                         </button>
                                     )}
-                                    
                                     {activeAttendance?.event_id === task.event.id && (
                                         <span className="text-green-500 font-bold border border-green-500 bg-[#111] px-4 py-2 rounded">
                                             ✅ Checked In
@@ -196,6 +208,40 @@ const EmployeeDashboard = () => {
                 )}
             </div>
 
+            {/* REJECTED ASSIGNMENTS HISTORY */}
+            {rejectedTasks.length > 0 && (
+                <div className="mb-12">
+                    <h2 className="text-xl font-bold mb-4 text-red-400">✕ Rejected Assignments</h2>
+                    <div className="space-y-3">
+                        {rejectedTasks.map((task) => (
+                            <div key={task.id} className="bg-[var(--surface-color)] p-4 rounded-lg border border-[#333] border-l-4 border-l-red-600">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-[var(--text-primary)]">{task.event?.title || 'Unknown Event'}</p>
+                                        <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+                                            Role: <span className="text-[var(--gold-main)]">{task.role_description}</span>
+                                        </p>
+                                        <p className="text-xs text-[#555] mt-1">
+                                            Assigned: {new Date(task.assigned_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded bg-red-900/30 text-red-400 border border-red-800 whitespace-nowrap">
+                                        Rejected
+                                    </span>
+                                </div>
+                                {/* Show the reason the employee gave */}
+                                {task.rejection_reason && (
+                                    <div className="mt-2 pt-2 border-t border-[#222]">
+                                        <p className="text-[10px] uppercase text-red-400 font-bold tracking-tighter">Your Reason:</p>
+                                        <p className="text-[11px] text-gray-300 italic">{task.rejection_reason}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* LEAVE MANAGEMENT SECTION */}
             <div className="pt-8 border-t border-[#333] grid md:grid-cols-2 gap-8">
                 
@@ -203,7 +249,6 @@ const EmployeeDashboard = () => {
                 <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333]">
                     <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)] flex items-center gap-2">Request Leave</h2>
                     
-                    {/* --- MANAGER INFO DISPLAY --- */}
                     {assignedManager ? (
                         <div className="mb-6 p-3 bg-[#111] border-l-2 border-[var(--gold-main)] rounded-r text-sm">
                             <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider mb-1">Directing request to Manager:</p>
@@ -264,7 +309,6 @@ const EmployeeDashboard = () => {
                                             {leave.status}
                                         </span>
                                     </div>
-                                    {/* --- FIX: SHOW DENIAL REASON IF REJECTED --- */}
                                     {leave.status === 'rejected' && leave.denial_reason && (
                                         <div className="mt-2 pt-2 border-t border-[#222]">
                                             <p className="text-[10px] uppercase text-red-400 font-bold tracking-tighter">Manager Note:</p>
