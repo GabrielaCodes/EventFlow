@@ -14,6 +14,8 @@ import {
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 import { createRequest, getMyRequests } from '../controllers/masterRequestController.js';
+import { getLeaveRequests, respondToLeave } from '../controllers/leaveController.js';
+
 const router = express.Router();
 
 // Middleware: Protect ALL routes below for 'manager' role only
@@ -38,5 +40,7 @@ router.post('/modify', createModificationRequest);
 // Manger request for venue,event
 router.post('/master-request', createRequest);
 router.get('/master-requests', getMyRequests);
-
+// Leave request
+router.get('/leave-requests', getLeaveRequests);
+router.post('/leave-requests/respond', respondToLeave);
 export default router;

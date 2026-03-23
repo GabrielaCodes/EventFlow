@@ -39,7 +39,7 @@ const CollapsiblePanel = ({ title, defaultOpen = false, badgeCount = 0, children
     );
 };
 
-const NestedPanel = ({ title, defaultOpen = false, children }) => {
+const NestedPanel = ({ title, defaultOpen = false, badgeCount = 0, children }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
@@ -48,7 +48,14 @@ const NestedPanel = ({ title, defaultOpen = false, children }) => {
                 className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#181818] transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-0">{title}</h3>
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xs font-medium text-[#C5A46D] uppercase tracking-wider mb-0">{title}</h3>
+                    {badgeCount > 0 && (
+                        <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            {badgeCount} New
+                        </span>
+                    )}
+                </div>
                 <div className="text-[#B0B0B0] transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
@@ -73,10 +80,17 @@ const ManagerDashboard = () => {
     const [attendance, setAttendance] = useState([]);
     const [activeEventsList, setActiveEventsList] = useState([]);
     
+    // --- LEAVE & TEAM STATES ---
     const [teamData, setTeamData] = useState({ pending: [], verified: [], rejected: [] });
+    const [leaveRequests, setLeaveRequests] = useState([]);
+    
     const [loading, setLoading] = useState(true);
     const [teamView, setTeamView] = useState('verified'); 
-    const [formData, setFormData] = useState({ employee_id: '', event_id: '', role_description: '' });
+    
+    // --- UPDATED FORMDATA FOR SHIFT TIMES ---
+    const [formData, setFormData] = useState({ 
+        employee_id: '', event_id: '', role_description: '', shift_start: '', shift_end: '' 
+    });
 
     useEffect(() => { fetchDashboardData(); }, []);
 
@@ -84,10 +98,10 @@ const ManagerDashboard = () => {
         try {
             setLoading(true);
 
-            // FIX: Query events directly to ensure assigned_manager_id is loaded
+            // 1. Events
             const { data: eventData } = await supabase
                 .from('events')
-                .select('id, title, assigned_manager_id, status, event_subtypes(name)')
+                .select('id, title, assigned_manager_id, status, event_subtypes(name), event_date')
                 .neq('status', 'completed')
                 .order('event_date', { ascending: true });
                 
@@ -99,6 +113,7 @@ const ManagerDashboard = () => {
                 setActiveEventsList(formattedEvents);
             }
 
+            // 2. Team Directory
             try {
                 const res = await api.get('/admin/employees/managed');
                 const allEmployees = res.data || [];
@@ -109,6 +124,18 @@ const ManagerDashboard = () => {
                 });
             } catch (err) { console.error("Team fetch error", err); }
 
+            // 3. Pending Leave Requests (Directly querying to get those assigned to this manager)
+            try {
+                const { data: leaves } = await supabase
+                    .from('leave_requests')
+                    .select(`*, profiles!employee_id(full_name, email)`)
+                    .eq('manager_id', user.id)
+                    .eq('status', 'pending')
+                    .order('created_at', { ascending: false });
+                setLeaveRequests(leaves || []);
+            } catch(e) { console.error("Leave fetch error", e); }
+
+            // 4. Attendance & Assignments
             const { data: attData } = await supabase.from('attendance')
                 .select(`id, check_in, check_out, profiles(full_name), events(title)`)
                 .order('check_in', { ascending: false }).limit(20);
@@ -128,6 +155,7 @@ const ManagerDashboard = () => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+    // Verify Employee
     const handleVerify = async (employeeId, action) => {
         if (!window.confirm(`Are you sure you want to ${action} this employee?`)) return;
         try {
@@ -136,18 +164,61 @@ const ManagerDashboard = () => {
         } catch (err) { alert(err.response?.data?.error || "Action failed"); }
     };
 
-    const handleAssign = async (e) => {
-        e.preventDefault();
-        if (!formData.employee_id || !formData.event_id) return alert("Select both");
+    // --- NEW: Approve/Reject Leave ---
+    const handleLeaveAction = async (request_id, status) => {
         try {
-            await api.post('/admin/assign-staff', { ...formData, role_description: formData.role_description || "General Staff" });
-            alert("Task assigned!");
-            setFormData({ employee_id: '', event_id: '', role_description: '' });
-            fetchDashboardData(); 
-        } catch (err) { alert(err.response?.data?.error); }
+            await api.post('/admin/leave-requests/respond', { request_id, status });
+            fetchDashboardData(); // Refresh UI
+        } catch (err) { alert("Error processing leave request."); }
     };
 
+    // --- UPDATED: SMART ASSIGNMENT WITH POPUP ---
+// --- UPDATED: SMART ASSIGNMENT WITH STRING-BASED DATE CHECK ---
+    // --- UPDATED: SMART ASSIGNMENT WITH STRING-BASED DATE CHECK ---
+    // --- UPDATED: SMART ASSIGNMENT WITH SHIFT-DATE CHECK ---
+    const handleAssign = async (e) => {
+        e.preventDefault();
+        if (!formData.employee_id || !formData.event_id) return alert("Select both Event and Employee");
+
+        const selectedEvent = activeEventsList.find(ev => ev.id === formData.event_id);
+        const selectedEmployee = teamData.verified.find(emp => emp.id === formData.employee_id);
+
+        if (selectedEvent && selectedEmployee) {
+            // Check shift inputs first, fallback to event date if blank
+            const workDateStart = formData.shift_start ? formData.shift_start.split('T')[0] : selectedEvent.event_date.split('T')[0];
+            const workDateEnd = formData.shift_end ? formData.shift_end.split('T')[0] : workDateStart;
+            
+            const isOnLeave = selectedEmployee.leave_requests?.some(leave => {
+                if (leave.status !== 'approved') return false;
+                
+                const leaveStart = leave.start_date.split('T')[0];
+                const leaveEnd = leave.end_date.split('T')[0];
+                
+                // Compare shift dates to leave dates
+                return workDateStart <= leaveEnd && workDateEnd >= leaveStart;
+            });
+
+            if (isOnLeave) {
+                alert(`❌ BLOCKED: ${selectedEmployee.full_name} is on APPROVED LEAVE during this shift date.`);
+                return; // Instantly stops the function
+            }
+        }
+
+        try {
+            await api.post('/admin/assign-staff', { 
+                ...formData, 
+                role_description: formData.role_description || "General Staff" 
+            });
+            alert("Staff successfully assigned!");
+            setFormData({ employee_id: '', event_id: '', role_description: '', shift_start: '', shift_end: '' });
+            fetchDashboardData(); 
+        } catch (err) { 
+            alert(err.response?.data?.error || "Error assigning staff."); 
+        }
+    };
     if (loading) return <div className="dash-wrapper flex justify-center items-center text-sm uppercase tracking-widest text-[#B0B0B0]">Loading Dashboard...</div>;
+
+    const totalBadges = teamData.pending.length + leaveRequests.length;
 
     return (
         <div className="dash-wrapper">
@@ -183,8 +254,31 @@ const ManagerDashboard = () => {
                     <CollapsiblePanel 
                         title="Team Directory & Approvals" 
                         defaultOpen={true} 
-                        badgeCount={teamData.pending.length}
+                        badgeCount={totalBadges}
                     >
+                        {/* --- NEW: LEAVE REQUESTS PANEL --- */}
+                        {leaveRequests.length > 0 && (
+                            <NestedPanel title="Pending Leave Requests" defaultOpen={true} badgeCount={leaveRequests.length}>
+                                <div className="grid gap-3">
+                                    {leaveRequests.map(req => (
+                                        <div key={req.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-orange-500">
+                                            <div>
+                                                <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
+                                                <div className="text-xs text-[#B0B0B0] mt-1 space-y-1">
+                                                    <p>🏝️ {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}</p>
+                                                    <p>Reason: <span className="text-[#C5A46D]">{req.reason || 'None'}</span></p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => handleLeaveAction(req.id, 'approved')} className="dash-btn px-4 py-1.5 text-xs">Approve</button>
+                                                <button onClick={() => handleLeaveAction(req.id, 'rejected')} className="dash-btn-outline px-4 py-1.5 text-xs border-[#555]">Deny</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </NestedPanel>
+                        )}
+
                         {teamData.pending.length > 0 && (
                             <div className="mb-8 border-l-2 border-[#C5A46D] pl-4">
                                 <h3 className="text-xs uppercase tracking-wider text-[#C5A46D] mb-4 font-medium">Pending Approvals</h3>
@@ -205,7 +299,7 @@ const ManagerDashboard = () => {
                             </div>
                         )}
 
-                        <div className="border border-[#2A2A2A] rounded-sm overflow-hidden">
+                        <div className="border border-[#2A2A2A] rounded-sm overflow-hidden mt-4">
                             <div className="flex border-b border-[#2A2A2A] bg-[#161616]">
                                 <button onClick={() => setTeamView('verified')} className={`flex-1 p-3 text-xs font-medium text-center uppercase tracking-wider transition-colors ${teamView === 'verified' ? 'bg-[#181818] text-[#C5A46D] border-b-2 border-[#C5A46D]' : 'text-[#B0B0B0] hover:bg-[#181818]'}`}>
                                     Active Team ({teamData.verified.length})
@@ -286,13 +380,42 @@ const ManagerDashboard = () => {
                                         );
                                     })}
                                 </select>
+                                
+                                {/* --- UPDATED: EMPLOYEE DROPDOWN SHOWING LEAVES --- */}
                                 <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Employee --</option>
-                                    {teamData.verified.map(emp => (
-                                        <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
-                                    ))}
+                                    {teamData.verified.map(emp => {
+                                        const approvedLeaves = emp.leave_requests?.filter(l => l.status === 'approved') || [];
+                                        let leaveText = '';
+                                        if (approvedLeaves.length > 0) {
+                                            const l = approvedLeaves[0]; 
+                                            const sDate = new Date(l.start_date).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+                                            const eDate = new Date(l.end_date).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+                                            leaveText = sDate === eDate ? `(Leave: ${sDate})` : `(Leave: ${sDate} - ${eDate})`;
+                                        }
+
+                                        return (
+                                            <option key={emp.id} value={emp.id}>
+                                                {emp.full_name || emp.email} {leaveText}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
+                                
                                 <input name="role_description" placeholder="Role (e.g. Security, Registration)" value={formData.role_description} onChange={handleChange} className="dash-input m-0" />
+                                
+                                {/* --- NEW: SHIFT TIME INPUTS --- */}
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-[#888] uppercase pl-1 block mb-1">Shift Start (Optional)</label>
+                                        <input type="datetime-local" name="shift_start" value={formData.shift_start} onChange={handleChange} className="dash-input m-0 w-full text-xs" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-[#888] uppercase pl-1 block mb-1">Shift End (Optional)</label>
+                                        <input type="datetime-local" name="shift_end" value={formData.shift_end} onChange={handleChange} className="dash-input m-0 w-full text-xs" />
+                                    </div>
+                                </div>
+
                                 <button type="submit" className="dash-btn mt-2 w-fit">Assign to Event</button>
                             </form>
                         </NestedPanel>

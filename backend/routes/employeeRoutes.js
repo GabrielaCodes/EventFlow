@@ -1,9 +1,9 @@
 import express from 'express';
-import { getAssignedEvents } from '../controllers/eventController.js'; // Ensure this matches your file path
+import { getAssignedEvents } from '../controllers/eventController.js'; 
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { requireApproval } from '../middleware/requireApproval.js'; // ✅ The new middleware
-
+import { requireApproval } from '../middleware/requireApproval.js'; 
+import { requestLeave } from '../controllers/leaveController.js';
 const router = express.Router();
 
 // 1. Authenticate: Verify Token
@@ -16,7 +16,7 @@ router.use(authenticate, authorize(['employee']), requireApproval);
 // GET /api/employee/my-assignments
 router.get('/my-assignments', getAssignedEvents); 
 
-// Add other employee-only routes here in the future
-// e.g., router.post('/check-in', checkInController);
+// Leave requests
+router.post('/leave', requestLeave);
 
 export default router;

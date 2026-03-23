@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../services/api';
+import api, { supabase } from '../../services/api';
 
 const EmployeeDashboard = () => {
     const { user, logout } = useAuth();
@@ -8,10 +8,19 @@ const EmployeeDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [activeAttendance, setActiveAttendance] = useState(null);
 
+    // --- LEAVE STATES ---
+    const [myLeaves, setMyLeaves] = useState([]);
+    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', reason: '' });
+    
+    // --- NEW: MANAGER STATE ---
+    const [assignedManager, setAssignedManager] = useState(null);
+
     useEffect(() => {
         if (user) {
             fetchTasks();
             checkCurrentAttendance();
+            fetchMyLeaves();
+            fetchAssignedManager(); // NEW
         }
     }, [user]);
 
@@ -33,6 +42,43 @@ const EmployeeDashboard = () => {
         setActiveAttendance(data);
     };
 
+    const fetchMyLeaves = async () => {
+        const { data } = await supabase
+            .from('leave_requests')
+            .select('*')
+            .eq('employee_id', user.id)
+            .order('start_date', { ascending: false });
+        if (data) setMyLeaves(data);
+    };
+
+    // --- NEW: Fetch the manager who will receive the request ---
+    const fetchAssignedManager = async () => {
+        try {
+            // 1. Get the employee's category_id
+            const { data: myProfile } = await supabase
+                .from('profiles')
+                .select('category_id')
+                .eq('id', user.id)
+                .single();
+
+            if (myProfile?.category_id) {
+                // 2. Get the oldest manager in the same category
+                const { data: manager } = await supabase
+                    .from('profiles')
+                    .select('full_name, email')
+                    .eq('role', 'manager')
+                    .eq('category_id', myProfile.category_id)
+                    .order('created_at', { ascending: true })
+                    .limit(1)
+                    .single();
+
+                if (manager) setAssignedManager(manager);
+            }
+        } catch (err) {
+            console.error("Error fetching manager:", err);
+        }
+    };
+
     const updateStatus = async (assignmentId, newStatus) => {
         const { error } = await supabase.from('assignments').update({ status: newStatus }).eq('id', assignmentId);
         if (error) alert("Error updating status");
@@ -52,13 +98,25 @@ const EmployeeDashboard = () => {
         else { setActiveAttendance(null); alert("Checked Out Successfully!"); }
     };
 
-    if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Assignments...</div>;
+    const handleLeaveSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/employee/leave', leaveForm);
+            alert('Leave request submitted successfully!');
+            setLeaveForm({ start_date: '', end_date: '', reason: '' });
+            fetchMyLeaves(); 
+        } catch (err) { 
+            alert(err.response?.data?.error || "Error requesting leave"); 
+        }
+    };
+
+    if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Workspace...</div>;
 
     const pendingTasks = tasks.filter(t => t.status === 'pending');
     const acceptedTasks = tasks.filter(t => t.status === 'accepted');
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="min-h-screen p-6 max-w-6xl mx-auto">
             <header className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-[var(--gold-main)]">My Workspace</h1>
@@ -102,7 +160,7 @@ const EmployeeDashboard = () => {
             )}
 
             {/* MY SCHEDULE */}
-            <div>
+            <div className="mb-12">
                 <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)]">📅 My Schedule</h2>
                 {acceptedTasks.length === 0 ? (
                     <p className="text-[var(--text-secondary)] italic">No active jobs. Wait for a manager to assign you tasks.</p>
@@ -136,6 +194,80 @@ const EmployeeDashboard = () => {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* LEAVE MANAGEMENT SECTION */}
+            <div className="pt-8 border-t border-[#333] grid md:grid-cols-2 gap-8">
+                
+                {/* Leave Form */}
+                <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333]">
+                    <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)] flex items-center gap-2">Request Leave</h2>
+                    
+                    {/* --- NEW: MANAGER INFO DISPLAY --- */}
+                    {assignedManager ? (
+                        <div className="mb-6 p-3 bg-[#111] border-l-2 border-[var(--gold-main)] rounded-r text-sm">
+                            <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider mb-1">Directing request to Manager:</p>
+                            <p className="text-[var(--text-primary)] font-bold">{assignedManager.full_name || 'Manager'}</p>
+                            <p className="text-[var(--gold-main)] text-xs">{assignedManager.email}</p>
+                        </div>
+                    ) : (
+                        <div className="mb-6 p-3 bg-[#111] border-l-2 border-orange-500 rounded-r text-sm text-orange-400">
+                            No manager is currently assigned to your department.
+                        </div>
+                    )}
+
+                    <form onSubmit={handleLeaveSubmit} className="flex flex-col gap-4">
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <label className="text-xs text-[#888] uppercase mb-1 block">Start Date</label>
+                                <input type="date" required className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:outline-none focus:border-[var(--gold-main)]" 
+                                    value={leaveForm.start_date} onChange={e => setLeaveForm({...leaveForm, start_date: e.target.value})} />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-xs text-[#888] uppercase mb-1 block">End Date</label>
+                                <input type="date" required className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:outline-none focus:border-[var(--gold-main)]" 
+                                    value={leaveForm.end_date} onChange={e => setLeaveForm({...leaveForm, end_date: e.target.value})} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs text-[#888] uppercase mb-1 block">Reason (Optional)</label>
+                            <input type="text" placeholder="e.g., Family Vacation, Medical" className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:outline-none focus:border-[var(--gold-main)]" 
+                                value={leaveForm.reason} onChange={e => setLeaveForm({...leaveForm, reason: e.target.value})} />
+                        </div>
+                        <button type="submit" disabled={!assignedManager} className={`font-bold py-2 rounded mt-2 transition ${assignedManager ? 'bg-[var(--gold-main)] text-black hover:bg-[#a68a3c]' : 'bg-[#333] text-[#888] cursor-not-allowed'}`}>
+                            {assignedManager ? 'Submit Leave Request' : 'Cannot Submit'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Leave History */}
+                <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333]">
+                    <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)]">My Leave History</h2>
+                    <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2">
+                        {myLeaves.length === 0 ? (
+                            <p className="text-[var(--text-secondary)] text-sm italic">No leaves requested yet.</p>
+                        ) : (
+                            myLeaves.map(leave => (
+                                <div key={leave.id} className="flex justify-between items-center bg-[#111] p-3 rounded border border-[#222]">
+                                    <div className="text-sm">
+                                        <p className="text-white font-medium">
+                                            {new Date(leave.start_date).toLocaleDateString()} - {new Date(leave.end_date).toLocaleDateString()}
+                                        </p>
+                                        <p className="text-[11px] text-[#888] mt-1">{leave.reason || 'No reason provided'}</p>
+                                    </div>
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded tracking-wider ${
+                                        leave.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800' : 
+                                        leave.status === 'rejected' ? 'bg-red-900/30 text-red-400 border border-red-800' : 
+                                        'bg-orange-900/30 text-orange-400 border border-orange-800'
+                                    }`}>
+                                        {leave.status}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
             </div>
         </div>
     );

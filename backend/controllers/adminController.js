@@ -42,49 +42,83 @@ export const getAnalytics = async (req, res) => {
 // --------------------------------------------------------
 // 2. MANAGER: Assign Staff to Event
 // --------------------------------------------------------
+// --------------------------------------------------------
+// 2. MANAGER: Assign Staff to Event
+// --------------------------------------------------------
+// --------------------------------------------------------
+// 2. MANAGER: Assign Staff to Event
+// --------------------------------------------------------
 export const assignStaff = async (req, res) => {
     try {
-        const { event_id, employee_id, role_description } = req.body;
+        const { event_id, employee_id, role_description, shift_start, shift_end } = req.body;
         const managerId = req.user.id;
         
-        // Validation
-        if (!event_id || !employee_id) {
-            return res.status(400).json({ error: "Event and Employee IDs are required." });
-        }
+        if (!event_id || !employee_id) return res.status(400).json({ error: "Event and Employee IDs are required." });
 
-        // ✅ SECURITY CHECK: Ensure manager actually owns the event
+        // 1. Get Event Data & Verify Ownership
         const { data: eventCheck, error: eventError } = await supabase
             .from('events')
-            .select('assigned_manager_id')
+            .select('assigned_manager_id, event_date')
             .eq('id', event_id)
             .single();
 
-        if (eventError || !eventCheck) {
-            return res.status(404).json({ error: "Event not found." });
-        }
+        if (eventError || !eventCheck) return res.status(404).json({ error: "Event not found." });
+        if (eventCheck.assigned_manager_id !== managerId) return res.status(403).json({ error: "Access Denied." });
 
-        if (eventCheck.assigned_manager_id !== managerId) {
-            return res.status(403).json({ 
-                error: "Access Denied: You can only assign staff to events explicitly assigned to your workload." 
+        // 2. DETERMINE THE ACTUAL WORK DATES
+        // If they provided a shift start, use that date. Otherwise, fallback to the event date.
+        const workDateStart = shift_start ? shift_start.split('T')[0] : eventCheck.event_date.split('T')[0];
+        const workDateEnd = shift_end ? shift_end.split('T')[0] : workDateStart;
+
+        // 3. FETCH APPROVED LEAVES
+        const { data: approvedLeaves, error: leaveError } = await supabase
+            .from('leave_requests')
+            .select('start_date, end_date')
+            .eq('employee_id', employee_id)
+            .eq('status', 'approved');
+
+        if (leaveError) throw leaveError;
+
+        // 4. CHECK OVERLAP AGAINST THE ACTUAL SHIFT
+        if (approvedLeaves && approvedLeaves.length > 0) {
+            const isOverlapping = approvedLeaves.some(leave => {
+                const leaveStart = leave.start_date.split('T')[0];
+                const leaveEnd = leave.end_date.split('T')[0];
+                
+                // Overlap formula: Work Start <= Leave End AND Work End >= Leave Start
+                return workDateStart <= leaveEnd && workDateEnd >= leaveStart;
             });
+
+            if (isOverlapping) {
+                return res.status(400).json({ 
+                    error: `❌ ASSIGNMENT BLOCKED: Employee is on approved leave during this shift.` 
+                });
+            }
         }
 
+        // 5. ATTEMPT INSERT
         const { data, error } = await supabase
             .from('assignments')
             .insert([{ 
                 event_id, 
                 employee_id,
-                role_description: role_description || "General Staff"
+                role_description: role_description || "General Staff",
+                shift_start: shift_start || null,
+                shift_end: shift_end || null
             }])
             .select();
             
-        if (error) throw error;
+        if (error) {
+            if (error.code === '23505') return res.status(400).json({ error: "Already assigned to this event." });
+            throw error;
+        }
+
         res.status(201).json(data[0]);
     } catch (err) {
+        console.error("Assignment Error:", err);
         res.status(500).json({ error: err.message });
     }
 };
-
 // --------------------------------------------------------
 // 3. MANAGER: Update Event Status
 // --------------------------------------------------------
@@ -200,32 +234,33 @@ export const getManagedEmployees = async (req, res) => {
     try {
         const managerId = req.user.id;
 
-        // 1. Get the manager's department category
         const { data: managerProfile, error: mgrError } = await supabase
             .from('profiles')
             .select('category_id')
             .eq('id', managerId)
             .single();
 
-        if (mgrError || !managerProfile?.category_id) {
-            return res.json([]); // Manager has no category
-        }
+        if (mgrError || !managerProfile?.category_id) return res.json([]); 
 
-        // 2. Fetch ALL employees sharing that EXACT category
+        // FIX: The "leave_requests:" at the very beginning forces Supabase 
+        // to use the correct name so your frontend React code can read it.
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, created_at, verification_status')
+            .select(`
+                id, full_name, email, created_at, verification_status,
+                leave_requests:leave_requests!leave_requests_employee_id_fkey (id, start_date, end_date, status)
+            `)
             .eq('role', 'employee')
-            .eq('category_id', managerProfile.category_id) // ✅ Direct Match
+            .eq('category_id', managerProfile.category_id) 
             .order('created_at', { ascending: false });
 
         if (error) throw error;
         res.json(data || []);
     } catch (err) {
+        console.error("Team Fetch Error:", err);
         res.status(500).json({ error: err.message });
     }
 };
-
 // --------------------------------------------------------
 // 7. MANAGER: Verify/Reject Employee
 // --------------------------------------------------------

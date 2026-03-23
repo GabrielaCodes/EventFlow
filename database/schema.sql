@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS public.assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
   employee_id UUID REFERENCES public.profiles(id),
+  shift_start TIMESTAMP,
+  shift_end TIMESTAMP,
   role_description TEXT DEFAULT 'General Staff',
   status assignment_status DEFAULT 'pending',
   assigned_at TIMESTAMP DEFAULT NOW(),
@@ -197,6 +199,21 @@ CREATE TABLE IF NOT EXISTS public.event_messages (
   message_text TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+--3.12 LEAVE REQUESTS
+CREATE TABLE IF NOT EXISTS public.leave_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employee_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  manager_id UUID REFERENCES public.profiles(id), -- The oldest manager assigned to approve
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  reason TEXT,
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
+
 
 -- =================================================
 -- 4. FUNCTIONS & TRIGGERS
@@ -488,6 +505,11 @@ CREATE POLICY "Managers create requests" ON public.master_data_requests FOR INSE
 CREATE POLICY "Managers view own requests" ON public.master_data_requests FOR SELECT TO authenticated USING (auth.uid() = requested_by);
 CREATE POLICY "Coordinator manage requests" ON public.master_data_requests FOR ALL TO authenticated USING (is_chief_coordinator());
 
+--LEAVE REQUESTS--
+CREATE POLICY "Employees can view own leaves" ON public.leave_requests FOR SELECT TO authenticated USING (employee_id = auth.uid());
+CREATE POLICY "Employees can create leaves" ON public.leave_requests FOR INSERT TO authenticated WITH CHECK (employee_id = auth.uid());
+CREATE POLICY "Managers can view assigned leaves" ON public.leave_requests FOR SELECT TO authenticated USING (manager_id = auth.uid());
+CREATE POLICY "Managers can update assigned leaves" ON public.leave_requests FOR UPDATE TO authenticated USING (manager_id = auth.uid());
 -- =================================================
 -- 7. GRANTS
 -- =================================================
