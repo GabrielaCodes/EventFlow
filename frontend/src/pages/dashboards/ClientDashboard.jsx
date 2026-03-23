@@ -4,10 +4,10 @@ import api, { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const statusStyles = {
-  consideration: 'bg-yellow-900 text-yellow-200 border-yellow-700',
-  in_progress: 'bg-blue-900 text-blue-200 border-blue-700',
-  completed: 'bg-green-900 text-green-200 border-green-700',
-  cancelled: 'bg-red-900 text-red-200 border-red-700'
+    consideration: 'bg-yellow-900 text-yellow-200 border-yellow-700',
+    in_progress: 'bg-blue-900 text-blue-200 border-blue-700',
+    completed: 'bg-green-900 text-green-200 border-green-700',
+    cancelled: 'bg-red-900 text-red-200 border-red-700'
 };
 
 const ClientDashboard = () => {
@@ -78,28 +78,43 @@ const ClientDashboard = () => {
             {/* BOOKING FORM */}
             <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow-md mb-8 border border-[#333]">
                 <h3 className="text-xl font-bold mb-4 text-[var(--gold-main)]">Book New Event</h3>
-                <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <input placeholder="Event Title" required value={formData.title} 
-                        onChange={e => setFormData({...formData, title: e.target.value})} />
+                        onChange={e => setFormData({...formData, title: e.target.value})} className="w-full" />
                     
-                    <select value={selectedCategory} onChange={handleCategoryChange} required>
+                    <select value={selectedCategory} onChange={handleCategoryChange} required className="w-full">
                         <option value="">-- Select Category --</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                     
-                    <select value={formData.subtype_id} onChange={e => setFormData({...formData, subtype_id: e.target.value})} disabled={!selectedCategory} required>
+                    <select value={formData.subtype_id} onChange={e => setFormData({...formData, subtype_id: e.target.value})} disabled={!selectedCategory} required className="w-full">
                         <option value="">-- Select Subtype --</option>
                         {subtypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                     
-                    <input type="date" required value={formData.event_date} onChange={e => setFormData({...formData, event_date: e.target.value})} />
+                    <input type="date" required value={formData.event_date} onChange={e => setFormData({...formData, event_date: e.target.value})} className="w-full" />
                     
-                    <select value={formData.venue_id} onChange={e => setFormData({...formData, venue_id: e.target.value})} required>
-                        <option value="">-- Select Venue --</option>
-                        {venues.map(v => <option key={v.id} value={v.id}>{v.name} (Cap: {v.capacity})</option>)}
-                    </select>
+                    {/* --- VENUE SELECTION WITH GALLERY LINK --- */}
+                    <div className="flex flex-col w-full">
+                        <div className="flex justify-between items-center mb-1 px-1">
+                            <span className="text-xs text-[var(--text-secondary)]">Venue</span>
+                            <Link 
+                                to="/gallery" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-[var(--gold-main)] hover:text-white underline decoration-[var(--gold-main)] underline-offset-2 transition-colors font-medium"
+                            >
+                                📸 Click to discover our venues
+                            </Link>
+                        </div>
+                        <select value={formData.venue_id} onChange={e => setFormData({...formData, venue_id: e.target.value})} required className="w-full m-0">
+                            <option value="">-- Select Venue --</option>
+                            {venues.map(v => <option key={v.id} value={v.id}>{v.name} (Cap: {v.capacity})</option>)}
+                        </select>
+                    </div>
                     
-                    <textarea placeholder="Notes..." className="md:col-span-2 h-24" value={formData.client_notes} onChange={e => setFormData({...formData, client_notes: e.target.value})} />
+                    <textarea placeholder="Notes..." className="md:col-span-2 h-24 mt-2" value={formData.client_notes} onChange={e => setFormData({...formData, client_notes: e.target.value})} />
+                    
                     <button className="md:col-span-2">Book Event</button>
                 </form>
             </div>
