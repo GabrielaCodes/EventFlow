@@ -124,13 +124,13 @@ const ManagerDashboard = () => {
                 });
             } catch (err) { console.error("Team fetch error", err); }
 
-            // 3. Pending Leave Requests (Directly querying to get those assigned to this manager)
+            // 3. Pending, Approved, and Rejected Leave Requests
             try {
                 const { data: leaves } = await supabase
                     .from('leave_requests')
                     .select(`*, profiles!employee_id(full_name, email)`)
                     .eq('manager_id', user.id)
-                    .eq('status', 'pending')
+                    .in('status', ['pending', 'rejected', 'approved']) // UPDATED FETCH
                     .order('created_at', { ascending: false });
                 setLeaveRequests(leaves || []);
             } catch(e) { console.error("Leave fetch error", e); }
@@ -172,9 +172,6 @@ const ManagerDashboard = () => {
         } catch (err) { alert("Error processing leave request."); }
     };
 
-    // --- UPDATED: SMART ASSIGNMENT WITH POPUP ---
-// --- UPDATED: SMART ASSIGNMENT WITH STRING-BASED DATE CHECK ---
-    // --- UPDATED: SMART ASSIGNMENT WITH STRING-BASED DATE CHECK ---
     // --- UPDATED: SMART ASSIGNMENT WITH SHIFT-DATE CHECK ---
     const handleAssign = async (e) => {
         e.preventDefault();
@@ -218,7 +215,12 @@ const ManagerDashboard = () => {
     };
     if (loading) return <div className="dash-wrapper flex justify-center items-center text-sm uppercase tracking-widest text-[#B0B0B0]">Loading Dashboard...</div>;
 
-    const totalBadges = teamData.pending.length + leaveRequests.length;
+    // Filter leaves into categories
+    const pendingLeaves = leaveRequests.filter(l => l.status === 'pending');
+    const approvedLeaves = leaveRequests.filter(l => l.status === 'approved');
+    const rejectedLeaves = leaveRequests.filter(l => l.status === 'rejected');
+
+    const totalBadges = teamData.pending.length + pendingLeaves.length;
 
     return (
         <div className="dash-wrapper">
@@ -256,11 +258,11 @@ const ManagerDashboard = () => {
                         defaultOpen={true} 
                         badgeCount={totalBadges}
                     >
-                        {/* --- NEW: LEAVE REQUESTS PANEL --- */}
-                        {leaveRequests.length > 0 && (
-                            <NestedPanel title="Pending Leave Requests" defaultOpen={true} badgeCount={leaveRequests.length}>
+                        {/* PENDING LEAVE REQUESTS PANEL */}
+                        {pendingLeaves.length > 0 && (
+                            <NestedPanel title="Pending Leave Requests" defaultOpen={true} badgeCount={pendingLeaves.length}>
                                 <div className="grid gap-3">
-                                    {leaveRequests.map(req => (
+                                    {pendingLeaves.map(req => (
                                         <div key={req.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-orange-500">
                                             <div>
                                                 <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
@@ -273,6 +275,44 @@ const ManagerDashboard = () => {
                                                 <button onClick={() => handleLeaveAction(req.id, 'approved')} className="dash-btn px-4 py-1.5 text-xs">Approve</button>
                                                 <button onClick={() => handleLeaveAction(req.id, 'rejected')} className="dash-btn-outline px-4 py-1.5 text-xs border-[#555]">Deny</button>
                                             </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </NestedPanel>
+                        )}
+
+                        {/* APPROVED LEAVE REQUESTS PANEL */}
+                        {approvedLeaves.length > 0 && (
+                            <NestedPanel title="Approved Leave Requests" defaultOpen={false}>
+                                <div className="grid gap-3">
+                                    {approvedLeaves.map(req => (
+                                        <div key={req.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-green-600">
+                                            <div>
+                                                <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
+                                                <p className="text-xs text-[#B0B0B0] mt-1">
+                                                    🏝️ {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <span className="text-[10px] text-green-500 font-bold uppercase tracking-widest bg-green-900/20 px-3 py-1 rounded">Approved</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </NestedPanel>
+                        )}
+
+                        {/* REJECTED LEAVE REQUESTS PANEL */}
+                        {rejectedLeaves.length > 0 && (
+                            <NestedPanel title="Rejected Leave Requests" defaultOpen={false}>
+                                <div className="grid gap-3">
+                                    {rejectedLeaves.map(req => (
+                                        <div key={req.id} className="flex justify-between items-center bg-[#181818] border border-[#2A2A2A] p-4 rounded-sm border-l-2 border-l-red-600">
+                                            <div>
+                                                <p className="font-medium text-[#E5E5E5]">{req.profiles?.full_name}</p>
+                                                <p className="text-xs text-[#B0B0B0] mt-1">
+                                                    🏝️ {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest bg-red-900/20 px-3 py-1 rounded">Rejected</span>
                                         </div>
                                     ))}
                                 </div>
@@ -381,7 +421,6 @@ const ManagerDashboard = () => {
                                     })}
                                 </select>
                                 
-                                {/* --- UPDATED: EMPLOYEE DROPDOWN SHOWING LEAVES --- */}
                                 <select name="employee_id" value={formData.employee_id} onChange={handleChange} className="dash-input m-0">
                                     <option value="">-- Select Employee --</option>
                                     {teamData.verified.map(emp => {
@@ -404,7 +443,6 @@ const ManagerDashboard = () => {
                                 
                                 <input name="role_description" placeholder="Role (e.g. Security, Registration)" value={formData.role_description} onChange={handleChange} className="dash-input m-0" />
                                 
-                                {/* --- NEW: SHIFT TIME INPUTS --- */}
                                 <div className="flex gap-4">
                                     <div className="flex-1">
                                         <label className="text-[10px] text-[#888] uppercase pl-1 block mb-1">Shift Start (Optional)</label>

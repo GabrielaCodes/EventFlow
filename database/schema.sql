@@ -200,19 +200,21 @@ CREATE TABLE IF NOT EXISTS public.event_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
---3.12 LEAVE REQUESTS
+
+-- 3.12  LEAVE REQUESTS TABLE
+
 CREATE TABLE IF NOT EXISTS public.leave_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   employee_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  manager_id UUID REFERENCES public.profiles(id), -- The oldest manager assigned to approve
+  manager_id UUID REFERENCES public.profiles(id), 
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   reason TEXT,
   status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  is_hidden BOOLEAN DEFAULT false, -- Used by managers to archive rejected leaves
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
 
 
 -- =================================================
@@ -340,6 +342,13 @@ $$ language plpgsql;
 
 DROP TRIGGER IF EXISTS update_events_modtime ON public.events;
 CREATE TRIGGER update_events_modtime BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- ==========================================
+-- LEAVE REQUESTS TRIGGERS
+-- ==========================================
+CREATE TRIGGER update_leave_requests_modtime 
+BEFORE UPDATE ON public.leave_requests 
+FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 
 -- =================================================
 -- 5. ANALYTICS & CONTROL PANEL VIEWS
@@ -506,10 +515,33 @@ CREATE POLICY "Managers view own requests" ON public.master_data_requests FOR SE
 CREATE POLICY "Coordinator manage requests" ON public.master_data_requests FOR ALL TO authenticated USING (is_chief_coordinator());
 
 --LEAVE REQUESTS--
-CREATE POLICY "Employees can view own leaves" ON public.leave_requests FOR SELECT TO authenticated USING (employee_id = auth.uid());
-CREATE POLICY "Employees can create leaves" ON public.leave_requests FOR INSERT TO authenticated WITH CHECK (employee_id = auth.uid());
-CREATE POLICY "Managers can view assigned leaves" ON public.leave_requests FOR SELECT TO authenticated USING (manager_id = auth.uid());
-CREATE POLICY "Managers can update assigned leaves" ON public.leave_requests FOR UPDATE TO authenticated USING (manager_id = auth.uid());
+-- ==========================================
+-- LEAVE REQUESTS RLS POLICIES
+-- ==========================================
+ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
+
+-- 1. Employees can view their own leaves
+CREATE POLICY "Employees can view own leaves" 
+ON public.leave_requests FOR SELECT TO authenticated 
+USING (employee_id = auth.uid());
+
+-- 2. Employees can submit leave requests
+CREATE POLICY "Employees can create leaves" 
+ON public.leave_requests FOR INSERT TO authenticated 
+WITH CHECK (employee_id = auth.uid());
+
+-- 3. Managers/Coordinators can view leaves (Needed for the backend shift validation)
+CREATE POLICY "Managers and Coordinators can view all leaves" 
+ON public.leave_requests FOR SELECT TO authenticated 
+USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('manager', 'chief_coordinator'))
+    OR employee_id = auth.uid()
+);
+
+-- 4. Assigned Managers can approve/reject and hide/unhide the leave
+CREATE POLICY "Managers can update assigned leaves" 
+ON public.leave_requests FOR UPDATE TO authenticated 
+USING (manager_id = auth.uid());
 -- =================================================
 -- 7. GRANTS
 -- =================================================
