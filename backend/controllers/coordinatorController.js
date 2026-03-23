@@ -186,3 +186,28 @@ export const getAllEventsByManager = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/* =======================
+   6. EVENT STAFF ASSIGNMENTS
+   ======================= */
+export const getEventStaff = async (req, res) => {
+    try {
+        const { eventId } = req.params;
+        const { data, error } = await supabase
+            .from('assignments')
+            .select(`
+                id,
+                role_description, 
+                status,
+                employee:profiles(id, full_name, email) 
+            `)
+            .eq('event_id', eventId);
+
+        if (error) throw error;
+        
+        res.json(data);
+    } catch (err) {
+        console.error("Error fetching event staff:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

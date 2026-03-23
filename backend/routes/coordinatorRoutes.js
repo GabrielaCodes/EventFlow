@@ -14,7 +14,11 @@ import { getLandingData } from '../controllers/coordinatorLandingController.js';
 
 //Manager requests
 import { getCoordinatorRequests, processRequest } from '../controllers/masterRequestController.js';
-
+//view staff assignment
+import { 
+    // ... your other imports
+    getEventStaff 
+} from '../controllers/coordinatorController.js';
 const router = express.Router();
 
 // --------------------------------------------------------
@@ -54,5 +58,8 @@ router.get('/landing-data', getLandingData);
 // Assigned Manager Workloads
 // Notice how clean this is since the middleware is handled globally above!
 router.get('/workloads', getAllEventsByManager);
+
+//view staff assignment
+router.get('/events/:eventId/staff', getEventStaff);
 
 export default router;

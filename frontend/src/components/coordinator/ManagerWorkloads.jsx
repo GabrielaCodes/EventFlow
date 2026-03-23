@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getManagerWorkloads } from '../../services/coordinatorService';
+import { getManagerWorkloads, getEventStaff } from '../../services/coordinatorService';
 
 // Simple SVG Icon for Collapsible Headers
 const ChevronIcon = ({ isOpen }) => (
@@ -23,6 +23,11 @@ const ManagerWorkloads = () => {
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterSponsors, setFilterSponsors] = useState('All');
 
+    // Detail States (Side Panel)
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [eventStaff, setEventStaff] = useState([]);
+    const [loadingStaff, setLoadingStaff] = useState(false);
+
     // Collapse States
     const [openCategories, setOpenCategories] = useState({});
     const [openManagers, setOpenManagers] = useState({});
@@ -39,7 +44,6 @@ const ManagerWorkloads = () => {
             setRawEvents(response.data || []);
             setError(null);
             
-            // Auto-open all categories by default
             const initialCats = {};
             response.data.forEach(e => {
                 const cat = e.subtype?.category?.name || 'Uncategorized';
@@ -52,6 +56,21 @@ const ManagerWorkloads = () => {
             setError(backendError || "Failed to fetch workloads");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // --- STAFF FETCH LOGIC ---
+    const handleEventClick = async (event) => {
+        setSelectedEvent(event);
+        setLoadingStaff(true);
+        try {
+            const res = await getEventStaff(event.id);
+            setEventStaff(res.data || []);
+        } catch (err) {
+            console.error("Failed to fetch staff", err);
+            setEventStaff([]);
+        } finally {
+            setLoadingStaff(false);
         }
     };
 
@@ -104,7 +123,7 @@ const ManagerWorkloads = () => {
     if (error) return <div className="text-red-500 font-bold p-6">Error: {error}</div>;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative min-h-screen">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Manager Event Workloads</h2>
                 <button onClick={fetchWorkloads} className="px-4 py-2 bg-[#333] hover:bg-[#444] text-[var(--text-primary)] rounded transition-colors text-sm font-semibold">
@@ -154,11 +173,9 @@ const ManagerWorkloads = () => {
                         const isCatOpen = openCategories[categoryName];
                         const isRankingOpen = openRankings[categoryName];
 
-                        // --- RANKING LOGIC ---
                         const rankedManagers = Object.entries(managers)
                             .filter(([mName]) => mName !== 'Unassigned')
                             .map(([mName, mEvents]) => {
-                                // Count ONLY 'in_progress' events for accurate current workload
                                 const inProgressCount = mEvents.filter(e => e.status === 'in_progress').length;
                                 return {
                                     name: mName,
@@ -167,22 +184,17 @@ const ManagerWorkloads = () => {
                                 };
                             })
                             .sort((a, b) => {
-                                // Primary Sort: Lowest active event count first
                                 if (a.count !== b.count) return a.count - b.count;
-                                // Tie-breaker: Oldest account first
                                 return new Date(a.createdAt) - new Date(b.createdAt);
                             });
 
                         return (
                             <div key={categoryName} className="border border-[#333] rounded-lg overflow-hidden">
-                                {/* CATEGORY HEADER */}
                                 <button 
                                     onClick={() => toggleCategory(categoryName)}
                                     className="w-full flex justify-between items-center p-4 bg-[#222] hover:bg-[#2a2a2a] transition-colors border-b border-[#333]"
                                 >
-                                    <h3 className="text-xl font-bold text-[var(--gold-main)] uppercase tracking-wider">
-                                        📁 {categoryName}
-                                    </h3>
+                                    <h3 className="text-xl font-bold text-[var(--gold-main)] uppercase tracking-wider">📁 {categoryName}</h3>
                                     <div className="flex items-center gap-4">
                                         <span className="text-sm px-3 py-1 bg-[#333] rounded-full text-[var(--text-secondary)]">
                                             {Object.keys(managers).length} Group{Object.keys(managers).length !== 1 ? 's' : ''}
@@ -191,42 +203,24 @@ const ManagerWorkloads = () => {
                                     </div>
                                 </button>
 
-                                {/* CATEGORY CONTENT WRAPPER */}
                                 {isCatOpen && (
                                     <div className="p-4 bg-[#1a1a1a] space-y-4">
-                                        
-                                        {/* --- RANKINGS COLLAPSIBLE --- */}
                                         {rankedManagers.length > 0 && (
                                             <div className="border border-[var(--gold-main)] rounded bg-[#1e1a15]">
-                                                <button 
-                                                    onClick={() => toggleRanking(categoryName)}
-                                                    className="w-full flex justify-between items-center p-3 hover:bg-[#251f18] transition-colors"
-                                                >
-                                                    <h4 className="font-semibold text-[var(--gold-main)] text-sm uppercase tracking-wide flex items-center gap-2">
-                                                        📊 Manager Rankings (Availability)
-                                                    </h4>
+                                                <button onClick={() => toggleRanking(categoryName)} className="w-full flex justify-between items-center p-3 hover:bg-[#251f18] transition-colors">
+                                                    <h4 className="font-semibold text-[var(--gold-main)] text-sm uppercase tracking-wide flex items-center gap-2">📊 Manager Rankings</h4>
                                                     <ChevronIcon isOpen={isRankingOpen} />
                                                 </button>
-                                                
                                                 {isRankingOpen && (
                                                     <div className="p-3 border-t border-[var(--gold-main)]/30">
                                                         <div className="flex flex-col gap-2">
                                                             {rankedManagers.map((mgr, index) => (
                                                                 <div key={mgr.name} className="flex justify-between items-center bg-[#252525] p-2 rounded text-sm">
                                                                     <div className="flex items-center gap-3">
-                                                                        <span className={`font-bold w-6 h-6 rounded-full flex items-center justify-center ${index === 0 ? 'bg-[var(--gold-main)] text-black' : 'bg-[#444] text-[var(--text-secondary)]'}`}>
-                                                                            {index + 1}
-                                                                        </span>
+                                                                        <span className={`font-bold w-6 h-6 rounded-full flex items-center justify-center ${index === 0 ? 'bg-[var(--gold-main)] text-black' : 'bg-[#444] text-[var(--text-secondary)]'}`}>{index+1}</span>
                                                                         <span className="font-medium text-[var(--text-primary)]">{mgr.name}</span>
                                                                     </div>
-                                                                    <div className="flex items-center gap-4 text-[var(--text-secondary)]">
-                                                                        <span className="text-xs opacity-70" title="Account Creation Date">
-                                                                            Joined: {new Date(mgr.createdAt).toLocaleDateString()}
-                                                                        </span>
-                                                                        <span className="px-2 py-1 bg-[#333] rounded">
-                                                                            {mgr.count} In Progress
-                                                                        </span>
-                                                                    </div>
+                                                                    <span className="px-2 py-1 bg-[#333] rounded text-[var(--text-secondary)]">{mgr.count} In Progress</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -235,89 +229,142 @@ const ManagerWorkloads = () => {
                                             </div>
                                         )}
 
-                                        {/* --- MANAGERS & EVENTS GROUPS --- */}
                                         {Object.entries(managers)
-                                            .sort(([nameA], [nameB]) => {
-                                                if (nameA === 'Unassigned') return -1; // Pin Unassigned to the top
-                                                if (nameB === 'Unassigned') return 1;
-                                                return nameA.localeCompare(nameB);     // Sort the rest alphabetically
-                                            })
+                                            .sort(([a], [b]) => a === 'Unassigned' ? -1 : b === 'Unassigned' ? 1 : a.localeCompare(b))
                                             .map(([managerName, events]) => {
-                                            const catMgrKey = `${categoryName}-${managerName}`;
-                                            const isMgrOpen = openManagers[catMgrKey] !== false; 
-                                            const isUnassigned = managerName === 'Unassigned';
+                                                const catMgrKey = `${categoryName}-${managerName}`;
+                                                const isMgrOpen = openManagers[catMgrKey] !== false; 
+                                                const isUnassigned = managerName === 'Unassigned';
 
-                                            return (
-                                                <div 
-                                                    key={managerName} 
-                                                    className={`border rounded ${isUnassigned ? 'border-orange-500/30 bg-[#2a1e15]' : 'border-[#444] bg-[#1e1e1e]'}`}
-                                                >
-                                                    <button 
-                                                        onClick={() => toggleManager(catMgrKey)}
-                                                        className={`w-full flex justify-between items-center p-3 hover:bg-[#252525] transition-colors border-b ${isUnassigned ? 'border-orange-500/30' : 'border-[#444]'}`}
-                                                    >
-                                                        <h4 className={`font-semibold text-lg ${isUnassigned ? 'text-orange-400' : 'text-[var(--text-primary)]'}`}>
-                                                            {isUnassigned ? '⚠️ ' : '👤 '} {managerName}
-                                                        </h4>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`text-xs px-2 py-1 rounded ${isUnassigned ? 'bg-orange-500/20 text-orange-300' : 'bg-[#333] text-[var(--text-secondary)]'}`}>
-                                                                {events.length} Event{events.length !== 1 ? 's' : ''}
-                                                            </span>
-                                                            <ChevronIcon isOpen={isMgrOpen} />
-                                                        </div>
-                                                    </button>
-
-                                                    {isMgrOpen && (
-                                                        <div className="overflow-x-auto">
-                                                            <table className="w-full text-left border-collapse">
-                                                                <thead>
-                                                                    <tr className={`${isUnassigned ? 'bg-[#221810]' : 'bg-[#252525]'} text-[var(--text-secondary)] uppercase text-xs tracking-wider`}>
-                                                                        <th className="p-3">Event Title</th>
-                                                                        <th className="p-3">Subtype</th>
-                                                                        <th className="p-3">Client</th>
-                                                                        <th className="p-3">Status</th>
-                                                                        <th className="p-3 min-w-[200px]">Sponsors</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {events.map(event => (
-                                                                        <tr key={event.id} className={`border-t ${isUnassigned ? 'border-orange-500/20 hover:bg-[#302218]' : 'border-[#444] hover:bg-[#2a2a2a]'} transition-colors`}>
-                                                                            <td className="p-3 font-semibold text-[var(--text-primary)]">{event.title}</td>
-                                                                            <td className="p-3 text-[var(--text-secondary)]">{event.subtype?.name || 'N/A'}</td>
-                                                                            <td className="p-3 text-[var(--text-secondary)]">{event.client?.full_name || 'N/A'}</td>
-                                                                            <td className="p-3">
-                                                                                <span className={`px-2 py-1 text-xs rounded uppercase ${isUnassigned ? 'bg-orange-500/20 text-orange-300' : 'bg-[#333] text-[var(--text-primary)]'} whitespace-nowrap`}>
-                                                                                    {event.status.replace('_', ' ')}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td className="p-3 text-[var(--text-secondary)] text-sm">
-                                                                                {event.sponsorships && event.sponsorships.length > 0 ? (
-                                                                                    <ul className="list-disc list-inside space-y-1">
-                                                                                        {event.sponsorships.map((sponsorRow, idx) => (
-                                                                                            <li key={idx}>
-                                                                                                {sponsorRow.sponsor?.full_name || 'Unknown'} - ${sponsorRow.amount} 
-                                                                                            </li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                ) : (
-                                                                                    <span className="italic opacity-50">None</span>
-                                                                                )}
-                                                                            </td>
+                                                return (
+                                                    <div key={managerName} className={`border rounded ${isUnassigned ? 'border-orange-500/30 bg-[#2a1e15]' : 'border-[#444] bg-[#1e1e1e]'}`}>
+                                                        <button onClick={() => toggleManager(catMgrKey)} className={`w-full flex justify-between items-center p-3 border-b ${isUnassigned ? 'border-orange-500/30' : 'border-[#444]'}`}>
+                                                            <h4 className={`font-semibold text-lg ${isUnassigned ? 'text-orange-400' : 'text-[var(--text-primary)]'}`}>{isUnassigned ? '⚠️ ' : '👤 '} {managerName}</h4>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs px-2 py-1 bg-[#333] rounded text-[var(--text-secondary)]">{events.length} Events</span>
+                                                                <ChevronIcon isOpen={isMgrOpen} />
+                                                            </div>
+                                                        </button>
+                                                        {isMgrOpen && (
+                                                            <div className="overflow-x-auto">
+                                                                <table className="w-full text-left border-collapse">
+                                                                    <thead>
+                                                                        <tr className="bg-[#252525] text-[var(--text-secondary)] uppercase text-xs">
+                                                                            <th className="p-3">Event Title</th>
+                                                                            <th className="p-3">Subtype</th>
+                                                                            <th className="p-3">Client</th>
+                                                                            <th className="p-3">Status</th>
+                                                                            <th className="p-3">Sponsors</th>
                                                                         </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {events.map(event => (
+                                                                            <tr 
+                                                                                key={event.id} 
+                                                                                onClick={() => handleEventClick(event)}
+                                                                                // ADDED 'group' and 'relative' here for the tooltip to work
+                                                                                className="border-t border-[#444] hover:bg-[#333] cursor-pointer transition-colors relative group"
+                                                                            >
+                                                                                <td className="p-3 font-semibold text-[var(--gold-main)] group-hover:underline">
+                                                                                    {event.title}
+                                                                                    {/* TOOLTIP: Appears on row hover */}
+                                                                                    <span className="absolute left-1/2 -top-6 -translate-x-1/2 bg-[var(--gold-main)] text-black text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                                                                                        Click to see staff assignments
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td className="p-3 text-[var(--text-secondary)]">{event.subtype?.name}</td>
+                                                                                <td className="p-3 text-[var(--text-secondary)]">{event.client?.full_name}</td>
+                                                                                <td className="p-3">
+                                                                                    <span className="px-2 py-1 text-xs rounded uppercase bg-[#333]">{event.status.replace('_', ' ')}</span>
+                                                                                </td>
+                                                                                <td className="p-3 text-[var(--text-secondary)] text-sm">
+                                                                                    {event.sponsorships?.length > 0 ? `${event.sponsorships.length} Active` : 'None'}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
                 </div>
+            )}
+
+            {/* --- STAFF DETAILS SIDE PANEL --- */}
+            {selectedEvent && (
+                <>
+                    {/* Overlay to close when clicking outside */}
+                    <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSelectedEvent(null)}></div>
+                    
+                    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[#111] border-l border-[var(--gold-main)] shadow-2xl z-50 p-6 flex flex-col overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-[var(--gold-main)]">Employee Assignments</h3>
+                            <button onClick={() => setSelectedEvent(null)} className="text-white hover:text-[var(--gold-main)] transition-colors text-2xl">✕</button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="bg-[#1a1a1a] p-4 rounded border border-[#333]">
+                                <h4 className="text-xs text-[var(--text-secondary)] uppercase tracking-widest mb-1">Event</h4>
+                                <p className="text-xl font-bold">{selectedEvent.title}</p>
+                                <p className="text-sm text-[var(--gold-main)]">{selectedEvent.subtype?.name}</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold flex items-center gap-2">
+                                    👷 Assigned Personnel
+                                </h4>
+                                
+                                {loadingStaff ? (
+                                    <div className="flex justify-center py-10">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[var(--gold-main)]"></div>
+                                    </div>
+                                ) : eventStaff.length > 0 ? (
+                                    <div className="grid gap-3">
+                                        {eventStaff.map(staff => (
+                                            <div key={staff.id} className="bg-[#1a1a1a] p-3 rounded border border-[#333] hover:border-[var(--gold-main)] transition-colors">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-bold text-[var(--text-primary)]">{staff.employee?.full_name}</p>
+                                                        <p className="text-xs text-[var(--text-secondary)]">{staff.employee?.email}</p>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-[10px] bg-[#333] text-[var(--gold-main)] px-2 py-0.5 rounded uppercase font-bold text-right">
+                                                            {staff.role_description || 'General Staff'}
+                                                        </span>
+                                                        <span className={`text-[9px] px-2 py-0.5 rounded uppercase font-bold ${staff.status === 'accepted' ? 'text-green-400' : staff.status === 'pending' ? 'text-orange-400' : 'text-red-400'}`}>
+                                                            {staff.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-[#2a1a1a] border border-red-900/50 p-6 rounded-lg text-center">
+                                        <p className="text-red-400 text-sm italic">No employees assigned to this event yet.</p>
+                                        <p className="text-[10px] text-red-500/70 mt-2">Check with the Manager for updates.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-auto pt-10">
+                            <button 
+                                onClick={() => setSelectedEvent(null)}
+                                className="w-full py-3 bg-[#222] hover:bg-[#333] text-white rounded font-bold transition-colors border border-[#444]"
+                            >
+                                Close Panel
+                            </button>
+                        </div>
+                    </div>
+                </>
             )}
         </div>
     );
