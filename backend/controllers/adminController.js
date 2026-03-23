@@ -42,12 +42,7 @@ export const getAnalytics = async (req, res) => {
 // --------------------------------------------------------
 // 2. MANAGER: Assign Staff to Event
 // --------------------------------------------------------
-// --------------------------------------------------------
-// 2. MANAGER: Assign Staff to Event
-// --------------------------------------------------------
-// --------------------------------------------------------
-// 2. MANAGER: Assign Staff to Event
-// --------------------------------------------------------
+
 export const assignStaff = async (req, res) => {
     try {
         const { event_id, employee_id, role_description, shift_start, shift_end } = req.body;
@@ -55,7 +50,7 @@ export const assignStaff = async (req, res) => {
         
         if (!event_id || !employee_id) return res.status(400).json({ error: "Event and Employee IDs are required." });
 
-        // 1. Get Event Data & Verify Ownership
+        // 1. Verify Event Ownership
         const { data: eventCheck, error: eventError } = await supabase
             .from('events')
             .select('assigned_manager_id, event_date')
@@ -65,54 +60,57 @@ export const assignStaff = async (req, res) => {
         if (eventError || !eventCheck) return res.status(404).json({ error: "Event not found." });
         if (eventCheck.assigned_manager_id !== managerId) return res.status(403).json({ error: "Access Denied." });
 
-        // 2. DETERMINE THE ACTUAL WORK DATES
-        // If they provided a shift start, use that date. Otherwise, fallback to the event date.
+        // 2. RE-ASSIGNMENT LOGIC: Check existing assignment status
+        const { data: existingAssignment } = await supabase
+            .from('assignments')
+            .select('status')
+            .eq('event_id', event_id)
+            .eq('employee_id', employee_id)
+            .maybeSingle();
+
+        if (existingAssignment && existingAssignment.status !== 'rejected') {
+            return res.status(400).json({ 
+                error: `This employee is already assigned with status: ${existingAssignment.status}. They can only be re-assigned if they rejected the previous assignment.` 
+            });
+        }
+
+        // 3. LEAVE CHECK
         const workDateStart = shift_start ? shift_start.split('T')[0] : eventCheck.event_date.split('T')[0];
         const workDateEnd = shift_end ? shift_end.split('T')[0] : workDateStart;
 
-        // 3. FETCH APPROVED LEAVES
-        const { data: approvedLeaves, error: leaveError } = await supabase
+        const { data: approvedLeaves } = await supabase
             .from('leave_requests')
             .select('start_date, end_date')
             .eq('employee_id', employee_id)
             .eq('status', 'approved');
 
-        if (leaveError) throw leaveError;
-
-        // 4. CHECK OVERLAP AGAINST THE ACTUAL SHIFT
         if (approvedLeaves && approvedLeaves.length > 0) {
             const isOverlapping = approvedLeaves.some(leave => {
                 const leaveStart = leave.start_date.split('T')[0];
                 const leaveEnd = leave.end_date.split('T')[0];
-                
-                // Overlap formula: Work Start <= Leave End AND Work End >= Leave Start
                 return workDateStart <= leaveEnd && workDateEnd >= leaveStart;
             });
 
             if (isOverlapping) {
-                return res.status(400).json({ 
-                    error: `❌ ASSIGNMENT BLOCKED: Employee is on approved leave during this shift.` 
-                });
+                return res.status(400).json({ error: "❌ ASSIGNMENT BLOCKED: Employee is on approved leave." });
             }
         }
 
-        // 5. ATTEMPT INSERT
+        // 4. PERFORM UPSERT (Update existing if rejected, otherwise Insert)
         const { data, error } = await supabase
             .from('assignments')
-            .insert([{ 
+            .upsert({ 
                 event_id, 
                 employee_id,
                 role_description: role_description || "General Staff",
+                status: 'pending', // Reset status to pending for new/re-assignment
                 shift_start: shift_start || null,
-                shift_end: shift_end || null
-            }])
+                shift_end: shift_end || null,
+                assigned_at: new Date().toISOString() // Track time of assignment
+            }, { onConflict: 'event_id, employee_id' })
             .select();
             
-        if (error) {
-            if (error.code === '23505') return res.status(400).json({ error: "Already assigned to this event." });
-            throw error;
-        }
-
+        if (error) throw error;
         res.status(201).json(data[0]);
     } catch (err) {
         console.error("Assignment Error:", err);

@@ -6,7 +6,6 @@ export const requestLeave = async (req, res) => {
         const { start_date, end_date, reason } = req.body;
         const employeeId = req.user.id;
 
-        // 1. Get employee's category
         const { data: emp, error: empErr } = await supabase
             .from('profiles')
             .select('category_id')
@@ -15,20 +14,18 @@ export const requestLeave = async (req, res) => {
 
         if (empErr || !emp.category_id) return res.status(400).json({ error: "Employee category missing." });
 
-        // 2. Find the oldest manager in that category
         const { data: managers, error: mgrErr } = await supabase
             .from('profiles')
             .select('id')
             .eq('role', 'manager')
             .eq('category_id', emp.category_id)
-            .order('created_at', { ascending: true }) // Oldest first
+            .order('created_at', { ascending: true }) 
             .limit(1);
 
         if (mgrErr || managers.length === 0) {
             return res.status(400).json({ error: "No manager found in your department to approve this." });
         }
 
-        // 3. Insert Request
         const { data, error } = await supabase
             .from('leave_requests')
             .insert([{
@@ -63,15 +60,21 @@ export const getLeaveRequests = async (req, res) => {
     }
 };
 
-// --- MANAGER: Approve/Reject Leave ---
+// --- MANAGER: Approve/Reject Leave (Updated with Denial Reason) ---
 export const respondToLeave = async (req, res) => {
     try {
-        const { request_id, status } = req.body; // 'approved' or 'rejected'
+        const { request_id, status, denial_reason } = req.body; // Status: 'approved' or 'rejected'
+        
+        const updateData = { status };
+        if (status === 'rejected' && denial_reason) {
+            updateData.denial_reason = denial_reason;
+        }
+
         const { data, error } = await supabase
             .from('leave_requests')
-            .update({ status })
+            .update(updateData)
             .eq('id', request_id)
-            .eq('manager_id', req.user.id) // Security check
+            .eq('manager_id', req.user.id)
             .select();
 
         if (error) throw error;

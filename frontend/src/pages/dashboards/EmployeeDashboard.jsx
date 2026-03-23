@@ -203,7 +203,7 @@ const EmployeeDashboard = () => {
                 <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333]">
                     <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)] flex items-center gap-2">Request Leave</h2>
                     
-                    {/* --- NEW: MANAGER INFO DISPLAY --- */}
+                    {/* --- MANAGER INFO DISPLAY --- */}
                     {assignedManager ? (
                         <div className="mb-6 p-3 bg-[#111] border-l-2 border-[var(--gold-main)] rounded-r text-sm">
                             <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider mb-1">Directing request to Manager:</p>
@@ -248,20 +248,29 @@ const EmployeeDashboard = () => {
                             <p className="text-[var(--text-secondary)] text-sm italic">No leaves requested yet.</p>
                         ) : (
                             myLeaves.map(leave => (
-                                <div key={leave.id} className="flex justify-between items-center bg-[#111] p-3 rounded border border-[#222]">
-                                    <div className="text-sm">
-                                        <p className="text-white font-medium">
-                                            {new Date(leave.start_date).toLocaleDateString()} - {new Date(leave.end_date).toLocaleDateString()}
-                                        </p>
-                                        <p className="text-[11px] text-[#888] mt-1">{leave.reason || 'No reason provided'}</p>
+                                <div key={leave.id} className="flex flex-col bg-[#111] p-3 rounded border border-[#222]">
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-sm">
+                                            <p className="text-white font-medium">
+                                                {new Date(leave.start_date).toLocaleDateString()} - {new Date(leave.end_date).toLocaleDateString()}
+                                            </p>
+                                            <p className="text-[11px] text-[#888] mt-1">{leave.reason || 'No reason provided'}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded tracking-wider ${
+                                            leave.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800' : 
+                                            leave.status === 'rejected' ? 'bg-red-900/30 text-red-400 border border-red-800' : 
+                                            'bg-orange-900/30 text-orange-400 border border-orange-800'
+                                        }`}>
+                                            {leave.status}
+                                        </span>
                                     </div>
-                                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded tracking-wider ${
-                                        leave.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800' : 
-                                        leave.status === 'rejected' ? 'bg-red-900/30 text-red-400 border border-red-800' : 
-                                        'bg-orange-900/30 text-orange-400 border border-orange-800'
-                                    }`}>
-                                        {leave.status}
-                                    </span>
+                                    {/* --- FIX: SHOW DENIAL REASON IF REJECTED --- */}
+                                    {leave.status === 'rejected' && leave.denial_reason && (
+                                        <div className="mt-2 pt-2 border-t border-[#222]">
+                                            <p className="text-[10px] uppercase text-red-400 font-bold tracking-tighter">Manager Note:</p>
+                                            <p className="text-[11px] text-gray-300 italic">{leave.denial_reason}</p>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}

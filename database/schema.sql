@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS public.leave_requests (
   status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   is_hidden BOOLEAN DEFAULT false, -- Used by managers to archive rejected leaves
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  denial_reason TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
