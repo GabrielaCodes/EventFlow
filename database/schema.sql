@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   theme TEXT,
   event_date DATE NOT NULL,
   status event_status DEFAULT 'consideration',
+  is_hidden BOOLEAN DEFAULT false, -- For soft-deletion if needed
   venue_id UUID REFERENCES public.venues(id),
   subtype_id UUID REFERENCES public.event_subtypes(id),
   client_notes TEXT,
