@@ -48,7 +48,6 @@ const EventModifications = () => {
         try {
             setLoading(true);
             const [ev, reqs, vens, spons] = await Promise.all([
-                // 👇 UPDATED: Added manager:profiles fetch here
                 supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email)').eq('id', id).single(),
                 supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
                 supabase.from('venues').select('id, name'),
@@ -152,12 +151,24 @@ const EventModifications = () => {
 
                 <h1 className="dash-title">Manage Event: <span>{event.title}</span></h1>
                 
-                <div className="text-[#B0B0B0] mb-8 border-b border-[#2A2A2A] pb-4 flex items-center">
+                <div className="text-[#B0B0B0] mb-4 border-b border-[#2A2A2A] pb-4 flex items-center">
                     Current:&nbsp;<strong className="text-[#E5E5E5]">{new Date(event.event_date).toDateString()}</strong>&nbsp;at&nbsp;<strong className="text-[#E5E5E5]">{event.venues?.name || 'Unassigned'}</strong>
                     <span className="ml-4 px-2 py-1 text-[10px] font-bold uppercase rounded border border-[#C5A46D] text-[#C5A46D] tracking-wider">
                         {event.status.replace('_', ' ')}
                     </span>
                 </div>
+
+                {/* 👇 NEW: Display Client Notes/Instructions 👇 */}
+                {event.client_notes && (
+                    <div className="mb-8 p-4 bg-[#121212] border-l-2 border-[#C5A46D] rounded-r-sm">
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#B0B0B0] mb-1">
+                            Client Notes / Instructions
+                        </h4>
+                        <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">
+                            {event.client_notes}
+                        </p>
+                    </div>
+                )}
 
                 <div className="space-y-6">
                     {/* 1. OPERATIONS & MODIFICATIONS */}
@@ -255,7 +266,7 @@ const EventModifications = () => {
                     </div>
                 )}
 
-                {/* 👇 NEW: Client Contact Manager Card 👇 */}
+                {/* Client Contact Manager Card */}
                 {role === 'client' && event?.manager && (
                     <div className="mt-8 p-6 bg-[#121212] border border-[#2A2A2A] rounded-sm text-center">
                         <h4 className="text-[#C5A46D] font-medium uppercase tracking-wider text-sm mb-3">
