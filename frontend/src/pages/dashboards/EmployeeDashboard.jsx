@@ -6,7 +6,10 @@ const EmployeeDashboard = () => {
     const { user, logout } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    // --- ATTENDANCE STATES ---
     const [activeAttendance, setActiveAttendance] = useState(null);
+    const [attendanceHistory, setAttendanceHistory] = useState([]);
 
     // --- LEAVE STATES ---
     const [myLeaves, setMyLeaves] = useState([]);
@@ -19,6 +22,7 @@ const EmployeeDashboard = () => {
         if (user) {
             fetchTasks();
             checkCurrentAttendance();
+            fetchAttendanceHistory(); // NEW: Fetch attendance logs
             fetchMyLeaves();
             fetchAssignedManager();
         }
@@ -40,6 +44,21 @@ const EmployeeDashboard = () => {
     const checkCurrentAttendance = async () => {
         const { data } = await supabase.from('attendance').select('*').eq('employee_id', user.id).is('check_out', null).maybeSingle();
         setActiveAttendance(data);
+    };
+
+    // NEW: Fetch all attendance records for the employee
+    const fetchAttendanceHistory = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select(`id, check_in, check_out, event:events(title)`)
+                .eq('employee_id', user.id)
+                .order('check_in', { ascending: false });
+            if (error) throw error;
+            setAttendanceHistory(data);
+        } catch (err) {
+            console.error("Error fetching attendance history:", err.message);
+        }
     };
 
     const fetchMyLeaves = async () => {
@@ -77,13 +96,11 @@ const EmployeeDashboard = () => {
     };
 
     const updateStatus = async (assignmentId, newStatus) => {
-        // --- NEW: prompt for rejection reason if employee is rejecting ---
         let rejection_reason = null;
         if (newStatus === 'rejected') {
             rejection_reason = prompt("Please provide a reason for rejecting this assignment (optional):");
-            // If user clicks Cancel (null), abort. Empty string is fine — they chose not to give a reason.
             if (rejection_reason === null) return;
-            rejection_reason = rejection_reason.trim() || null; // store null if blank
+            rejection_reason = rejection_reason.trim() || null;
         }
 
         const updatePayload = { status: newStatus };
@@ -101,14 +118,22 @@ const EmployeeDashboard = () => {
     const handleCheckIn = async (eventId) => {
         const { data, error } = await supabase.from('attendance').insert([{ employee_id: user.id, event_id: eventId, check_in: new Date().toISOString() }]).select().single();
         if (error) { alert(error.message); } 
-        else { setActiveAttendance(data); alert("Checked In Successfully!"); }
+        else { 
+            setActiveAttendance(data); 
+            fetchAttendanceHistory(); // Update list after checking in
+            alert("Checked In Successfully!"); 
+        }
     };
 
     const handleCheckOut = async () => {
         if (!activeAttendance) return;
         const { error } = await supabase.from('attendance').update({ check_out: new Date().toISOString() }).eq('id', activeAttendance.id);
         if (error) { alert("Error checking out"); } 
-        else { setActiveAttendance(null); alert("Checked Out Successfully!"); }
+        else { 
+            setActiveAttendance(null); 
+            fetchAttendanceHistory(); // Update list to show checkout time
+            alert("Checked Out Successfully!"); 
+        }
     };
 
     const handleLeaveSubmit = async (e) => {
@@ -164,7 +189,6 @@ const EmployeeDashboard = () => {
                                 </p>
                                 <div className="flex gap-2">
                                     <button onClick={() => updateStatus(task.id, 'accepted')} className="flex-1" style={{ padding: '0.5rem', backgroundColor: '#16a34a', color: 'white' }}>Accept</button>
-                                    {/* Reject now triggers a reason prompt */}
                                     <button onClick={() => updateStatus(task.id, 'rejected')} className="flex-1" style={{ padding: '0.5rem', backgroundColor: '#dc2626', color: 'white' }}>Reject</button>
                                 </div>
                             </div>
@@ -208,6 +232,38 @@ const EmployeeDashboard = () => {
                 )}
             </div>
 
+            {/* NEW: ATTENDANCE HISTORY */}
+            <div className="mb-12">
+                <h2 className="text-xl font-bold mb-4 text-[var(--gold-main)]">🕒 My Attendance History</h2>
+                <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333] max-h-[300px] overflow-y-auto">
+                    {attendanceHistory.length === 0 ? (
+                        <p className="text-[var(--text-secondary)] italic">No attendance records found.</p>
+                    ) : (
+                        <div className="space-y-3 pr-2">
+                            {attendanceHistory.map(record => (
+                                <div key={record.id} className="flex flex-col md:flex-row justify-between md:items-center bg-[#111] p-4 rounded border border-[#222]">
+                                    <div>
+                                        <p className="font-bold text-[var(--text-primary)]">{record.event?.title || 'General Shift / Unknown Event'}</p>
+                                    </div>
+                                    <div className="mt-2 md:mt-0 flex gap-4 text-sm">
+                                        <div>
+                                            <span className="text-[10px] text-[#888] uppercase block">Check-In</span>
+                                            <span className="text-green-400 font-mono">{new Date(record.check_in).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-[#888] uppercase block">Check-Out</span>
+                                            <span className={record.check_out ? "text-gray-300 font-mono" : "text-yellow-500 font-mono animate-pulse"}>
+                                                {record.check_out ? new Date(record.check_out).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'In Progress'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* REJECTED ASSIGNMENTS HISTORY */}
             {rejectedTasks.length > 0 && (
                 <div className="mb-12">
@@ -229,7 +285,6 @@ const EmployeeDashboard = () => {
                                         Rejected
                                     </span>
                                 </div>
-                                {/* Show the reason the employee gave */}
                                 {task.rejection_reason && (
                                     <div className="mt-2 pt-2 border-t border-[#222]">
                                         <p className="text-[10px] uppercase text-red-400 font-bold tracking-tighter">Your Reason:</p>
@@ -243,7 +298,7 @@ const EmployeeDashboard = () => {
             )}
 
             {/* LEAVE MANAGEMENT SECTION */}
-            <div className="pt-8 border-t border-[#333] grid md:grid-cols-2 gap-8">
+            <div className="pt-8 border-t border-[#333] grid md:grid-cols-2 gap-8 mb-12">
                 
                 {/* Leave Form */}
                 <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow border border-[#333]">
