@@ -5,6 +5,7 @@ import {
     getAssignedEvents, 
     requestModification,
     respondToModification, 
+    updateEvent,
     getEventModifications 
 } from '../controllers/eventController.js';
 
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post('/', authenticate, authorize(['client']), createEvent);
 router.get('/my-events', authenticate, authorize(['client']), getMyEvents);
 router.post('/respond', authenticate, authorize(['client']), respondToModification);
+router.patch('/:id', authenticate, authorize(['client']), updateEvent);
 
 // --- Shared/General Routes ---
 // Allow authenticated users (Clients/Employees/Admins) to view modification status if they have access

@@ -161,3 +161,43 @@ export const respondToModification = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// --------------------------------------------------------
+// 7. CLIENT: Update Event (Only in 'consideration')
+// --------------------------------------------------------
+export const updateEvent = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const clientId = req.user.id;
+        const updates = req.body;
+
+        // The database RLS policy will enforce the 'consideration' rule automatically,
+        // but adding the .eq('status', 'consideration') here acts as a nice double-check.
+        const { data, error } = await supabase
+            .from('events')
+            .update({
+                title: updates.title,
+                subtype_id: updates.subtype_id,
+                event_date: updates.event_date,
+                venue_id: updates.venue_id,
+                theme: updates.theme,
+                client_notes: updates.client_notes
+            })
+            .eq('id', id)
+            .eq('client_id', clientId)
+            .eq('status', 'consideration') 
+            .select();
+
+        if (error) throw error;
+
+        // If data is empty, it means the RLS blocked it (wrong status or not the owner)
+        if (!data || data.length === 0) {
+            return res.status(403).json({ error: "Cannot edit this event. It is already being processed or assigned to a manager." });
+        }
+
+        res.status(200).json(data[0]);
+    } catch (err) {
+        console.error("Update Event Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

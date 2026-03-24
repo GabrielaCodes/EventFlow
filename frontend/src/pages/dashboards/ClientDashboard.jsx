@@ -23,6 +23,9 @@ const ClientDashboard = () => {
         title: '', subtype_id: '', event_date: '', venue_id: '', theme: '', client_notes: ''
     });
 
+    // --- NEW: Edit State ---
+    const [editingEvent, setEditingEvent] = useState(null);
+
     useEffect(() => {
         if (!loading && user?.id) fetchData();
     }, [loading, user]);
@@ -37,7 +40,6 @@ const ClientDashboard = () => {
 
             try {
                 const response = await api.get('/events/my-events');
-                console.log("MY EVENTS RESPONSE:", response.data);
                 if (Array.isArray(response.data)) setEvents(response.data);
                 else setEvents([]); 
             } catch (apiErr) { setEvents([]); }
@@ -68,6 +70,19 @@ const ClientDashboard = () => {
             setSelectedCategory('');
             setSubtypes([]); 
         } catch (err) { alert('Error booking event.'); }
+    };
+
+    // --- NEW: Handle Update Function ---
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/events/${editingEvent.id}`, editingEvent);
+            alert('Event Updated Successfully!');
+            setEditingEvent(null); // Close the modal
+            fetchData(); // Refresh the list
+        } catch (err) {
+            alert(err.response?.data?.error || 'Error updating event.');
+        }
     };
 
     if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Dashboard...</div>;
@@ -113,7 +128,7 @@ const ClientDashboard = () => {
                         </select>
                     </div>
                     
-                    <textarea placeholder="Notes..." className="md:col-span-2 h-24 mt-2" value={formData.client_notes} onChange={e => setFormData({...formData, client_notes: e.target.value})} />
+                    <textarea placeholder="You can specify the event theme, the number of days the event will run, and whether any preparations need to begin in advance. We are happy to be of service!" className="md:col-span-2 h-24 mt-2" value={formData.client_notes} onChange={e => setFormData({...formData, client_notes: e.target.value})} />
                     
                     <button className="md:col-span-2">Book Event</button>
                 </form>
@@ -125,7 +140,7 @@ const ClientDashboard = () => {
                 {Array.isArray(events) && events.length > 0 ? (
                     <div className="space-y-4">
                         {events.map(ev => {
-                            // --- NEW: Calculate Sponsorships ---
+                            // Calculate Sponsorships
                             const acceptedSponsorships = ev.sponsorships?.filter(s => s.status === 'accepted') || [];
                             const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
 
@@ -135,33 +150,45 @@ const ClientDashboard = () => {
                                         <div>
                                             <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
                                             <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
-                                             <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
-    
-                                             {ev.event_subtypes && (
-                                              <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>
-                                             )}
-    
-                                             {ev.venues && (
-                                              <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
-                                             )}
-    
-    {/* 👇 NEW: Display the Assigned Manager if one exists 👇 */}
-    {ev.manager && (
-        <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>
-    )}
-</div>
+                                                <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
+                                                {ev.event_subtypes && (
+                                                    <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>
+                                                )}
+                                                {ev.venues && (
+                                                    <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
+                                                )}
+                                                {/* Manager Display */}
+                                                {ev.manager && (
+                                                    <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>
+                                                )}
+                                            </div>
                                         </div>
+
+                                        {/* Action Buttons & Status */}
                                         <div className="flex flex-col items-end gap-3">
                                             <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
                                                 {ev.status.replace('_', ' ')}
                                             </span>
-                                            <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition text-center w-full md:w-auto">
-                                                View / Manage
-                                            </Link>
+                                            
+                                            <div className="flex gap-2 w-full md:w-auto">
+                                                {/* Edit Button (Only visible if consideration) */}
+                                                {ev.status === 'consideration' && (
+                                                    <button 
+                                                        onClick={() => setEditingEvent(ev)}
+                                                        className="bg-[#333] text-white px-4 py-2 rounded text-sm hover:bg-[#444] font-bold transition w-full md:w-auto border border-[#555]"
+                                                    >
+                                                        Edit Details
+                                                    </button>
+                                                )}
+                                                
+                                                <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition text-center w-full md:w-auto">
+                                                    Manage
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* --- NEW: SPONSORSHIP SECTION --- */}
+                                    {/* SPONSORSHIP SECTION */}
                                     {acceptedSponsorships.length > 0 && (
                                         <div className="mt-2 pt-4 border-t border-[#333]">
                                             <div className="flex items-center justify-between mb-2">
@@ -194,6 +221,76 @@ const ClientDashboard = () => {
                     <div className="text-center py-8 text-[var(--text-secondary)] italic">No events booked yet.</div>
                 )}
             </div>
+
+            {/* --- EDIT MODAL --- */}
+            {editingEvent && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#1a1a1a] p-6 rounded-lg shadow-xl border border-[var(--gold-main)] w-full max-w-2xl">
+                        <h3 className="text-xl font-bold mb-4 text-[var(--gold-main)]">Edit Event Details</h3>
+                        
+                        <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div className="w-full">
+                                <label className="text-xs text-[var(--text-secondary)] uppercase block mb-1">Event Title</label>
+                                <input 
+                                    required 
+                                    value={editingEvent.title} 
+                                    onChange={e => setEditingEvent({...editingEvent, title: e.target.value})} 
+                                    className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-[var(--gold-main)] outline-none" 
+                                />
+                            </div>
+                            
+                            <div className="w-full">
+                                <label className="text-xs text-[var(--text-secondary)] uppercase block mb-1">Event Date</label>
+                                <input 
+                                    type="date" 
+                                    required 
+                                    value={editingEvent.event_date ? new Date(editingEvent.event_date).toISOString().split('T')[0] : ''} 
+                                    onChange={e => setEditingEvent({...editingEvent, event_date: e.target.value})} 
+                                    className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-[var(--gold-main)] outline-none" 
+                                />
+                            </div>
+
+                            <div className="w-full md:col-span-2">
+                                <label className="text-xs text-[var(--text-secondary)] uppercase block mb-1">Venue</label>
+                                <select 
+                                    value={editingEvent.venue_id || ''} 
+                                    onChange={e => setEditingEvent({...editingEvent, venue_id: e.target.value})} 
+                                    required 
+                                    className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-[var(--gold-main)] outline-none"
+                                >
+                                    <option value="">-- Select Venue --</option>
+                                    {venues.map(v => <option key={v.id} value={v.id}>{v.name} (Cap: {v.capacity})</option>)}
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="text-xs text-[var(--text-secondary)] uppercase block mb-1">Notes / Instructions</label>
+                                <textarea 
+                                    className="w-full h-24 bg-[#111] border border-[#444] p-2 rounded text-white focus:border-[var(--gold-main)] outline-none resize-none" 
+                                    value={editingEvent.client_notes || ''} 
+                                    onChange={e => setEditingEvent({...editingEvent, client_notes: e.target.value})} 
+                                />
+                            </div>
+                            
+                            <div className="md:col-span-2 flex justify-end gap-3 mt-4 pt-4 border-t border-[#333]">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingEvent(null)} 
+                                    className="px-5 py-2 bg-transparent border border-[#555] text-white hover:bg-[#333] rounded font-medium transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-5 py-2 bg-[var(--gold-main)] hover:bg-[#a68a3c] text-black rounded font-bold transition"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
