@@ -8,10 +8,10 @@ import EventMessaging from '../../components/common/EventMessaging';
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 });
 
 const STATUS_META = {
-    accepted:    { label: 'Accepted',    dot: '#34d399', bar: '#059669', text: '#6ee7b7' },
-    rejected:    { label: 'Declined',    dot: '#f87171', bar: '#dc2626', text: '#fca5a5' },
-    negotiating: { label: 'Negotiating', dot: '#fbbf24', bar: '#d97706', text: '#fde68a' },
-    pending:     { label: 'Pending',     dot: '#94a3b8', bar: '#475569', text: '#cbd5e1' },
+    accepted:    { label: 'Accepted',    dot: '#10b981', bar: '#047857', text: '#6ee7b7' },
+    rejected:    { label: 'Declined',    dot: '#ef4444', bar: '#b91c1c', text: '#fca5a5' },
+    negotiating: { label: 'Negotiating', dot: '#d4af37', bar: '#a68a3c', text: '#fde68a' },
+    pending:     { label: 'Pending',     dot: '#888888', bar: '#444444', text: '#cccccc' },
 };
 
 const Dot = ({ color }) => (
@@ -37,10 +37,10 @@ const StatusPill = ({ status }) => {
 /* ─── AmountDisplay ────────────────────────────────────────────── */
 const AmountDisplay = ({ amount }) => (
     <div style={{ margin: '20px 0' }}>
-        <p style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
+        <p style={{ fontSize: 10, color: '#888', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
             Investment Value
         </p>
-        <p style={{ fontSize: 36, fontWeight: 300, color: '#fbbf24', lineHeight: 1, fontFamily: "'Georgia', serif", letterSpacing: '-0.02em' }}>
+        <p style={{ fontSize: 36, fontWeight: 300, color: '#d4af37', lineHeight: 1, fontFamily: "'Georgia', serif", letterSpacing: '-0.02em' }}>
             <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.5, marginRight: 2 }}>$</span>
             {fmt(amount)}
         </p>
@@ -48,7 +48,7 @@ const AmountDisplay = ({ amount }) => (
 );
 
 /* ─── NoteBlock ────────────────────────────────────────────────── */
-const NoteBlock = ({ label, text, align = 'left', accent = '#d97706' }) => (
+const NoteBlock = ({ label, text, align = 'left', accent = '#d4af37' }) => (
     <div style={{
         background: `${accent}0a`,
         border: `1px solid ${accent}30`,
@@ -58,59 +58,59 @@ const NoteBlock = ({ label, text, align = 'left', accent = '#d97706' }) => (
         textAlign: align,
     }}>
         <p style={{ fontSize: 9, color: accent, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</p>
-        <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic', lineHeight: 1.5 }}>"{text}"</p>
+        <p style={{ fontSize: 12.5, color: '#ccc', fontStyle: 'italic', lineHeight: 1.5 }}>"{text}"</p>
     </div>
 );
 
 /* ─── NegotiationForm ──────────────────────────────────────────── */
 const NegotiationForm = ({ negForm, setNegForm, onSubmit, onCancel }) => (
     <div style={{ animation: 'fadeSlideIn 0.18s ease' }}>
-        <p style={{ fontSize: 10, color: '#fbbf24', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, color: '#d4af37', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14 }}>
             ↩ Counter Proposal
         </p>
         <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 9, color: '#64748b', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 9, color: '#888', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
                 Counter Amount ($)
             </label>
             <input
                 type="number"
                 style={{
-                    width: '100%', background: '#0f172a', border: '1px solid #334155',
-                    padding: '10px 12px', borderRadius: 8, color: '#fbbf24',
+                    width: '100%', background: '#111', border: '1px solid #333',
+                    padding: '10px 12px', borderRadius: 8, color: '#d4af37',
                     fontSize: 18, fontWeight: 300, outline: 'none', boxSizing: 'border-box',
                     transition: 'border-color 0.2s',
                 }}
                 value={negForm.amount}
                 onChange={e => setNegForm({ ...negForm, amount: e.target.value })}
-                onFocus={e => e.target.style.borderColor = '#d97706'}
-                onBlur={e => e.target.style.borderColor = '#334155'}
+                onFocus={e => e.target.style.borderColor = '#d4af37'}
+                onBlur={e => e.target.style.borderColor = '#333'}
             />
         </div>
         <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 9, color: '#64748b', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 9, color: '#888', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
                 Terms / Note (Optional)
             </label>
             <textarea
                 placeholder="Add conditions or remarks…"
                 style={{
-                    width: '100%', background: '#0f172a', border: '1px solid #334155',
-                    padding: '10px 12px', borderRadius: 8, color: '#94a3b8',
+                    width: '100%', background: '#111', border: '1px solid #333',
+                    padding: '10px 12px', borderRadius: 8, color: '#ccc',
                     fontSize: 13, height: 88, resize: 'none', outline: 'none',
                     boxSizing: 'border-box', transition: 'border-color 0.2s',
                     fontFamily: 'inherit',
                 }}
                 value={negForm.note}
                 onChange={e => setNegForm({ ...negForm, note: e.target.value })}
-                onFocus={e => e.target.style.borderColor = '#d97706'}
-                onBlur={e => e.target.style.borderColor = '#334155'}
+                onFocus={e => e.target.style.borderColor = '#d4af37'}
+                onBlur={e => e.target.style.borderColor = '#333'}
             />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
             <button
                 onClick={onSubmit}
                 style={{
-                    flex: 1, background: 'linear-gradient(135deg, #d97706, #b45309)',
-                    color: '#0f172a', fontWeight: 800, fontSize: 12,
+                    flex: 1, background: 'linear-gradient(135deg, #d4af37, #a68a3c)',
+                    color: '#000', fontWeight: 800, fontSize: 12,
                     letterSpacing: '0.08em', textTransform: 'uppercase',
                     padding: '10px 0', borderRadius: 8, border: 'none',
                     cursor: 'pointer', transition: 'opacity 0.15s',
@@ -124,11 +124,11 @@ const NegotiationForm = ({ negForm, setNegForm, onSubmit, onCancel }) => (
                 onClick={onCancel}
                 style={{
                     padding: '10px 16px', borderRadius: 8, background: 'transparent',
-                    border: '1px solid #334155', color: '#64748b',
+                    border: '1px solid #444', color: '#B0B0B0',
                     fontSize: 12, cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
                 }}
-                onMouseEnter={e => { e.target.style.color = '#e2e8f0'; e.target.style.borderColor = '#475569'; }}
-                onMouseLeave={e => { e.target.style.color = '#64748b'; e.target.style.borderColor = '#334155'; }}
+                onMouseEnter={e => { e.target.style.color = '#FFF'; e.target.style.borderColor = '#666'; }}
+                onMouseLeave={e => { e.target.style.color = '#B0B0B0'; e.target.style.borderColor = '#444'; }}
             >
                 Cancel
             </button>
@@ -143,14 +143,14 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
     const isPending = req.status === 'pending';
     const isRejected = req.status === 'rejected';
     const isAccepted = req.status === 'accepted';
-    const accentColor = isPending ? '#d97706' : (STATUS_META[req.status]?.bar ?? '#475569');
+    const accentColor = isPending ? '#d4af37' : (STATUS_META[req.status]?.bar ?? '#444');
 
     return (
         <div style={{
-            background: '#0f172a',
+            background: '#0a0a0a',
             borderRadius: 14,
-            border: `1px solid ${isRejected ? '#dc262630' : isPending ? '#d9770640' : '#1e293b'}`,
-            boxShadow: isPending ? '0 0 30px #d9770610' : '0 4px 24px #00000040',
+            border: `1px solid ${isRejected ? '#dc262630' : isPending ? '#d4af3740' : '#222'}`,
+            boxShadow: isPending ? '0 0 30px #d4af3710' : '0 4px 24px #00000060',
             transition: 'box-shadow 0.3s, transform 0.2s',
             overflow: 'hidden',
             opacity: isRejected ? 0.72 : 1,
@@ -165,23 +165,23 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
             <div style={{
                 padding: '16px 20px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                borderBottom: '1px solid #1e293b',
-                background: '#ffffff04',
+                borderBottom: '1px solid #1a1a1a',
+                background: '#111',
             }}>
                 <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                    <p style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    <p style={{ fontSize: 9, color: '#888', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>
                         Event
                     </p>
-                    <h3 style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.events?.title}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: '#E5E5E5', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.events?.title}>
                         {req.events?.title}
                     </h3>
-                    <p style={{ fontSize: 11, color: '#d97706', marginTop: 3, fontWeight: 500 }}>
+                    <p style={{ fontSize: 11, color: '#d4af37', marginTop: 3, fontWeight: 500 }}>
                         {req.events?.event_date ? new Date(req.events.event_date).toDateString() : '—'}
                     </p>
                     
                     {req.events?.client && (
-                        <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                            <span style={{ opacity: 0.7 }}>Client:</span> <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{req.events.client.company_name ? `${req.events.client.company_name} (${req.events.client.full_name})` : req.events.client.full_name}</span>
+                        <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 4 }}>
+                            <span style={{ opacity: 0.7 }}>Client:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.client.company_name ? `${req.events.client.company_name} (${req.events.client.full_name})` : req.events.client.full_name}</span>
                         </p>
                     )}
                 </div>
@@ -205,7 +205,7 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                         {req.request_note && <NoteBlock label="Event Memo" text={req.request_note} />}
                         {req.sponsor_note && <NoteBlock label="Your Terms" text={req.sponsor_note} align="right" accent="#7c3aed" />}
 
-                        {/* 👇 NEW: Hide action buttons entirely if already accepted */}
+                        {/* ── action buttons ── */}
                         {!isRejected && !isAccepted && (
                             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                                 <button
@@ -229,14 +229,14 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                                     style={{
                                         flex: 1,
                                         background: 'transparent',
-                                        border: '1px solid #334155',
-                                        color: '#fbbf24', fontWeight: 700, fontSize: 11,
+                                        border: '1px solid #333',
+                                        color: '#d4af37', fontWeight: 700, fontSize: 11,
                                         letterSpacing: '0.08em', textTransform: 'uppercase',
                                         padding: '9px 0', borderRadius: 8,
                                         cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s',
                                     }}
-                                    onMouseEnter={e => { e.target.style.background = '#1e293b'; e.target.style.borderColor = '#d97706'; }}
-                                    onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.borderColor = '#334155'; }}
+                                    onMouseEnter={e => { e.target.style.background = '#1a1a1a'; e.target.style.borderColor = '#d4af37'; }}
+                                    onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.borderColor = '#333'; }}
                                 >
                                     ↩ Counter
                                 </button>
@@ -258,39 +258,39 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                             </div>
                         )}
 
-                        {/* ── accepted: review counter ── */}
+                        {/* ── rejected: review counter ── */}
                         {isRejected && (
                             <button
                                 onClick={() => onNegotiate(req)}
                                 style={{
                                     width: '100%', marginTop: 16,
-                                    background: 'transparent', border: '1px solid #334155',
-                                    color: '#94a3b8', fontWeight: 700, fontSize: 11,
+                                    background: 'transparent', border: '1px solid #333',
+                                    color: '#888', fontWeight: 700, fontSize: 11,
                                     letterSpacing: '0.08em', textTransform: 'uppercase',
                                     padding: '9px 0', borderRadius: 8,
                                     cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
                                 }}
-                                onMouseEnter={e => { e.target.style.color = '#fbbf24'; e.target.style.borderColor = '#d97706'; }}
-                                onMouseLeave={e => { e.target.style.color = '#94a3b8'; e.target.style.borderColor = '#334155'; }}
+                                onMouseEnter={e => { e.target.style.color = '#d4af37'; e.target.style.borderColor = '#d4af37'; }}
+                                onMouseLeave={e => { e.target.style.color = '#888'; e.target.style.borderColor = '#333'; }}
                             >
                                 Reconsider / Counter
                             </button>
                         )}
 
                         {/* ── tickets & chat toggle ── */}
-                        <div style={{ borderTop: '1px solid #1e293b', marginTop: 20, paddingTop: 14 }}>
+                        <div style={{ borderTop: '1px solid #1a1a1a', marginTop: 20, paddingTop: 14 }}>
                             <button
                                 onClick={() => setExpandedEventId(isExpanded ? null : req.events?.id)}
                                 style={{
                                     width: '100%', background: 'transparent', border: 'none',
-                                    color: isExpanded ? '#fbbf24' : '#475569',
+                                    color: isExpanded ? '#d4af37' : '#888',
                                     fontSize: 10, fontWeight: 800, letterSpacing: '0.14em',
                                     textTransform: 'uppercase', cursor: 'pointer',
                                     display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
                                     transition: 'color 0.2s', padding: '2px 0',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#fbbf24'}
-                                onMouseLeave={e => e.currentTarget.style.color = isExpanded ? '#fbbf24' : '#475569'}
+                                onMouseEnter={e => e.currentTarget.style.color = '#d4af37'}
+                                onMouseLeave={e => e.currentTarget.style.color = isExpanded ? '#d4af37' : '#888'}
                             >
                                 <span style={{ display: 'inline-block', transition: 'transform 0.25s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
                                 {isExpanded ? 'Hide Details' : 'Tickets & Chat'}
@@ -354,10 +354,10 @@ const SponsorDashboard = () => {
     };
 
     if (loading) return (
-        <div style={{ minHeight: '100vh', background: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ textAlign: 'center' }}>
-                <div style={{ width: 36, height: 36, border: '2px solid #d9770640', borderTop: '2px solid #d97706', borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 16px' }} />
-                <p style={{ color: '#d97706', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Loading Portal</p>
+                <div style={{ width: 36, height: 36, border: '2px solid #d4af3740', borderTop: '2px solid #d4af37', borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 16px' }} />
+                <p style={{ color: '#d4af37', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Loading Portal</p>
             </div>
         </div>
     );
@@ -385,37 +385,37 @@ const SponsorDashboard = () => {
                 * { box-sizing: border-box; margin: 0; padding: 0; }
             `}</style>
 
-            <div style={{ minHeight: '100vh', background: '#020617', padding: '36px 24px', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+            <div style={{ minHeight: '100vh', background: '#050505', padding: '36px 24px', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
                     {/* ── Page Header ── */}
-                    <div style={{ marginBottom: 40, paddingBottom: 28, borderBottom: '1px solid #1e293b' }}>
-                        <p style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10 }}>
+                    <div style={{ marginBottom: 40, paddingBottom: 28, borderBottom: '1px solid #1a1a1a' }}>
+                        <p style={{ fontSize: 10, color: '#888', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10 }}>
                             Sponsor Portal
                         </p>
                         <h1 style={{
                             fontSize: 'clamp(28px, 4vw, 42px)',
                             fontWeight: 300,
-                            color: '#f8fafc',
+                            color: '#E5E5E5',
                             letterSpacing: '-0.02em',
                             fontFamily: "'Georgia', serif",
                             lineHeight: 1.1,
                         }}>
-                            Sponsorship <span style={{ color: '#d97706', fontStyle: 'italic' }}>Requests</span>
+                            Sponsorship <span style={{ color: '#d4af37', fontStyle: 'italic' }}>Requests</span>
                         </h1>
 
                         {/* ── summary counts ── */}
                         <div style={{ display: 'flex', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
                             {[
-                                { label: 'Pending',     count: requests.filter(r => r.status === 'pending').length,     color: '#d97706' },
-                                { label: 'Accepted',    count: requests.filter(r => r.status === 'accepted').length,    color: '#059669' },
-                                { label: 'Negotiating', count: requests.filter(r => r.status === 'negotiating').length, color: '#7c3aed' },
-                                { label: 'Declined',    count: rejectedRequests.length,                                  color: '#dc2626' },
+                                { label: 'Pending',     count: requests.filter(r => r.status === 'pending').length,     color: '#888888' },
+                                { label: 'Accepted',    count: requests.filter(r => r.status === 'accepted').length,    color: '#10b981' },
+                                { label: 'Negotiating', count: requests.filter(r => r.status === 'negotiating').length, color: '#d4af37' },
+                                { label: 'Declined',    count: rejectedRequests.length,                                  color: '#ef4444' },
                             ].map(({ label, count, color }) => (
                                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
-                                    <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
-                                        <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{count}</span> {label}
+                                    <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>
+                                        <span style={{ color: '#E5E5E5', fontWeight: 700 }}>{count}</span> {label}
                                     </span>
                                 </div>
                             ))}
@@ -424,7 +424,7 @@ const SponsorDashboard = () => {
 
                     {/* ── Active Requests Grid ── */}
                     {activeRequests.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '60px 0', color: '#334155' }}>
+                        <div style={{ textAlign: 'center', padding: '60px 0', color: '#555' }}>
                             <p style={{ fontSize: 14, fontWeight: 600 }}>No active sponsorship requests</p>
                         </div>
                     ) : (
@@ -437,7 +437,7 @@ const SponsorDashboard = () => {
 
                     {/* ── Rejected Section with toggle ── */}
                     {rejectedRequests.length > 0 && (
-                        <div style={{ borderTop: '1px solid #1e293b', paddingTop: 28 }}>
+                        <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 28 }}>
                             <button
                                 onClick={() => setShowRejected(v => !v)}
                                 style={{
@@ -450,8 +450,8 @@ const SponsorDashboard = () => {
                                 {/* toggle pill */}
                                 <div style={{
                                     width: 36, height: 20, borderRadius: 10,
-                                    background: showRejected ? '#dc262640' : '#1e293b',
-                                    border: `1px solid ${showRejected ? '#dc2626' : '#334155'}`,
+                                    background: showRejected ? '#dc262620' : '#111',
+                                    border: `1px solid ${showRejected ? '#dc262650' : '#333'}`,
                                     position: 'relative', transition: 'background 0.25s, border-color 0.25s',
                                     flexShrink: 0,
                                 }}>
@@ -459,11 +459,11 @@ const SponsorDashboard = () => {
                                         position: 'absolute', top: 2,
                                         left: showRejected ? 17 : 2,
                                         width: 14, height: 14, borderRadius: '50%',
-                                        background: showRejected ? '#f87171' : '#475569',
+                                        background: showRejected ? '#f87171' : '#888',
                                         transition: 'left 0.25s, background 0.25s',
                                     }} />
                                 </div>
-                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: showRejected ? '#f87171' : '#475569', transition: 'color 0.2s' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: showRejected ? '#f87171' : '#888', transition: 'color 0.2s' }}>
                                     {showRejected ? 'Hide' : 'Show'} Declined Requests
                                 </span>
                                 <span style={{
