@@ -465,7 +465,15 @@ CREATE POLICY "Sponsors update own requests" ON public.sponsorships FOR UPDATE T
 CREATE POLICY "Managers view category sponsorships" ON public.sponsorships FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
 CREATE POLICY "Managers create sponsorships" ON public.sponsorships FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));
 CREATE POLICY "Managers update sponsorships" ON public.sponsorships FOR UPDATE TO authenticated USING (public.can_manager_edit_event_data(event_id));
-
+CREATE POLICY "Clients view sponsorships for own events" 
+ON public.sponsorships FOR SELECT TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM public.events 
+        WHERE public.events.id = sponsorships.event_id 
+        AND public.events.client_id = auth.uid()
+    )
+);
 -- --- ASSIGNMENTS & ATTENDANCE---
 CREATE POLICY "Managers view category assignments" ON public.assignments FOR SELECT TO authenticated USING (public.can_manager_view_event_data(event_id));
 CREATE POLICY "Managers create assignments" ON public.assignments FOR INSERT TO authenticated WITH CHECK (public.can_manager_edit_event_data(event_id));

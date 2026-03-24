@@ -144,13 +144,10 @@ export const deleteVenue = async (req, res) => {
 };
 
 //Cheif Coordinator can view all events and manager assigned
+/* =======================
+   5. MANAGER WORKLOADS & EVENTS
+   ======================= */
 
-/* =======================
-   5. MANAGER WORKLOADS & EVENTS
-   ======================= */
-/* =======================
-   5. MANAGER WORKLOADS & EVENTS
-   ======================= */
 export const getAllEventsByManager = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -172,7 +169,8 @@ export const getAllEventsByManager = async (req, res) => {
                 subtype:event_subtypes(
                     name,
                     category:event_categories(name)
-                )
+                ),
+                assignments(id) /* <-- ADDED THIS LINE TO FIX STAFF COUNT */
             `)
             // THIS IS THE NEW LINE: Only fetch "live" events
             .in('status', ['consideration', 'in_progress']) 
