@@ -73,6 +73,12 @@ export const sendSponsorshipRequest = async (req, res) => {
                 .select();
             
             if (error) throw error;
+
+            // 👇 THE FIX: If the plan was rejected, countering a sponsor makes it a Draft again
+            if (eventData.finance_status === 'rejected') {
+                await supabase.from('events').update({ finance_status: 'draft' }).eq('id', targetEventId);
+            }
+
             return res.status(200).json(data[0]);
         } 
         
@@ -95,6 +101,12 @@ export const sendSponsorshipRequest = async (req, res) => {
                 if (error.code === '23505') return res.status(409).json({ error: "This sponsor is already on the plan for this event." });
                 throw error;
             }
+
+            // 👇 THE FIX: Adding a brand new sponsor alters the budget, so reset the event to Draft
+            if (eventData.finance_status === 'rejected' || eventData.finance_status === 'approved') {
+                await supabase.from('events').update({ finance_status: 'draft' }).eq('id', targetEventId);
+            }
+
             res.status(201).json(data[0]);
         }
     } catch (err) {
@@ -179,7 +191,7 @@ export const getManagerRequests = async (req, res) => {
                     full_name, company_name, email
                 )
             `)
-            .eq('events.assigned_manager_id', userId) // 👈 THE FIX: STRICTLY LOCK TO THIS MANAGER
+            .eq('events.assigned_manager_id', userId) 
             .order('created_at', { ascending: false });
 
         if (error) throw error;

@@ -1,11 +1,40 @@
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api';
 
+// --- Hover Message Popup Component ---
+const MessagePopup = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
+    if (!sentMsg && !receivedMsg) return null;
+    
+    return (
+        <div className="relative group inline-flex items-center ml-2 cursor-help z-10">
+            <span className="flex items-center justify-center w-5 h-5 bg-[#1a1a1a] border border-[#333] rounded-full text-[10px] text-[#d4af37] shadow-sm group-hover:bg-[#222] transition-colors">
+                💬
+            </span>
+            
+            {/* The Tooltip Body */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-[#111] border border-[#333] rounded-md shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex flex-col gap-2 z-[100]">
+                {sentMsg && (
+                    <div>
+                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{sentTitle || 'Sent'}</p>
+                        <p className="text-xs text-[#d4af37] italic whitespace-pre-wrap">"{sentMsg}"</p>
+                    </div>
+                )}
+                {receivedMsg && (
+                    <div className={sentMsg ? "border-t border-[#222] pt-2" : ""}>
+                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{receivedTitle || 'Received'}</p>
+                        <p className="text-xs text-gray-300 italic whitespace-pre-wrap">"{receivedMsg}"</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // --- Reusable Collapsible Section for Approvals ---
 const CollapsibleSection = ({ title, count, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div className="border border-[#333] rounded mb-4 bg-[#0a0a0a] overflow-hidden">
+        <div className="border border-[#333] rounded mb-4 bg-[#0a0a0a]">
             <div 
                 className="p-3 flex justify-between items-center cursor-pointer bg-[#111] hover:bg-[#1a1a1a] transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
@@ -18,7 +47,7 @@ const CollapsibleSection = ({ title, count, children, defaultOpen = false }) => 
                     ▼
                 </div>
             </div>
-            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className={`transition-all duration-300 ease-in-out overflow-visible ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                 <div className="p-4 border-t border-[#333]">
                     {children}
                 </div>
@@ -33,21 +62,14 @@ const ManagerSponsorships = ({ activeEvents }) => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     
-    // Request Form State
     const [formData, setFormData] = useState({ event_id: '', sponsor_id: '', amount: '', request_note: '' });
-
-    // Negotiation State
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({ amount: '', note: '' });
 
-    // Finance Approval State
     const [approvalEvents, setApprovalEvents] = useState([]);
     const [financeMsgs, setFinanceMsgs] = useState({});
     
-    // Store the current manager's ID to check ownership
     const [managerId, setManagerId] = useState(null);
-
-    // History Filter State
     const [historyFilter, setHistoryFilter] = useState('all');
 
     useEffect(() => { loadInitialData(); }, []);
@@ -60,12 +82,13 @@ const ManagerSponsorships = ({ activeEvents }) => {
             const [sponsorRes, historyRes, eventsRes] = await Promise.all([
                 api.get('/sponsors/list'),
                 api.get('/sponsors/sent-requests'),
+                // Added request_note and sponsor_note to sponsorships fetch
                 supabase.from('events')
                     .select(`
-                        id, title, finance_status, finance_client_feedback, 
+                        id, title, finance_status, finance_client_feedback, finance_manager_message,
                         client:profiles!events_client_id_fkey(full_name, email),
                         sponsorships(
-                            id, amount, status,
+                            id, amount, status, request_note, sponsor_note,
                             sponsor:profiles!sponsorships_sponsor_id_fkey(full_name, company_name, email)
                         )
                     `)
@@ -85,7 +108,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // 1. SEND NEW REQUEST (Draft Plan)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
@@ -101,7 +123,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         }
     };
 
-    // 2. ACCEPT OFFER
     const handleAcceptOffer = async (req) => {
         if(!window.confirm("Accept this sponsorship offer?")) return;
         try {
@@ -116,7 +137,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         } catch (err) { alert("Error accepting offer"); }
     };
 
-    // 3. COUNTER OFFER
     const handleCounterUpdate = async (id) => {
         try {
             await api.post('/sponsors/request', {
@@ -131,7 +151,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         } catch (err) { alert("Error sending counter"); }
     };
 
-    // 4. REJECT OFFER
     const handleRejectOffer = async (req) => {
         if(!window.confirm("Are you sure you want to reject this offer? This cannot be undone.")) return;
         try {
@@ -146,7 +165,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         } catch (err) { alert("Error rejecting offer"); }
     };
 
-    // 5. SUBMIT FINANCE PLAN TO CLIENT
     const handleFinanceMsgChange = (id, val) => {
         setFinanceMsgs(prev => ({ ...prev, [id]: val }));
     };
@@ -171,15 +189,24 @@ const ManagerSponsorships = ({ activeEvents }) => {
     const rejectedEvents = approvalEvents.filter(ev => ev.finance_status === 'rejected');
 
     const renderApprovalCard = (ev) => (
-        <div key={ev.id} className="p-4 border border-[#333] rounded bg-[#111] mb-4 last:mb-0">
+        <div key={ev.id} className="p-4 border border-[#333] rounded bg-[#111] mb-4 last:mb-0 relative">
             <div className="flex justify-between items-start mb-3">
-                <div>
-                    <h4 className="font-bold text-gray-200">{ev.title}</h4>
-                    {ev.client && (
-                        <p className="text-[11px] text-gray-400 mt-1">
-                            👤 <span className="font-medium text-gray-300">{ev.client.full_name}</span> • <a href={`mailto:${ev.client.email}`} className="text-[#d4af37] hover:underline">{ev.client.email}</a>
-                        </p>
-                    )}
+                <div className="flex items-center">
+                    <div>
+                        <h4 className="font-bold text-gray-200">{ev.title}</h4>
+                        {ev.client && (
+                            <p className="text-[11px] text-gray-400 mt-1 flex items-center">
+                                👤 <span className="font-medium text-gray-300 ml-1">{ev.client.full_name}</span> • <a href={`mailto:${ev.client.email}`} className="text-[#d4af37] hover:underline mx-1">{ev.client.email}</a>
+                            </p>
+                        )}
+                    </div>
+                    {/* Message Popup for Client Comms */}
+                    <MessagePopup 
+                        sentTitle="Your Pitch to Client"
+                        sentMsg={ev.finance_manager_message}
+                        receivedTitle="Client Feedback"
+                        receivedMsg={ev.finance_client_feedback}
+                    />
                 </div>
                 <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 ${
                     ev.finance_status === 'approved' ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
@@ -198,9 +225,18 @@ const ManagerSponsorships = ({ activeEvents }) => {
                         {ev.sponsorships.map(s => (
                             <div key={s.id} className="flex justify-between items-center border-b border-[#1a1a1a] pb-2 last:border-0 last:pb-0">
                                 <div className="flex flex-col">
-                                    <span className="text-xs text-[#E5E5E5] font-medium">
-                                        {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name || 'Unknown Sponsor'}
-                                    </span>
+                                    <div className="flex items-center">
+                                        <span className="text-xs text-[#E5E5E5] font-medium">
+                                            {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name || 'Unknown Sponsor'}
+                                        </span>
+                                        {/* Message Popup for Sponsor Comms inside Approvals */}
+                                        <MessagePopup 
+                                            sentTitle="Note to Sponsor"
+                                            sentMsg={s.request_note}
+                                            receivedTitle="Sponsor Feedback"
+                                            receivedMsg={s.sponsor_note}
+                                        />
+                                    </div>
                                     {s.sponsor?.email && (
                                         <a href={`mailto:${s.sponsor.email}`} className="text-[10px] text-[#d4af37] hover:underline opacity-80 mt-0.5">
                                             ✉️ {s.sponsor.email}
@@ -251,7 +287,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         </div>
     );
 
-    // --- Filter Logic for History ---
     const filterOptions = [
         { id: 'all', label: 'All History' },
         { id: 'awaiting_client', label: 'Awaiting Client' },
@@ -265,8 +300,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
         const isApprovedByClient = req.events?.finance_status === 'approved';
         if (historyFilter === 'all') return true;
         if (historyFilter === 'awaiting_client') return !isApprovedByClient;
-        
-        // The rest of the filters only apply if the client has approved the plan
         if (!isApprovedByClient) return false; 
         return req.status === historyFilter;
     });
@@ -339,7 +372,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
                     {approvalEvents.length === 0 ? (
                         <p className="text-gray-500 italic text-sm">No events currently have sponsorships attached.</p>
                     ) : (
-                        <div className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="max-h-[600px] overflow-y-auto pr-2 overflow-x-visible custom-scrollbar pb-24">
                             <CollapsibleSection title="⏳ Pending & Draft" count={pendingEvents.length} defaultOpen={true}>
                                 {pendingEvents.length > 0 ? pendingEvents.map(renderApprovalCard) : <p className="text-gray-500 text-xs italic">No pending plans.</p>}
                             </CollapsibleSection>
@@ -378,7 +411,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
                     ))}
                 </div>
 
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-4 max-h-96 overflow-y-visible pr-2 pb-24 custom-scrollbar">
                     {filteredHistory.length === 0 && (
                         <p className="text-gray-500 italic">No requests found for this filter.</p>
                     )}
@@ -391,44 +424,62 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 req.status === 'negotiating' ? 'bg-[#1a1300] border-orange-500/50' : 'bg-[#0a0a0a] border-[#333]'
                             }`}>
                                 <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <span className="font-bold text-gray-200 block text-lg">{req.events?.title}</span>
-                                        
-                                        {/* Sponsor Display */}
-                                        <div className="text-xs text-gray-400 flex items-center flex-wrap mt-1">
-                                            <span className="mr-1">🏢 Sponsor:</span>
-                                            {req.profiles?.company_name ? (
-                                                <>
-                                                    <span className="font-semibold text-gray-300">{req.profiles.company_name}</span>
-                                                    <span className="text-gray-500 ml-1">({req.profiles.full_name})</span>
-                                                </>
-                                            ) : (
-                                                <span className="font-semibold text-gray-300">{req.profiles?.full_name}</span>
-                                            )}
+                                    <div className="flex items-center">
+                                        <div>
+                                            <span className="font-bold text-gray-200 block text-lg">{req.events?.title}</span>
                                             
-                                            {req.profiles?.email && (
-                                                <span className="ml-2 text-[#d4af37] opacity-80">
-                                                    • ✉️ <a href={`mailto:${req.profiles.email}`} className="hover:underline">{req.profiles.email}</a>
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Client Display */}
-                                        {req.events?.client && (
-                                            <div className="text-[11px] text-gray-500 mt-1 flex items-center flex-wrap">
-                                                <span className="mr-1">👤 Client:</span> 
-                                                <span className="text-gray-300 font-medium">{req.events.client.full_name}</span>
-                                                {req.events.client.email && (
+                                            {/* Sponsor Display */}
+                                            <div className="text-xs text-gray-400 flex items-center flex-wrap mt-1">
+                                                <span className="mr-1">🏢 Sponsor:</span>
+                                                {req.profiles?.company_name ? (
+                                                    <>
+                                                        <span className="font-semibold text-gray-300">{req.profiles.company_name}</span>
+                                                        <span className="text-gray-500 ml-1">({req.profiles.full_name})</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="font-semibold text-gray-300">{req.profiles?.full_name}</span>
+                                                )}
+                                                
+                                                {req.profiles?.email && (
                                                     <span className="ml-2 text-[#d4af37] opacity-80">
-                                                        • ✉️ <a href={`mailto:${req.events.client.email}`} className="hover:underline">{req.events.client.email}</a>
+                                                        • ✉️ <a href={`mailto:${req.profiles.email}`} className="hover:underline">{req.profiles.email}</a>
                                                     </span>
                                                 )}
                                             </div>
-                                        )}
+                                            
+                                            {/* Client Display */}
+                                            {req.events?.client && (
+                                                <div className="text-[11px] text-gray-500 mt-1 flex items-center flex-wrap">
+                                                    <span className="mr-1">👤 Client:</span> 
+                                                    <span className="text-gray-300 font-medium">{req.events.client.full_name}</span>
+                                                    {req.events.client.email && (
+                                                        <span className="ml-2 text-[#d4af37] opacity-80">
+                                                            • ✉️ <a href={`mailto:${req.events.client.email}`} className="hover:underline">{req.events.client.email}</a>
+                                                        </span>
+                                                    )}
+                                                    
+                                                    {/* Message Popup for Client Comms inside History */}
+                                                    <MessagePopup 
+                                                        sentTitle="Your Pitch to Client"
+                                                        sentMsg={req.events?.finance_manager_message}
+                                                        receivedTitle="Client Feedback"
+                                                        receivedMsg={req.events?.finance_client_feedback}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Message Popup for Sponsor Comms */}
+                                        <MessagePopup 
+                                            sentTitle="Note to Sponsor"
+                                            sentMsg={req.request_note}
+                                            receivedTitle="Sponsor Terms/Feedback"
+                                            receivedMsg={req.sponsor_note}
+                                        />
                                     </div>
 
                                     {/* Status Badge */}
-                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 ${
+                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 shrink-0 ml-2 ${
                                         !isApprovedByClient ? 'bg-gray-800 text-gray-400 border-gray-600' :
                                         req.status === 'negotiating' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 
                                         req.status === 'accepted' ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
@@ -447,11 +498,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 {req.status === 'negotiating' && isApprovedByClient && (
                                     <div className="mt-4 p-4 bg-[#111] border border-orange-500/30 rounded-sm">
                                         <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">Counter-Offer Received</p>
-                                        {req.sponsor_note && (
-                                            <div className="mb-4 p-3 bg-black border-l-2 border-orange-500 rounded-r">
-                                                <p className="text-xs italic text-gray-300">"{req.sponsor_note}"</p>
-                                            </div>
-                                        )}
                                         
                                         {!editingId || editingId !== req.id ? (
                                             <div className="flex gap-2 flex-wrap">

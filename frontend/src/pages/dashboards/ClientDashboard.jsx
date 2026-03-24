@@ -2,12 +2,42 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom'; 
 import api, { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import TicketViewer from '../../components/common/TicketViewer'; 
 
 const statusStyles = {
     consideration: 'bg-yellow-900 text-yellow-200 border-yellow-700',
     in_progress: 'bg-blue-900 text-blue-200 border-blue-700',
     completed: 'bg-green-900 text-green-200 border-green-700',
     cancelled: 'bg-red-900 text-red-200 border-red-700'
+};
+
+// --- Hover Message Popup Component for Client ---
+const MessagePopup = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
+    if (!sentMsg && !receivedMsg) return null;
+    
+    return (
+        <div className="relative group inline-flex items-center ml-2 cursor-help z-10">
+            <span className="flex items-center justify-center w-5 h-5 bg-[#1a1a1a] border border-[#333] rounded-full text-[10px] text-[var(--gold-main)] shadow-sm group-hover:bg-[#222] transition-colors">
+                💬
+            </span>
+            
+            {/* Tooltip Body */}
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#111] border border-[#333] rounded-md shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex flex-col gap-2 z-[100]">
+                {receivedMsg && (
+                    <div>
+                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{receivedTitle || 'Received'}</p>
+                        <p className="text-xs text-[var(--gold-main)] italic whitespace-pre-wrap">"{receivedMsg}"</p>
+                    </div>
+                )}
+                {sentMsg && (
+                    <div className={receivedMsg ? "border-t border-[#222] pt-2" : ""}>
+                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{sentTitle || 'Sent'}</p>
+                        <p className="text-xs text-gray-300 italic whitespace-pre-wrap">"{sentMsg}"</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 };
 
 const ClientDashboard = () => {
@@ -24,9 +54,8 @@ const ClientDashboard = () => {
     });
 
     const [editingEvent, setEditingEvent] = useState(null);
-    
-    // --- NEW: Finance Approval State ---
     const [financeFeedback, setFinanceFeedback] = useState({});
+    const [expandedTickets, setExpandedTickets] = useState({});
 
     useEffect(() => {
         if (!loading && user?.id) fetchData();
@@ -86,7 +115,6 @@ const ClientDashboard = () => {
         }
     };
 
-    // --- NEW: Handle Finance Approval ---
     const handleFinanceResponse = async (eventId, action) => {
         const feedback = financeFeedback[eventId] || '';
         if (action === 'reject' && !feedback.trim()) {
@@ -96,10 +124,14 @@ const ClientDashboard = () => {
             await api.post(`/events/${eventId}/finance/respond`, { action, feedback });
             alert(action === 'approve' ? "Plan Approved! Sponsors notified." : "Plan Rejected.");
             setFinanceFeedback(prev => ({ ...prev, [eventId]: '' }));
-            fetchData(); // Refresh to update statuses
+            fetchData(); 
         } catch (err) {
             alert(err.response?.data?.error || "Error responding to plan");
         }
+    };
+
+    const toggleTickets = (id) => {
+        setExpandedTickets(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Dashboard...</div>;
@@ -155,18 +187,32 @@ const ClientDashboard = () => {
                 {Array.isArray(events) && events.length > 0 ? (
                     <div className="space-y-4">
                         {events.map(ev => {
-                            // Calculate Sponsorships
-                            const acceptedSponsorships = ev.sponsorships?.filter(s => s.status === 'accepted') || [];
-                            const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
                             
-                            // NEW: Grab proposed sponsorships to display during review
-                            const proposedSponsorships = ev.sponsorships?.filter(s => s.status === 'pending') || [];
+                            const isPlanApproved = ev.finance_status === 'approved';
+                            const allSponsorships = ev.sponsorships || [];
+                            
+                            const acceptedSponsorships = allSponsorships.filter(s => s.status === 'accepted');
+                            const pendingSponsorships = allSponsorships.filter(s => s.status === 'pending' || s.status === 'negotiating');
+                            const rejectedSponsorships = allSponsorships.filter(s => s.status === 'rejected');
+                            
+                            const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
 
                             return (
                                 <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-5 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col gap-4">
                                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                         <div>
-                                            <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
+                                            <div className="flex items-center">
+                                                <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
+                                                {/* Hover Popup for Approved/Rejected Plans */}
+                                                {(ev.finance_status === 'approved' || ev.finance_status === 'rejected') && (
+                                                    <MessagePopup 
+                                                        sentTitle="Your Feedback"
+                                                        sentMsg={ev.finance_client_feedback}
+                                                        receivedTitle={`Message from ${ev.manager?.full_name?.split(' ')[0] || 'Manager'}`}
+                                                        receivedMsg={ev.finance_manager_message}
+                                                    />
+                                                )}
+                                            </div>
                                             <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
                                                 <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
                                                 {ev.event_subtypes && (
@@ -204,7 +250,25 @@ const ClientDashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* --- NEW: FINANCE APPROVAL ACTION BLOCK --- */}
+                                    {/* --- TICKETS SECTION (Always visible if approved) --- */}
+                                    {isPlanApproved && (
+                                        <div className="mt-2 pt-4 border-t border-[#333]">
+                                            <button 
+                                                onClick={() => toggleTickets(ev.id)}
+                                                className="text-[var(--gold-main)] text-sm font-bold tracking-wider uppercase flex items-center gap-2 hover:text-white transition-colors"
+                                            >
+                                                {expandedTickets[ev.id] ? '▼ Hide Ticket Info' : '▶ Show Ticket Info'}
+                                            </button>
+                                            
+                                            {expandedTickets[ev.id] && (
+                                                <div className="mt-4 bg-[#0a0a0a] border border-[#222] rounded p-4">
+                                                    <TicketViewer eventId={ev.id} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* --- FINANCE APPROVAL ACTION BLOCK (PENDING CLIENT) --- */}
                                     {ev.finance_status === 'pending_client' && (
                                         <div className="mt-2 p-4 bg-[#1a1a1a] border border-yellow-600 rounded-sm">
                                             <h5 className="text-sm font-bold text-yellow-500 mb-3 flex items-center gap-2">
@@ -216,12 +280,12 @@ const ClientDashboard = () => {
                                                 <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{ev.finance_manager_message}</p>
                                             </div>
 
-                                            {/* Show Proposed Sponsors so Client knows what they are approving */}
-                                            {proposedSponsorships.length > 0 && (
+                                            {/* Proposed Sponsors for Review */}
+                                            {allSponsorships.length > 0 && (
                                                 <div className="mb-4">
                                                     <p className="text-xs uppercase font-bold text-[var(--text-secondary)] mb-2">Proposed Sponsorships:</p>
                                                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                        {proposedSponsorships.map(sponsor => (
+                                                        {allSponsorships.map(sponsor => (
                                                             <li key={sponsor.id} className="bg-[#111] p-2 rounded border border-[#333] flex justify-between items-center text-sm">
                                                                 <span className="truncate pr-2 text-[#ccc]">
                                                                     {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}
@@ -253,37 +317,76 @@ const ClientDashboard = () => {
                                         </div>
                                     )}
 
-                                    {/* Rejected Display */}
+                                    {/* Client Rejected Display */}
                                     {ev.finance_status === 'rejected' && (
-                                        <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20">
-                                            <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
-                                            <p className="text-sm text-red-200">Your Feedback: {ev.finance_client_feedback}</p>
+                                        <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20 flex justify-between items-start">
+                                            <div>
+                                                <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
+                                                <p className="text-sm text-red-200">Your Feedback: {ev.finance_client_feedback}</p>
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* COMPLETED SPONSORSHIP SECTION */}
-                                    {acceptedSponsorships.length > 0 && (
+                                    {/* --- APPROVED PLAN TRACKING --- */}
+                                    {isPlanApproved && (
                                         <div className="mt-2 pt-4 border-t border-[#333]">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h5 className="text-sm font-bold text-green-500 flex items-center gap-2">
-                                                    🤝 Sponsorship Secured
-                                                </h5>
-                                                <span className="text-green-400 font-mono font-bold bg-green-900/20 px-2 py-1 rounded border border-green-800">
-                                                    Total: ${totalSponsorship.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                            <ul className="text-xs text-[var(--text-secondary)] grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                                            <h5 className="text-sm font-bold text-[var(--gold-main)] mb-3 uppercase tracking-wider">
+                                                Sponsorship Status
+                                            </h5>
+                                            
+                                            <ul className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                
+                                                {/* Accepted by Sponsor */}
                                                 {acceptedSponsorships.map(sponsor => (
-                                                    <li key={sponsor.id} className="bg-[#1a1a1a] p-2 rounded border border-[#2a2a2a] flex justify-between items-center">
-                                                        <span className="truncate pr-2 font-medium text-[#ccc]">
-                                                            {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Anonymous Sponsor'}
+                                                    <li key={sponsor.id} className="bg-[#052e16] p-2 rounded border border-[#047857] flex justify-between items-center">
+                                                        <span className="truncate pr-2 font-medium text-green-100 flex items-center gap-1.5">
+                                                            <span className="text-[10px]">✅</span> 
+                                                            {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}
                                                         </span>
-                                                        <span className="text-green-500 font-mono">
-                                                            ${Number(sponsor.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        <span className="text-green-400 font-mono font-bold">
+                                                            ${Number(sponsor.amount).toLocaleString()}
                                                         </span>
                                                     </li>
                                                 ))}
+
+                                                {/* Awaiting Sponsor Response */}
+                                                {pendingSponsorships.map(sponsor => (
+                                                    <li key={sponsor.id} className="bg-[#1a1a1a] p-2 rounded border border-[#333] flex justify-between items-center">
+                                                        <span className="truncate pr-2 font-medium text-gray-300 flex items-center gap-1.5">
+                                                            <span className="text-[10px]">✅</span> 
+                                                            {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}
+                                                            <span className="ml-2 text-[9px] uppercase text-yellow-500 font-bold border border-yellow-600/50 bg-yellow-900/20 px-1.5 py-0.5 rounded tracking-wider">Awaiting Sponsor</span>
+                                                        </span>
+                                                        <span className="text-[var(--gold-main)] font-mono opacity-80">
+                                                            ${Number(sponsor.amount).toLocaleString()}
+                                                        </span>
+                                                    </li>
+                                                ))}
+
+                                                {/* Rejected by Sponsor */}
+                                                {rejectedSponsorships.map(sponsor => (
+                                                    <li key={sponsor.id} className="bg-[#3b0712] p-2 rounded border border-[#7f1d1d] flex justify-between items-center">
+                                                        <span className="truncate pr-2 font-medium text-red-200 flex items-center gap-1.5 opacity-70">
+                                                            <span className="text-[10px]">❌</span> 
+                                                            <span className="line-through">{sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span>
+                                                            <span className="ml-2 text-[9px] uppercase text-red-400 font-bold border border-red-800 bg-red-950/50 px-1.5 py-0.5 rounded tracking-wider">Declined</span>
+                                                        </span>
+                                                        <span className="text-red-400 font-mono line-through opacity-70">
+                                                            ${Number(sponsor.amount).toLocaleString()}
+                                                        </span>
+                                                    </li>
+                                                ))}
+
                                             </ul>
+
+                                            {/* Total Banner */}
+                                            {totalSponsorship > 0 && (
+                                                <div className="mt-4 text-right">
+                                                    <span className="text-green-400 font-mono font-bold bg-green-900/20 px-3 py-1.5 rounded border border-green-800 uppercase text-xs tracking-wider">
+                                                        Total Secured: ${totalSponsorship.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
