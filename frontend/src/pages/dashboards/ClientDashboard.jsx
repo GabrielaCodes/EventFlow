@@ -16,23 +16,23 @@ const MessagePopup = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
     if (!sentMsg && !receivedMsg) return null;
     
     return (
-        <div className="relative group inline-flex items-center ml-2 cursor-help z-10">
-            <span className="flex items-center justify-center w-5 h-5 bg-[#1a1a1a] border border-[#333] rounded-full text-[10px] text-[var(--gold-main)] shadow-sm group-hover:bg-[#222] transition-colors">
+        <div className="relative group inline-flex items-center ml-3 cursor-help z-10">
+            <span className="flex items-center justify-center w-6 h-6 bg-[#1a1a1a] border border-[#333] rounded-full text-[10px] text-[var(--gold-main)] shadow-sm group-hover:bg-[#222] transition-colors">
                 💬
             </span>
             
             {/* Tooltip Body */}
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#111] border border-[#333] rounded-md shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex flex-col gap-2 z-[100]">
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-4 bg-[#111] border border-[#333] rounded-md shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex flex-col gap-3 z-[100]">
                 {receivedMsg && (
                     <div>
-                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{receivedTitle || 'Received'}</p>
-                        <p className="text-xs text-[var(--gold-main)] italic whitespace-pre-wrap">"{receivedMsg}"</p>
+                        <p className="text-[10px] uppercase font-bold text-[#888] mb-1 tracking-wider">{receivedTitle || 'Received'}</p>
+                        <p className="text-sm text-[var(--gold-main)] italic whitespace-pre-wrap leading-relaxed">"{receivedMsg}"</p>
                     </div>
                 )}
                 {sentMsg && (
-                    <div className={receivedMsg ? "border-t border-[#222] pt-2" : ""}>
-                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{sentTitle || 'Sent'}</p>
-                        <p className="text-xs text-gray-300 italic whitespace-pre-wrap">"{sentMsg}"</p>
+                    <div className={receivedMsg ? "border-t border-[#222] pt-3" : ""}>
+                        <p className="text-[10px] uppercase font-bold text-[#888] mb-1 tracking-wider">{sentTitle || 'Sent'}</p>
+                        <p className="text-sm text-gray-300 italic whitespace-pre-wrap leading-relaxed">"{sentMsg}"</p>
                     </div>
                 )}
             </div>
@@ -203,8 +203,8 @@ const ClientDashboard = () => {
                                         <div>
                                             <div className="flex items-center">
                                                 <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
-                                                {/* Hover Popup for Approved/Rejected Plans */}
-                                                {(ev.finance_status === 'approved' || ev.finance_status === 'rejected') && (
+                                                {/* 👇 Hover Popup for Manager ↔ Client Communication */}
+                                                {(ev.finance_manager_message || ev.finance_client_feedback) && (
                                                     <MessagePopup 
                                                         sentTitle="Your Feedback"
                                                         sentMsg={ev.finance_client_feedback}
@@ -322,7 +322,7 @@ const ClientDashboard = () => {
                                         <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20 flex justify-between items-start">
                                             <div>
                                                 <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
-                                                <p className="text-sm text-red-200">Your Feedback: {ev.finance_client_feedback}</p>
+                                                <p className="text-sm text-red-200 whitespace-pre-wrap">Your Feedback: {ev.finance_client_feedback}</p>
                                             </div>
                                         </div>
                                     )}
