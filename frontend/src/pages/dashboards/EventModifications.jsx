@@ -48,7 +48,8 @@ const EventModifications = () => {
         try {
             setLoading(true);
             const [ev, reqs, vens, spons] = await Promise.all([
-                supabase.from('events').select('*, venues(name)').eq('id', id).single(),
+                // 👇 UPDATED: Added manager:profiles fetch here
+                supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email)').eq('id', id).single(),
                 supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
                 supabase.from('venues').select('id, name'),
                 supabase.from('sponsorships').select('id').eq('event_id', id).limit(1)
@@ -253,6 +254,25 @@ const EventModifications = () => {
                         </p>
                     </div>
                 )}
+
+                {/* 👇 NEW: Client Contact Manager Card 👇 */}
+                {role === 'client' && event?.manager && (
+                    <div className="mt-8 p-6 bg-[#121212] border border-[#2A2A2A] rounded-sm text-center">
+                        <h4 className="text-[#C5A46D] font-medium uppercase tracking-wider text-sm mb-3">
+                            Need help? We will be happy to talk to you.
+                        </h4>
+                        <p className="text-[#B0B0B0] text-sm mb-5">
+                            Your assigned manager, <strong className="text-[#E5E5E5]">{event.manager.full_name}</strong>, is here to assist with any questions or modifications.
+                        </p>
+                        <a 
+                            href={`mailto:${event.manager.email}?subject=Question regarding event: ${event.title}`}
+                            className="dash-btn inline-block !px-6"
+                        >
+                            ✉️ Email {event.manager.full_name.split(' ')[0]}
+                        </a>
+                    </div>
+                )}
+
             </div>
         </div>
     );
