@@ -64,18 +64,24 @@ export const getMyEvents = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Query updated to join tables 
         const { data, error } = await supabase
             .from('events')
             .select(`
                 *,
                 event_subtypes ( name ),
-                venues ( name, location )
+                venues ( name, location ),
+                sponsorships (
+                    id, amount, status,
+                    sponsor:profiles (full_name, company_name)
+                )
             `)
             .eq('client_id', userId)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Query Error:", error);
+            throw error;
+        }
 
         res.status(200).json(data); 
 

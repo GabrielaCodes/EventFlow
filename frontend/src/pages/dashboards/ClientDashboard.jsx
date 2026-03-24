@@ -37,6 +37,7 @@ const ClientDashboard = () => {
 
             try {
                 const response = await api.get('/events/my-events');
+                console.log("MY EVENTS RESPONSE:", response.data);
                 if (Array.isArray(response.data)) setEvents(response.data);
                 else setEvents([]); 
             } catch (apiErr) { setEvents([]); }
@@ -94,7 +95,6 @@ const ClientDashboard = () => {
                     
                     <input type="date" required value={formData.event_date} onChange={e => setFormData({...formData, event_date: e.target.value})} className="w-full" />
                     
-                    {/* --- VENUE SELECTION WITH GALLERY LINK --- */}
                     <div className="flex flex-col w-full">
                         <div className="flex justify-between items-center mb-1 px-1">
                             <span className="text-xs text-[var(--text-secondary)]">Venue</span>
@@ -124,34 +124,64 @@ const ClientDashboard = () => {
                 <h3 className="text-xl font-bold mb-4 text-[var(--gold-main)]">My Events</h3>
                 {Array.isArray(events) && events.length > 0 ? (
                     <div className="space-y-4">
-                        {events.map(ev => (
-                            <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-4 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <h4 className="font-bold text-lg text-[var(--text-primary)]">{ev.title}</h4>
-                                    <div className="text-sm text-[var(--text-secondary)] mt-1 space-y-1">
-                                        <p>📅 {new Date(ev.event_date).toLocaleDateString()}</p>
-                                        {ev.event_subtypes && (
-                                            <p className="font-medium text-[var(--gold-main)]">
-                                                Event Type: {ev.event_subtypes.name}
-                                            </p>
-                                        )}
-                                        {ev.venues && (
-                                            <p className="text-[var(--text-secondary)]">
-                                                📍 {ev.venues.name}, {ev.venues.location}
-                                            </p>
-                                        )}
+                        {events.map(ev => {
+                            // --- NEW: Calculate Sponsorships ---
+                            const acceptedSponsorships = ev.sponsorships?.filter(s => s.status === 'accepted') || [];
+                            const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
+
+                            return (
+                                <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-5 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col gap-4">
+                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                        <div>
+                                            <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
+                                            <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
+                                                <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
+                                                {ev.event_subtypes && (
+                                                    <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>
+                                                )}
+                                                {ev.venues && (
+                                                    <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-3">
+                                            <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
+                                                {ev.status.replace('_', ' ')}
+                                            </span>
+                                            <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition text-center w-full md:w-auto">
+                                                View / Manage
+                                            </Link>
+                                        </div>
                                     </div>
+
+                                    {/* --- NEW: SPONSORSHIP SECTION --- */}
+                                    {acceptedSponsorships.length > 0 && (
+                                        <div className="mt-2 pt-4 border-t border-[#333]">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h5 className="text-sm font-bold text-green-500 flex items-center gap-2">
+                                                    🤝 Sponsorship Secured
+                                                </h5>
+                                                <span className="text-green-400 font-mono font-bold bg-green-900/20 px-2 py-1 rounded border border-green-800">
+                                                    Total: ${totalSponsorship.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <ul className="text-xs text-[var(--text-secondary)] grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                                                {acceptedSponsorships.map(sponsor => (
+                                                    <li key={sponsor.id} className="bg-[#1a1a1a] p-2 rounded border border-[#2a2a2a] flex justify-between items-center">
+                                                        <span className="truncate pr-2 font-medium text-[#ccc]">
+                                                            {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Anonymous Sponsor'}
+                                                        </span>
+                                                        <span className="text-green-500 font-mono">
+                                                            ${Number(sponsor.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
-                                        {ev.status.replace('_', ' ')}
-                                    </span>
-                                    <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition">
-                                        View / Manage
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="text-center py-8 text-[var(--text-secondary)] italic">No events booked yet.</div>
