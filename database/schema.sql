@@ -96,6 +96,9 @@ CREATE TABLE IF NOT EXISTS public.events (
   assigned_manager_id UUID REFERENCES public.profiles(id), -- Tracks which manager load-balances this event
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+  finance_status VARCHAR(20) DEFAULT 'draft',
+  finance_manager_message TEXT,
+  finance_client_feedback TEXT
 );
 
 -- Performance Index for load-balancing queries
@@ -345,6 +348,45 @@ $$ language plpgsql;
 DROP TRIGGER IF EXISTS update_events_modtime ON public.events;
 CREATE TRIGGER update_events_modtime BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
+
+-- 1. Create the security function
+CREATE OR REPLACE FUNCTION public.protect_client_event_updates()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Check if the person making the update is the client who owns the event
+    IF auth.uid() = OLD.client_id THEN
+        
+        -- MALICIOUS CHECK 1: Did they try to change core details (title, date, venue) while NOT in consideration?
+        IF (
+            NEW.title IS DISTINCT FROM OLD.title OR 
+            NEW.event_date IS DISTINCT FROM OLD.event_date OR 
+            NEW.venue_id IS DISTINCT FROM OLD.venue_id OR 
+            NEW.subtype_id IS DISTINCT FROM OLD.subtype_id OR
+            NEW.client_notes IS DISTINCT FROM OLD.client_notes
+        ) THEN
+            -- If they are changing core details, the event MUST be in consideration with no manager
+            IF OLD.status != 'consideration' OR OLD.assigned_manager_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Security Violation: Clients cannot edit core event details after a manager is assigned.';
+            END IF;
+        END IF;
+
+        -- MALICIOUS CHECK 2: Did they try to illegally change the system status or assign themselves a manager?
+        IF (NEW.status IS DISTINCT FROM OLD.status OR NEW.assigned_manager_id IS DISTINCT FROM OLD.assigned_manager_id) THEN
+            RAISE EXCEPTION 'Security Violation: Clients cannot modify the event status or manager assignments.';
+        END IF;
+
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Attach the trigger to the events table
+DROP TRIGGER IF EXISTS check_client_event_updates ON public.events;
+
+CREATE TRIGGER check_client_event_updates
+BEFORE UPDATE ON public.events
+FOR EACH ROW EXECUTE PROCEDURE public.protect_client_event_updates();
 -- ==========================================
 -- LEAVE REQUESTS TRIGGERS
 -- ==========================================
@@ -442,7 +484,10 @@ CREATE POLICY "Public read manager assignments" ON public.manager_category_assig
 CREATE POLICY "Clients view own events" ON public.events FOR SELECT TO authenticated USING (client_id = auth.uid());
 CREATE POLICY "Sponsors view sponsored events" ON public.events FOR SELECT TO authenticated USING (public.is_sponsor_for_event(id));
 CREATE POLICY "Clients create events" ON public.events FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid());
-CREATE POLICY "Clients update own events" ON public.events FOR UPDATE TO authenticated USING (client_id = auth.uid() AND status = 'consideration' AND assigned_manager_id IS NULL);
+DROP POLICY IF EXISTS "Clients update own events" ON public.events;
+CREATE POLICY "Clients update own events" 
+ON public.events FOR UPDATE TO authenticated 
+USING (client_id = auth.uid());
 CREATE POLICY "Managers view category events" ON public.events FOR SELECT TO authenticated USING (public.can_manager_view_event_data(id));
 CREATE POLICY "Managers update assigned events" ON public.events FOR UPDATE TO authenticated USING (assigned_manager_id = auth.uid());
 CREATE POLICY "Coordinator view all events" ON public.events FOR SELECT TO authenticated USING (is_chief_coordinator());

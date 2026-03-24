@@ -201,3 +201,49 @@ export const updateEvent = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// --------------------------------------------------------
+// 8. MANAGER: Submit Finance Plan to Client
+// --------------------------------------------------------
+export const submitFinancePlan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { message } = req.body;
+        
+        const { data, error } = await supabase
+            .from('events')
+            .update({ 
+                finance_status: 'pending_client', 
+                finance_manager_message: message 
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.status(200).json(data[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// --------------------------------------------------------
+// 9. CLIENT: Respond to Finance Plan
+// --------------------------------------------------------
+export const respondToFinancePlan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action, feedback } = req.body; // action: 'approve' or 'reject'
+        
+        const status = action === 'approve' ? 'approved' : 'rejected';
+
+        const { data, error } = await supabase
+            .from('events')
+            .update({ 
+                finance_status: status, 
+                finance_client_feedback: feedback || '' 
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.status(200).json(data[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};

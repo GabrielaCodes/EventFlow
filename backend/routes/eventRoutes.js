@@ -11,7 +11,7 @@ import {
 
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-
+import { submitFinancePlan, respondToFinancePlan } from '../controllers/eventController.js';
 const router = express.Router();
 
 // --- Client Routes ---
@@ -19,7 +19,8 @@ router.post('/', authenticate, authorize(['client']), createEvent);
 router.get('/my-events', authenticate, authorize(['client']), getMyEvents);
 router.post('/respond', authenticate, authorize(['client']), respondToModification);
 router.patch('/:id', authenticate, authorize(['client']), updateEvent);
-
+router.post('/:id/finance/submit', authenticate, authorize(['manager']), submitFinancePlan);
+router.post('/:id/finance/respond', authenticate, authorize(['client']), respondToFinancePlan);
 // --- Shared/General Routes ---
 // Allow authenticated users (Clients/Employees/Admins) to view modification status if they have access
 router.get('/:event_id/modifications', authenticate, getEventModifications);

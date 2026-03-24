@@ -23,8 +23,10 @@ const ClientDashboard = () => {
         title: '', subtype_id: '', event_date: '', venue_id: '', theme: '', client_notes: ''
     });
 
-    // --- NEW: Edit State ---
     const [editingEvent, setEditingEvent] = useState(null);
+    
+    // --- NEW: Finance Approval State ---
+    const [financeFeedback, setFinanceFeedback] = useState({});
 
     useEffect(() => {
         if (!loading && user?.id) fetchData();
@@ -72,16 +74,31 @@ const ClientDashboard = () => {
         } catch (err) { alert('Error booking event.'); }
     };
 
-    // --- NEW: Handle Update Function ---
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
             await api.patch(`/events/${editingEvent.id}`, editingEvent);
             alert('Event Updated Successfully!');
-            setEditingEvent(null); // Close the modal
-            fetchData(); // Refresh the list
+            setEditingEvent(null); 
+            fetchData(); 
         } catch (err) {
             alert(err.response?.data?.error || 'Error updating event.');
+        }
+    };
+
+    // --- NEW: Handle Finance Approval ---
+    const handleFinanceResponse = async (eventId, action) => {
+        const feedback = financeFeedback[eventId] || '';
+        if (action === 'reject' && !feedback.trim()) {
+            return alert("Please provide a reason for rejection.");
+        }
+        try {
+            await api.post(`/events/${eventId}/finance/respond`, { action, feedback });
+            alert(action === 'approve' ? "Plan Approved! Sponsors notified." : "Plan Rejected.");
+            setFinanceFeedback(prev => ({ ...prev, [eventId]: '' }));
+            fetchData(); // Refresh to update statuses
+        } catch (err) {
+            alert(err.response?.data?.error || "Error responding to plan");
         }
     };
 
@@ -114,9 +131,7 @@ const ClientDashboard = () => {
                         <div className="flex justify-between items-center mb-1 px-1">
                             <span className="text-xs text-[var(--text-secondary)]">Venue</span>
                             <Link 
-                                to="/gallery" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
+                                to="/gallery" target="_blank" rel="noopener noreferrer"
                                 className="text-xs text-[var(--gold-main)] hover:text-white underline decoration-[var(--gold-main)] underline-offset-2 transition-colors font-medium"
                             >
                                 📸 Click to discover our venues
@@ -143,6 +158,9 @@ const ClientDashboard = () => {
                             // Calculate Sponsorships
                             const acceptedSponsorships = ev.sponsorships?.filter(s => s.status === 'accepted') || [];
                             const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
+                            
+                            // NEW: Grab proposed sponsorships to display during review
+                            const proposedSponsorships = ev.sponsorships?.filter(s => s.status === 'pending') || [];
 
                             return (
                                 <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-5 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col gap-4">
@@ -157,7 +175,6 @@ const ClientDashboard = () => {
                                                 {ev.venues && (
                                                     <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
                                                 )}
-                                                {/* Manager Display */}
                                                 {ev.manager && (
                                                     <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>
                                                 )}
@@ -171,7 +188,6 @@ const ClientDashboard = () => {
                                             </span>
                                             
                                             <div className="flex gap-2 w-full md:w-auto">
-                                                {/* Edit Button (Only visible if consideration) */}
                                                 {ev.status === 'consideration' && (
                                                     <button 
                                                         onClick={() => setEditingEvent(ev)}
@@ -188,7 +204,64 @@ const ClientDashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* SPONSORSHIP SECTION */}
+                                    {/* --- NEW: FINANCE APPROVAL ACTION BLOCK --- */}
+                                    {ev.finance_status === 'pending_client' && (
+                                        <div className="mt-2 p-4 bg-[#1a1a1a] border border-yellow-600 rounded-sm">
+                                            <h5 className="text-sm font-bold text-yellow-500 mb-3 flex items-center gap-2">
+                                                ⚠️ Action Required: Review Proposed Budget
+                                            </h5>
+                                            
+                                            <div className="mb-4 p-3 border-l-2 border-yellow-600 bg-[#111]">
+                                                <p className="text-xs uppercase font-bold text-yellow-600 mb-1">Message from {ev.manager?.full_name?.split(' ')[0] || 'Manager'}:</p>
+                                                <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{ev.finance_manager_message}</p>
+                                            </div>
+
+                                            {/* Show Proposed Sponsors so Client knows what they are approving */}
+                                            {proposedSponsorships.length > 0 && (
+                                                <div className="mb-4">
+                                                    <p className="text-xs uppercase font-bold text-[var(--text-secondary)] mb-2">Proposed Sponsorships:</p>
+                                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {proposedSponsorships.map(sponsor => (
+                                                            <li key={sponsor.id} className="bg-[#111] p-2 rounded border border-[#333] flex justify-between items-center text-sm">
+                                                                <span className="truncate pr-2 text-[#ccc]">
+                                                                    {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}
+                                                                </span>
+                                                                <span className="text-[var(--gold-main)] font-mono">
+                                                                    ${Number(sponsor.amount).toLocaleString()}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            <textarea 
+                                                className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-yellow-600 outline-none text-sm mb-3" 
+                                                placeholder="If rejecting, please explain what needs to be changed..."
+                                                value={financeFeedback[ev.id] || ''} 
+                                                onChange={e => setFinanceFeedback({...financeFeedback, [ev.id]: e.target.value})}
+                                            />
+                                            
+                                            <div className="flex gap-3">
+                                                <button onClick={() => handleFinanceResponse(ev.id, 'approve')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold transition flex-1">
+                                                    Approve Plan
+                                                </button>
+                                                <button onClick={() => handleFinanceResponse(ev.id, 'reject')} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-sm font-bold transition flex-1">
+                                                    Reject with Feedback
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Rejected Display */}
+                                    {ev.finance_status === 'rejected' && (
+                                        <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20">
+                                            <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
+                                            <p className="text-sm text-red-200">Your Feedback: {ev.finance_client_feedback}</p>
+                                        </div>
+                                    )}
+
+                                    {/* COMPLETED SPONSORSHIP SECTION */}
                                     {acceptedSponsorships.length > 0 && (
                                         <div className="mt-2 pt-4 border-t border-[#333]">
                                             <div className="flex items-center justify-between mb-2">
