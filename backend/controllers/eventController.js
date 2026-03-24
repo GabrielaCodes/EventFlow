@@ -72,8 +72,9 @@ export const getMyEvents = async (req, res) => {
                 venues ( name, location ),
                 sponsorships (
                     id, amount, status,
-                    sponsor:profiles (full_name, company_name)
-                )
+                    sponsor:profiles!sponsorships_sponsor_id_fkey (full_name, company_name)
+                ),
+                manager:profiles!events_assigned_manager_id_fkey (full_name, email) /* 👈 NEW: Fetch Manager Data */
             `)
             .eq('client_id', userId)
             .order('created_at', { ascending: false });
@@ -90,7 +91,6 @@ export const getMyEvents = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 // --------------------------------------------------------
 // 4. SHARED: Get Event Modifications
 // --------------------------------------------------------

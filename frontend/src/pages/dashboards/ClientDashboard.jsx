@@ -135,14 +135,21 @@ const ClientDashboard = () => {
                                         <div>
                                             <h4 className="font-bold text-xl text-[var(--text-primary)]">{ev.title}</h4>
                                             <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
-                                                <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
-                                                {ev.event_subtypes && (
-                                                    <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>
-                                                )}
-                                                {ev.venues && (
-                                                    <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
-                                                )}
-                                            </div>
+                                             <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
+    
+                                             {ev.event_subtypes && (
+                                              <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>
+                                             )}
+    
+                                             {ev.venues && (
+                                              <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>
+                                             )}
+    
+    {/* 👇 NEW: Display the Assigned Manager if one exists 👇 */}
+    {ev.manager && (
+        <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>
+    )}
+</div>
                                         </div>
                                         <div className="flex flex-col items-end gap-3">
                                             <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
