@@ -38,8 +38,11 @@ const EventModifications = () => {
     const [requests, setRequests] = useState([]);
     const [venues, setVenues] = useState([]);
     const [hasSponsorships, setHasSponsorships] = useState(false);
+    
+    // 👇 NEW: State to hold the detailed list of sponsorships for this event
+    const [sponsorshipsList, setSponsorshipsList] = useState([]);
+    
     const [loading, setLoading] = useState(true);
-
     const [form, setForm] = useState({ date: '', venue_id: '', notes: '' });
 
     useEffect(() => { fetchAllData(); }, [id]);
@@ -48,17 +51,23 @@ const EventModifications = () => {
         try {
             setLoading(true);
             const [ev, reqs, vens, spons] = await Promise.all([
-                // 👇 UPDATED: Added client:profiles fetch here to get their email
                 supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email), client:profiles!events_client_id_fkey(full_name, email)').eq('id', id).single(),
                 supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
                 supabase.from('venues').select('id, name'),
-                supabase.from('sponsorships').select('id').eq('event_id', id).limit(1)
+                // 👇 UPDATED: Fetch full sponsorship data, not just the ID
+                supabase.from('sponsorships')
+                    .select('*, sponsor:profiles!sponsorships_sponsor_id_fkey(full_name, company_name, email)')
+                    .eq('event_id', id)
             ]);
             
             if (ev.data) setEvent(ev.data);
             if (reqs.data) setRequests(reqs.data);
             if (vens.data) setVenues(vens.data);
-            if (spons.data && spons.data.length > 0) setHasSponsorships(true);
+            
+            if (spons.data && spons.data.length > 0) {
+                setHasSponsorships(true);
+                setSponsorshipsList(spons.data); // Store the data for rendering
+            }
         } catch (err) { 
             console.error("Fetch error:", err); 
         } finally { 
@@ -242,14 +251,63 @@ const EventModifications = () => {
                         )}
                     </CollapsibleSection>
 
-                    {/* 2. TICKET ALLOCATIONS & FINANCE (Visible only if sponsorships exist) */}
+                    {/* 👇 NEW: SPONSORSHIP DETAILS (Visible only if sponsorships exist) 👇 */}
+                    {isAssignedManager && hasSponsorships && (
+                        <CollapsibleSection title="Event Sponsorships" defaultOpen={true}>
+                            <div className="space-y-4">
+                                {sponsorshipsList.map(s => (
+                                    <div key={s.id} className="p-4 rounded-sm border border-[#2A2A2A] bg-[#121212]">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="text-[#E5E5E5] font-bold text-sm">
+                                                    {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name}
+                                                </h4>
+                                                {s.sponsor?.email && (
+                                                    <a href={`mailto:${s.sponsor.email}`} className="text-[#C5A46D] text-[11px] hover:underline mt-1 inline-block">
+                                                        ✉️ {s.sponsor.email}
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border ${
+                                                s.status === 'accepted' ? 'bg-green-900/20 text-green-400 border-green-800' :
+                                                s.status === 'rejected' ? 'bg-red-900/20 text-red-400 border-red-800' :
+                                                s.status === 'negotiating' ? 'bg-orange-900/20 text-orange-400 border-orange-800' :
+                                                'bg-[#222] text-[#B0B0B0] border-[#444]'
+                                            }`}>
+                                                {s.status}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center mt-3 border-t border-[#2A2A2A] pt-3">
+                                            <span className="text-[#B0B0B0] text-xs uppercase tracking-wider">Amount:</span>
+                                            <span className="text-[#C5A46D] font-mono font-bold">${Number(s.amount).toLocaleString()}</span>
+                                        </div>
+
+                                        {/* Display notes if they exist */}
+                                        {(s.request_note || s.sponsor_note) && (
+                                            <div className="mt-3 space-y-2">
+                                                {s.request_note && (
+                                                    <p className="text-xs text-[#B0B0B0]"><span className="text-[#888] uppercase font-bold">Your Note:</span> {s.request_note}</p>
+                                                )}
+                                                {s.sponsor_note && (
+                                                    <p className="text-xs text-orange-400"><span className="uppercase font-bold">Sponsor Note:</span> {s.sponsor_note}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </CollapsibleSection>
+                    )}
+
+                    {/* 3. TICKET ALLOCATIONS & FINANCE (Visible only if sponsorships exist) */}
                     {isAssignedManager && hasSponsorships && (
                         <CollapsibleSection title="Ticket Allocations & Finance" defaultOpen={true}>
                             <TicketManager eventId={event.id} />
                         </CollapsibleSection>
                     )}
 
-                    {/* 3. EVENT DISCUSSION & NOTES (Visible only if sponsorships exist) */}
+                    {/* 4. EVENT DISCUSSION & NOTES (Visible only if sponsorships exist) */}
                     {isAssignedManager && hasSponsorships && (
                         <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={true}>
                             <EventMessaging eventId={event.id} currentUserId={user?.id} />
@@ -284,7 +342,7 @@ const EventModifications = () => {
                     </div>
                 )}
 
-                {/* 👇 NEW: Manager Contact Client Card 👇 */}
+                {/* Manager Contact Client Card */}
                 {role === 'manager' && isAssignedManager && event?.client && (
                     <div className="mt-8 p-6 bg-[#121212] border border-[#2A2A2A] rounded-sm text-center">
                         <h4 className="text-[#C5A46D] font-medium uppercase tracking-wider text-sm mb-3">
