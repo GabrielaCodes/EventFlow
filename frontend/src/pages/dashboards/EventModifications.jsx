@@ -48,7 +48,8 @@ const EventModifications = () => {
         try {
             setLoading(true);
             const [ev, reqs, vens, spons] = await Promise.all([
-                supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email)').eq('id', id).single(),
+                // 👇 UPDATED: Added client:profiles fetch here to get their email
+                supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email), client:profiles!events_client_id_fkey(full_name, email)').eq('id', id).single(),
                 supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
                 supabase.from('venues').select('id, name'),
                 supabase.from('sponsorships').select('id').eq('event_id', id).limit(1)
@@ -158,7 +159,6 @@ const EventModifications = () => {
                     </span>
                 </div>
 
-                {/* 👇 NEW: Display Client Notes/Instructions 👇 */}
                 {event.client_notes && (
                     <div className="mb-8 p-4 bg-[#121212] border-l-2 border-[#C5A46D] rounded-r-sm">
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#B0B0B0] mb-1">
@@ -280,6 +280,24 @@ const EventModifications = () => {
                             className="dash-btn inline-block !px-6"
                         >
                             ✉️ Email {event.manager.full_name.split(' ')[0]}
+                        </a>
+                    </div>
+                )}
+
+                {/* 👇 NEW: Manager Contact Client Card 👇 */}
+                {role === 'manager' && isAssignedManager && event?.client && (
+                    <div className="mt-8 p-6 bg-[#121212] border border-[#2A2A2A] rounded-sm text-center">
+                        <h4 className="text-[#C5A46D] font-medium uppercase tracking-wider text-sm mb-3">
+                            Talk to Client
+                        </h4>
+                        <p className="text-[#B0B0B0] text-sm mb-5">
+                            You can reach out to the client, <strong className="text-[#E5E5E5]">{event.client.full_name}</strong>, directly for any updates.
+                        </p>
+                        <a 
+                            href={`mailto:${event.client.email}?subject=Update regarding event: ${event.title}`}
+                            className="dash-btn inline-block !px-6"
+                        >
+                            ✉️ Email {event.client.full_name.split(' ')[0]}
                         </a>
                     </div>
                 )}
