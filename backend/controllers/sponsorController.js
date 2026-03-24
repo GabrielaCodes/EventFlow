@@ -167,28 +167,19 @@ export const getManagerRequests = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const { data: assignments, error: assignError } = await supabase
-            .from('manager_category_assignments')
-            .select('category_id')
-            .eq('manager_id', userId);
-
-        if (assignError) throw assignError;
-        const categoryIds = assignments.map(a => a.category_id);
-        if (categoryIds.length === 0) return res.json([]); 
-
         const { data, error } = await supabase
             .from('sponsorships')
             .select(`
                 id, amount, status, request_note, sponsor_note, created_at,
                 events!inner (
-                    title, event_date, finance_status, event_subtypes!inner ( category_id ),
+                    title, event_date, finance_status, 
                     client:profiles!events_client_id_fkey (full_name, email)
                 ),
                 profiles!sponsorships_sponsor_id_fkey (
                     full_name, company_name, email
                 )
             `)
-            .in('events.event_subtypes.category_id', categoryIds)
+            .eq('events.assigned_manager_id', userId) // 👈 THE FIX: STRICTLY LOCK TO THIS MANAGER
             .order('created_at', { ascending: false });
 
         if (error) throw error;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api';
 
-// --- NEW: Reusable Collapsible Section for Approvals ---
+// --- Reusable Collapsible Section for Approvals ---
 const CollapsibleSection = ({ title, count, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
@@ -47,6 +47,9 @@ const ManagerSponsorships = ({ activeEvents }) => {
     // Store the current manager's ID to check ownership
     const [managerId, setManagerId] = useState(null);
 
+    // History Filter State
+    const [historyFilter, setHistoryFilter] = useState('all');
+
     useEffect(() => { loadInitialData(); }, []);
 
     const loadInitialData = async () => {
@@ -58,7 +61,14 @@ const ManagerSponsorships = ({ activeEvents }) => {
                 api.get('/sponsors/list'),
                 api.get('/sponsors/sent-requests'),
                 supabase.from('events')
-                    .select('id, title, finance_status, finance_client_feedback, sponsorships(id), client:profiles!client_id(full_name, email)')
+                    .select(`
+                        id, title, finance_status, finance_client_feedback, 
+                        client:profiles!events_client_id_fkey(full_name, email),
+                        sponsorships(
+                            id, amount, status,
+                            sponsor:profiles!sponsorships_sponsor_id_fkey(full_name, company_name, email)
+                        )
+                    `)
                     .eq('assigned_manager_id', user?.id)
                     .in('status', ['consideration', 'in_progress'])
             ]);
@@ -121,7 +131,22 @@ const ManagerSponsorships = ({ activeEvents }) => {
         } catch (err) { alert("Error sending counter"); }
     };
 
-    // 4. SUBMIT FINANCE PLAN TO CLIENT
+    // 4. REJECT OFFER
+    const handleRejectOffer = async (req) => {
+        if(!window.confirm("Are you sure you want to reject this offer? This cannot be undone.")) return;
+        try {
+            await api.post('/sponsors/request', {
+                sponsorship_id: req.id,
+                amount: req.amount,
+                request_note: req.request_note,
+                status: 'rejected'
+            });
+            alert("Offer Rejected.");
+            loadInitialData();
+        } catch (err) { alert("Error rejecting offer"); }
+    };
+
+    // 5. SUBMIT FINANCE PLAN TO CLIENT
     const handleFinanceMsgChange = (id, val) => {
         setFinanceMsgs(prev => ({ ...prev, [id]: val }));
     };
@@ -166,12 +191,37 @@ const ManagerSponsorships = ({ activeEvents }) => {
                 </span>
             </div>
 
+            {ev.sponsorships && ev.sponsorships.length > 0 && (
+                <div className="mt-4 mb-4 p-3 bg-[#0a0a0a] rounded border border-[#222]">
+                    <p className="text-[10px] uppercase font-bold text-[#888] mb-2 tracking-wider">Plan Details ({ev.sponsorships.length})</p>
+                    <div className="space-y-3">
+                        {ev.sponsorships.map(s => (
+                            <div key={s.id} className="flex justify-between items-center border-b border-[#1a1a1a] pb-2 last:border-0 last:pb-0">
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-[#E5E5E5] font-medium">
+                                        {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name || 'Unknown Sponsor'}
+                                    </span>
+                                    {s.sponsor?.email && (
+                                        <a href={`mailto:${s.sponsor.email}`} className="text-[10px] text-[#d4af37] hover:underline opacity-80 mt-0.5">
+                                            ✉️ {s.sponsor.email}
+                                        </a>
+                                    )}
+                                </div>
+                                <span className="text-[#d4af37] text-sm font-bold font-mono">
+                                    ${Number(s.amount).toLocaleString()}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {ev.finance_status === 'approved' && (
-                <p className="text-xs text-green-500 font-bold mt-2">✅ Client approved. Sponsors notified.</p>
+                <p className="text-xs text-green-500 font-bold mt-2 border-t border-[#333] pt-3">✅ Client approved. Sponsors notified.</p>
             )}
 
             {ev.finance_status === 'pending_client' && (
-                <p className="text-xs text-yellow-500 font-bold mt-2">⏳ Waiting for client response...</p>
+                <p className="text-xs text-yellow-500 font-bold mt-2 border-t border-[#333] pt-3">⏳ Waiting for client response...</p>
             )}
 
             {(!ev.finance_status || ev.finance_status === 'draft' || ev.finance_status === 'rejected') && (
@@ -200,6 +250,26 @@ const ManagerSponsorships = ({ activeEvents }) => {
             )}
         </div>
     );
+
+    // --- Filter Logic for History ---
+    const filterOptions = [
+        { id: 'all', label: 'All History' },
+        { id: 'awaiting_client', label: 'Awaiting Client' },
+        { id: 'pending', label: 'Pending Sponsor' },
+        { id: 'negotiating', label: 'Negotiating' },
+        { id: 'accepted', label: 'Accepted' },
+        { id: 'rejected', label: 'Rejected' }
+    ];
+
+    const filteredHistory = history.filter(req => {
+        const isApprovedByClient = req.events?.finance_status === 'approved';
+        if (historyFilter === 'all') return true;
+        if (historyFilter === 'awaiting_client') return !isApprovedByClient;
+        
+        // The rest of the filters only apply if the client has approved the plan
+        if (!isApprovedByClient) return false; 
+        return req.status === historyFilter;
+    });
 
     if (loading) return <div className="p-4 text-center text-[#d4af37]">Loading Data...</div>;
 
@@ -290,10 +360,30 @@ const ManagerSponsorships = ({ activeEvents }) => {
             {/* --- HISTORY & NEGOTIATIONS --- */}
             <div className="dash-card">
                 <h3 className="text-lg font-bold text-[#d4af37] mb-4">Sponsorship History</h3>
+                
+                {/* Filter Pills */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+                    {filterOptions.map(opt => (
+                        <button
+                            key={opt.id}
+                            onClick={() => setHistoryFilter(opt.id)}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border ${
+                                historyFilter === opt.id 
+                                ? 'bg-[#d4af37] text-black border-[#d4af37]' 
+                                : 'bg-[#111] text-gray-400 border-[#333] hover:border-[#555]'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                    {history.length === 0 && <p className="text-gray-500 italic">No requests found.</p>}
+                    {filteredHistory.length === 0 && (
+                        <p className="text-gray-500 italic">No requests found for this filter.</p>
+                    )}
                     
-                    {history.map(req => {
+                    {filteredHistory.map(req => {
                         const isApprovedByClient = req.events?.finance_status === 'approved';
 
                         return (
@@ -323,7 +413,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                             )}
                                         </div>
 
-                                        {/* 👇 NEW: Client Display (Needs backend update to fetch client) */}
+                                        {/* Client Display */}
                                         {req.events?.client && (
                                             <div className="text-[11px] text-gray-500 mt-1 flex items-center flex-wrap">
                                                 <span className="mr-1">👤 Client:</span> 
@@ -351,24 +441,42 @@ const ManagerSponsorships = ({ activeEvents }) => {
 
                                 <div className="flex justify-between items-center mt-3">
                                     <span className="text-xl font-bold text-[#d4af37]">${req.amount}</span>
-                                    {req.status === 'negotiating' && isApprovedByClient && (
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleAcceptOffer(req)} className="text-[#03823c] hover:text-[#03823c] text-sm font-bold underline transition">Accept</button>
-                                            <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="text-[#04305c] hover:text-[#04305c] text-sm font-bold underline transition">Counter</button>
-                                        </div>
-                                    )}
                                 </div>
 
-                                {/* Counter Form */}
-                                {editingId === req.id && isApprovedByClient && (
-                                    <div className="mt-4 p-4 bg-[#050505] border border-[#333] rounded shadow-inner animate-fade-in">
-                                        <p className="text-xs font-bold text-[#d4af37] mb-2 uppercase tracking-wider">Counter Proposal:</p>
-                                        <input type="number" className="dash-input mb-3 !p-2" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})} placeholder="New Amount" />
-                                        <input placeholder="Note..." className="dash-input mb-3 !p-2" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} />
-                                        <div className="flex gap-3">
-                                            <button onClick={() => handleCounterUpdate(req.id)} className="dash-btn !py-1 !px-4 !text-xs">Send</button>
-                                            <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-300 text-xs font-semibold transition">Cancel</button>
-                                        </div>
+                                {/* Negotiating Action Block */}
+                                {req.status === 'negotiating' && isApprovedByClient && (
+                                    <div className="mt-4 p-4 bg-[#111] border border-orange-500/30 rounded-sm">
+                                        <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">Counter-Offer Received</p>
+                                        {req.sponsor_note && (
+                                            <div className="mb-4 p-3 bg-black border-l-2 border-orange-500 rounded-r">
+                                                <p className="text-xs italic text-gray-300">"{req.sponsor_note}"</p>
+                                            </div>
+                                        )}
+                                        
+                                        {!editingId || editingId !== req.id ? (
+                                            <div className="flex gap-2 flex-wrap">
+                                                <button onClick={() => handleAcceptOffer(req)} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-bold transition">
+                                                    Accept Offer
+                                                </button>
+                                                <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="bg-[#04305c] hover:bg-[#054482] text-white px-4 py-2 rounded text-xs font-bold transition">
+                                                    Counter Again
+                                                </button>
+                                                <button onClick={() => handleRejectOffer(req)} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-xs font-bold transition">
+                                                    Reject Offer
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            /* Counter Form */
+                                            <div className="mt-2 p-4 bg-[#050505] border border-[#333] rounded shadow-inner animate-fade-in">
+                                                <p className="text-xs font-bold text-[#d4af37] mb-2 uppercase tracking-wider">Your Counter Proposal:</p>
+                                                <input type="number" className="dash-input mb-3 !p-2" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})} placeholder="New Amount" />
+                                                <input placeholder="Note..." className="dash-input mb-3 !p-2" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} />
+                                                <div className="flex gap-3">
+                                                    <button onClick={() => handleCounterUpdate(req.id)} className="dash-btn !py-1.5 !px-5 !text-xs">Send Counter</button>
+                                                    <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-300 text-xs font-semibold transition">Cancel</button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
