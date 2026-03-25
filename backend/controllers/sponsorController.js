@@ -52,11 +52,7 @@ export const sendSponsorshipRequest = async (req, res) => {
             return res.status(403).json({ error: "⛔ Unauthorized: You can only manage sponsorships for events assigned to you." });
         }
 
-        // RULE 2: If client is actively reviewing, freeze modifications
-        if (eventData.finance_status === 'pending_client') {
-            return res.status(403).json({ error: "⛔ Locked: The client is currently reviewing the plan. You cannot add or modify sponsorships right now." });
-        }
-
+        
         // CASE A: UPDATE (Counter offer)
         if (sponsorship_id) {
             const updatePayload = {
