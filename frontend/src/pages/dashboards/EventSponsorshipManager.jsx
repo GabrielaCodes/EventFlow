@@ -144,37 +144,49 @@ const EventSponsorshipManager = ({ eventId, managerId }) => {
     if (loading) return <div className="flex justify-center items-center py-10 text-[#B0B0B0] text-xs uppercase tracking-widest">Loading Pipeline...</div>;
 
     return (
-        <div className="space-y-8">
-            <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-4">
-                <h3 className="text-sm font-bold text-[#C5A46D] uppercase tracking-wider mb-4 border-b border-[#2A2A2A] pb-2">
-                    Sponsorship Pipeline Status
+        <div className="space-y-6">
+            
+            {/* ═════════════════════════════════════════════════════════════════════════
+                PIPELINE TRACKER (ALWAYS VISIBLE)
+            ═════════════════════════════════════════════════════════════════════════ */}
+            <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5">
+                <h3 className="text-sm font-bold text-[#C5A46D] uppercase tracking-wider mb-4">
+                    Pipeline Progression
                 </h3>
-                <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest flex-wrap">
-                    <span className={isDraft || isRejected ? "text-[#C5A46D]" : "text-green-500"}>
-                        {isDraft || isRejected ? '1. Drafting Plan' : '✓ Plan Drafted'}
-                    </span>
-                    <span className="text-[#333]">→</span>
-                    <span className={isPendingClient ? "text-yellow-500" : isClientApproved ? "text-green-500" : isRejected ? "text-red-500" : "text-[#555]"}>
-                        {isPendingClient ? '⏳ 2. Awaiting Client' : isClientApproved ? '✓ Client Approved' : isRejected ? '❌ Client Rejected' : '2. Client Approval'}
-                    </span>
-                    <span className="text-[#333]">→</span>
-                    <span className={isClientApproved ? "text-[#C5A46D]" : "text-[#555]"}>
-                        {isClientApproved ? '3. Sponsors Notified & Negotiating' : '3. Send to Sponsors'}
-                    </span>
-                </div>
-
-                {(eventFinance.finance_manager_message || eventFinance.finance_client_feedback) && (
-                    <div className="mt-4">
-                        <InlineThread sentTitle="Your Pitch to Client" sentMsg={eventFinance.finance_manager_message} receivedTitle="Client Feedback" receivedMsg={eventFinance.finance_client_feedback} />
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest flex-wrap">
+                    <div className={`px-4 py-2 rounded border ${isDraft || isRejected ? 'bg-[#d4af37]/10 border-[#d4af37] text-[#d4af37]' : 'bg-green-900/20 border-green-800 text-green-500'}`}>
+                        1. Build Plan
                     </div>
-                )}
+                    <span className="text-[#333]">→</span>
+                    <div className={`px-4 py-2 rounded border ${isPendingClient ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500' : isClientApproved ? 'bg-green-900/20 border-green-800 text-green-500' : isRejected ? 'bg-red-900/20 border-red-800 text-red-500' : 'bg-[#111] border-[#333] text-[#555]'}`}>
+                        2. Client Approval
+                    </div>
+                    <span className="text-[#333]">→</span>
+                    <div className={`px-4 py-2 rounded border ${isClientApproved ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'bg-[#111] border-[#333] text-[#555]'}`}>
+                        3. Sponsor Negotiation
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                    {(!isClientApproved && !isPendingClient) && (
+            {/* ═════════════════════════════════════════════════════════════════════════
+                VIEW 1: DRAFTING & REVISING (Step 1)
+            ═════════════════════════════════════════════════════════════════════════ */}
+            {(isDraft || isRejected) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    {/* LEFT: Action Forms */}
+                    <div className="space-y-6">
+                        
+                        {/* If Rejected, show reason explicitly at the top of the action area */}
+                        {isRejected && (
+                            <div className="bg-red-950/30 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+                                <h4 className="text-red-400 font-bold uppercase tracking-wider text-xs mb-1">⚠️ Client Rejected Previous Plan</h4>
+                                <p className="text-red-200 text-sm whitespace-pre-wrap">{eventFinance.finance_client_feedback}</p>
+                            </div>
+                        )}
+
                         <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5">
-                            <h4 className="text-xs font-bold text-[#C5A46D] uppercase tracking-wider mb-4">➕ Build Sponsorship Plan</h4>
+                            <h4 className="text-xs font-bold text-[#C5A46D] uppercase tracking-wider mb-4">➕ Add Sponsor to Draft</h4>
                             <form onSubmit={handleAddSponsor} className="space-y-3">
                                 <div>
                                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Sponsor</label>
@@ -185,73 +197,166 @@ const EventSponsorshipManager = ({ eventId, managerId }) => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Amount ($)</label><input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="dash-input w-full" required /></div>
-                                    <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Note</label><input value={form.request_note} onChange={e => setForm({ ...form, request_note: e.target.value })} className="dash-input w-full" /></div>
+                                    <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Note (Optional)</label><input value={form.request_note} onChange={e => setForm({ ...form, request_note: e.target.value })} className="dash-input w-full" /></div>
                                 </div>
-                                <button type="submit" disabled={submitting} className="dash-btn w-full !py-2 mt-2">{submitting ? 'Saving...' : 'Add to Proposed Plan'}</button>
+                                <button type="submit" disabled={submitting} className="w-full py-2 mt-2 bg-[#222] hover:bg-[#333] border border-[#444] text-white text-xs font-bold rounded transition">
+                                    {submitting ? 'Saving...' : '+ Add to Plan'}
+                                </button>
                             </form>
                         </div>
-                    )}
 
-                    {sponsorships.length > 0 && (isDraft || isRejected) && (
-                        <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5 space-y-3">
-                            <h4 className="text-xs font-bold text-[#C5A46D] uppercase tracking-wider">📨 Send Plan to Client</h4>
-                            <textarea className="dash-input w-full h-20 text-sm resize-none" placeholder="Add a message to the client..." value={pitchMsg} onChange={e => setPitchMsg(e.target.value)} />
-                            <button onClick={handleSendToClient} disabled={submitting} className="dash-btn w-full !py-2.5">Send Plan to Client</button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5">
-                    <div className="flex justify-between items-center mb-4 border-b border-[#2A2A2A] pb-3">
-                        <h4 className="text-sm font-bold text-[#C5A46D] uppercase tracking-wider">Plan Details ({sponsorships.length})</h4>
-                        <span className="text-[#C5A46D] font-mono font-bold">Total: ${totalAmount.toLocaleString()}</span>
+                        {sponsorships.length > 0 && (
+                            <div className="bg-[#1a1500] border border-[#d4af37]/50 rounded-sm p-5 shadow-[0_0_15px_rgba(212,175,55,0.05)]">
+                                <h4 className="text-xs font-bold text-[#C5A46D] uppercase tracking-wider mb-2">➡️ Next Step: Send to Client</h4>
+                                <p className="text-[10px] text-gray-400 mb-3">Sponsors will NOT be notified until the client approves this draft.</p>
+                                <textarea className="dash-input w-full h-20 text-sm resize-none mb-3" placeholder="Explain this proposed budget to the client..." value={pitchMsg} onChange={e => setPitchMsg(e.target.value)} />
+                                <button onClick={handleSendToClient} disabled={submitting} className="dash-btn w-full !py-3 !text-sm shadow-lg shadow-[#d4af37]/20">
+                                    {isRejected ? 'Submit Revised Plan' : 'Submit Plan for Approval'}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {sponsorships.length === 0 ? (
-                        <p className="text-center text-[#888] text-xs uppercase tracking-widest py-8">No sponsors added to plan yet.</p>
-                    ) : (
-                        <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-                            {sponsorships.map(s => (
-                                <div key={s.id} className={`p-4 rounded-sm border ${s.status === 'negotiating' ? 'border-orange-500/40 bg-orange-900/5' : 'border-[#2A2A2A] bg-[#121212]'}`}>
-                                    <div className="flex justify-between items-start mb-2">
+                    {/* RIGHT: Current Draft List */}
+                    <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5 flex flex-col h-full">
+                        <div className="flex justify-between items-center mb-4 border-b border-[#2A2A2A] pb-3">
+                            <h4 className="text-sm font-bold text-[#C5A46D] uppercase tracking-wider">Current Draft ({sponsorships.length})</h4>
+                            <span className="text-[#C5A46D] font-mono font-bold text-lg">${totalAmount.toLocaleString()}</span>
+                        </div>
+
+                        {sponsorships.length === 0 ? (
+                            <div className="flex-1 flex items-center justify-center">
+                                <p className="text-center text-[#555] text-xs uppercase tracking-widest">Plan is empty. Add sponsors on the left.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 overflow-y-auto custom-scrollbar pr-2 max-h-[500px]">
+                                {sponsorships.map(s => (
+                                    <div key={s.id} className="p-3 rounded-sm border border-[#2A2A2A] bg-[#121212] flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-bold text-[#E5E5E5]">{s.sponsor?.company_name || s.sponsor?.full_name}</p>
+                                            {s.request_note && <p className="text-[10px] text-gray-500 truncate max-w-[200px]">Note: {s.request_note}</p>}
                                         </div>
-                                        <div className="flex flex-col items-end gap-1 text-right">
-                                            <span className="text-[#C5A46D] font-mono font-bold">${Number(s.amount).toLocaleString()}</span>
+                                        <div className="text-right">
+                                            <span className="text-[#C5A46D] font-mono font-bold block">${Number(s.amount).toLocaleString()}</span>
+                                            <StatusBadge status={s.status} financeStatus={financeStatus} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═════════════════════════════════════════════════════════════════════════
+                VIEW 2: WAITING ON CLIENT (Step 2)
+            ═════════════════════════════════════════════════════════════════════════ */}
+            {isPendingClient && (
+                <div className="space-y-6">
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 p-8 rounded-sm text-center">
+                        <span className="text-4xl mb-3 block">⏳</span>
+                        <h2 className="text-xl font-bold text-yellow-500 mb-2">Awaiting Client Review</h2>
+                        <p className="text-sm text-yellow-200/70 max-w-lg mx-auto">
+                            The proposed sponsorship plan has been sent. You cannot make changes until the client either approves the budget or sends it back with revisions.
+                        </p>
+                    </div>
+
+                    <div className="bg-[#0B0B0B] border border-[#2A2A2A] rounded-sm p-5">
+                        <h4 className="text-sm font-bold text-[#C5A46D] uppercase tracking-wider mb-4 border-b border-[#2A2A2A] pb-3">
+                            Locked Plan Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {sponsorships.map(s => (
+                                <div key={s.id} className="p-4 rounded-sm border border-[#333] bg-[#111] opacity-70">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <p className="text-sm font-bold text-[#E5E5E5] truncate pr-2">{s.sponsor?.company_name || s.sponsor?.full_name}</p>
+                                        <span className="text-[#C5A46D] font-mono font-bold">${Number(s.amount).toLocaleString()}</span>
+                                    </div>
+                                    <StatusBadge status={s.status} financeStatus={financeStatus} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═════════════════════════════════════════════════════════════════════════
+                VIEW 3: SPONSOR NEGOTIATION (Step 3)
+            ═════════════════════════════════════════════════════════════════════════ */}
+            {isClientApproved && (
+                <div className="space-y-6">
+                    
+                    <div className="bg-green-900/20 border-l-4 border-green-500 p-4 rounded-r shadow-sm flex justify-between items-center">
+                        <div>
+                            <h4 className="text-green-400 font-bold uppercase tracking-wider text-xs mb-1">✅ Client Approved</h4>
+                            <p className="text-green-200/70 text-sm">Sponsors have been notified and responses will appear below.</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[10px] text-gray-400 block uppercase tracking-wider">Target Goal</span>
+                            <span className="text-xl font-mono font-bold text-green-400">${totalAmount.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sponsorships.map(s => {
+                            const needsAction = s.status === 'negotiating';
+                            
+                            return (
+                                <div key={s.id} className={`p-5 rounded-sm border flex flex-col h-full ${needsAction ? 'border-orange-500/50 bg-[#1a1300] shadow-[0_0_15px_rgba(249,115,22,0.05)]' : 'border-[#2A2A2A] bg-[#0B0B0B]'}`}>
+                                    
+                                    {/* Header */}
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <p className="text-base font-bold text-[#E5E5E5]">{s.sponsor?.company_name || s.sponsor?.full_name}</p>
+                                            {s.sponsor?.email && <a href={`mailto:${s.sponsor.email}`} className="text-[11px] text-[#C5A46D] hover:underline mt-1 block">✉️ {s.sponsor.email}</a>}
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2 text-right">
+                                            <span className="text-[#C5A46D] font-mono font-bold text-lg">${Number(s.amount).toLocaleString()}</span>
                                             <StatusBadge status={s.status} financeStatus={financeStatus} />
                                         </div>
                                     </div>
 
-                                    <InlineThread sentTitle="Note to Sponsor" sentMsg={s.request_note} receivedTitle="Sponsor Feedback" receivedMsg={s.sponsor_note} />
+                                    {/* Threads */}
+                                    <div className="flex-1 mt-2">
+                                        <InlineThread sentTitle="Your Note" sentMsg={s.request_note} receivedTitle="Sponsor Reply" receivedMsg={s.sponsor_note} />
+                                    </div>
 
-                                    {s.status === 'negotiating' && isClientApproved && (
-                                        <div className="mt-4 pt-3 border-t border-orange-500/20">
-                                            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-3">Action Required: Respond to Counter</p>
+                                    {/* Action Block */}
+                                    {needsAction && (
+                                        <div className="mt-5 pt-4 border-t border-orange-500/20">
+                                            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-3">⚠️ Action Required: Counter-Offer Received</p>
+                                            
                                             {editingId === s.id ? (
-                                                <div className="space-y-2">
-                                                    <input type="number" className="dash-input w-full !p-2" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })} placeholder="New Amount" />
-                                                    <input className="dash-input w-full !p-2" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="Your counter note..." />
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => handleCounter(s.id)} className="dash-btn !py-1.5 !px-4 !text-xs">Send Counter</button>
-                                                        <button onClick={() => setEditingId(null)} className="text-[#888] hover:text-[#B0B0B0] text-xs transition">Cancel</button>
+                                                <div className="space-y-3 animate-fade-in">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Counter Amount ($)</label>
+                                                        <input type="number" className="dash-input w-full !p-2" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Note to Sponsor</label>
+                                                        <input className="dash-input w-full !p-2" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="Reasoning..." />
+                                                    </div>
+                                                    <div className="flex gap-2 pt-1">
+                                                        <button onClick={() => handleCounter(s.id)} className="dash-btn flex-1 !py-2 !text-xs">Send Counter</button>
+                                                        <button onClick={() => setEditingId(null)} className="px-3 text-[#888] hover:text-white text-xs transition">Cancel</button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex gap-2 flex-wrap">
-                                                    <button onClick={() => handleAcceptOffer(s)} className="bg-green-700 hover:bg-green-600 text-white text-xs font-bold px-4 py-1.5 rounded-sm transition">✓ Accept</button>
-                                                    <button onClick={() => { setEditingId(s.id); setEditForm({ amount: s.amount, note: '' }); }} className="bg-[#04305c] hover:bg-[#054482] text-white text-xs font-bold px-4 py-1.5 rounded-sm transition">↩ Counter</button>
-                                                    <button onClick={() => handleRejectOffer(s)} className="border border-red-500 text-red-400 hover:bg-red-500/10 text-xs font-bold px-4 py-1.5 rounded-sm transition">✕ Reject</button>
+                                                    <button onClick={() => handleAcceptOffer(s)} className="bg-green-700 hover:bg-green-600 text-white text-xs font-bold px-4 py-2 rounded-sm transition flex-1 text-center">✓ Accept</button>
+                                                    <button onClick={() => { setEditingId(s.id); setEditForm({ amount: s.amount, note: '' }); }} className="bg-[#04305c] hover:bg-[#054482] text-white text-xs font-bold px-4 py-2 rounded-sm transition flex-1 text-center">↩ Counter</button>
+                                                    <button onClick={() => handleRejectOffer(s)} className="border border-red-500/50 text-red-400 hover:bg-red-900/30 text-xs font-bold px-4 py-2 rounded-sm transition flex-1 text-center">✕ Reject</button>
                                                 </div>
                                             )}
                                         </div>
                                     )}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
+
         </div>
     );
 };
