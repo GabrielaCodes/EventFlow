@@ -1,36 +1,28 @@
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api';
 
-// --- Hover Message Popup Component ---
-const MessagePopup = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
+// ─── Inline Message Thread ──────────────────────────────────────────────────
+const InlineThread = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
     if (!sentMsg && !receivedMsg) return null;
-    
     return (
-        <div className="relative group inline-flex items-center ml-2 cursor-help z-10">
-            <span className="flex items-center justify-center w-5 h-5 bg-[#1a1a1a] border border-[#333] rounded-full text-[10px] text-[#d4af37] shadow-sm group-hover:bg-[#222] transition-colors">
-                💬
-            </span>
-            
-            {/* The Tooltip Body */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-[#111] border border-[#333] rounded-md shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex flex-col gap-2 z-[100]">
-                {sentMsg && (
-                    <div>
-                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{sentTitle || 'Sent'}</p>
-                        <p className="text-xs text-[#d4af37] italic whitespace-pre-wrap">"{sentMsg}"</p>
-                    </div>
-                )}
-                {receivedMsg && (
-                    <div className={sentMsg ? "border-t border-[#222] pt-2" : ""}>
-                        <p className="text-[9px] uppercase font-bold text-[#888] mb-0.5">{receivedTitle || 'Received'}</p>
-                        <p className="text-xs text-gray-300 italic whitespace-pre-wrap">"{receivedMsg}"</p>
-                    </div>
-                )}
-            </div>
+        <div className="mt-3 w-full bg-[#050505] border border-[#222] rounded p-3">
+            {sentMsg && (
+                <div className="mb-3 last:mb-0">
+                    <span className="text-[10px] uppercase font-bold text-[#888] tracking-wider block mb-1">{sentTitle}</span>
+                    <p className="text-sm text-[#d4af37] whitespace-pre-wrap leading-relaxed">{sentMsg}</p>
+                </div>
+            )}
+            {receivedMsg && (
+                <div className={`${sentMsg ? 'border-t border-[#222] pt-3' : ''}`}>
+                    <span className="text-[10px] uppercase font-bold text-[#888] tracking-wider block mb-1">{receivedTitle}</span>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{receivedMsg}</p>
+                </div>
+            )}
         </div>
     );
 };
 
-// --- Reusable Collapsible Section for Approvals ---
+// ─── Reusable Collapsible Section ───────────────────────────────────────────
 const CollapsibleSection = ({ title, count, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
@@ -82,7 +74,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
             const [sponsorRes, historyRes, eventsRes] = await Promise.all([
                 api.get('/sponsors/list'),
                 api.get('/sponsors/sent-requests'),
-                // Added request_note and sponsor_note to sponsorships fetch
                 supabase.from('events')
                     .select(`
                         id, title, finance_status, finance_client_feedback, finance_manager_message,
@@ -93,7 +84,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
                         )
                     `)
                     .eq('assigned_manager_id', user?.id)
-                    .in('status', ['consideration', 'in_progress'])
+                    // REMOVED the strict status filter so events don't disappear from approvals
             ]);
             
             setSponsors(sponsorRes.data || []);
@@ -127,10 +118,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
         if(!window.confirm("Accept this sponsorship offer?")) return;
         try {
             await api.post('/sponsors/request', {
-                sponsorship_id: req.id,
-                amount: req.amount,
-                request_note: req.request_note, 
-                status: 'accepted'
+                sponsorship_id: req.id, amount: req.amount, request_note: req.request_note, status: 'accepted'
             });
             alert("Offer Accepted!");
             loadInitialData();
@@ -140,10 +128,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
     const handleCounterUpdate = async (id) => {
         try {
             await api.post('/sponsors/request', {
-                sponsorship_id: id,
-                amount: editForm.amount,
-                request_note: editForm.note,
-                status: 'pending' 
+                sponsorship_id: id, amount: editForm.amount, request_note: editForm.note, status: 'pending' 
             });
             alert("Counter-offer sent!");
             setEditingId(null);
@@ -155,10 +140,7 @@ const ManagerSponsorships = ({ activeEvents }) => {
         if(!window.confirm("Are you sure you want to reject this offer? This cannot be undone.")) return;
         try {
             await api.post('/sponsors/request', {
-                sponsorship_id: req.id,
-                amount: req.amount,
-                request_note: req.request_note,
-                status: 'rejected'
+                sponsorship_id: req.id, amount: req.amount, request_note: req.request_note, status: 'rejected'
             });
             alert("Offer Rejected.");
             loadInitialData();
@@ -183,15 +165,25 @@ const ManagerSponsorships = ({ activeEvents }) => {
         }
     };
 
-    // --- Data Grouping for Approvals ---
-    const pendingEvents = approvalEvents.filter(ev => !ev.finance_status || ev.finance_status === 'draft' || ev.finance_status === 'pending_client');
-    const approvedEvents = approvalEvents.filter(ev => ev.finance_status === 'approved');
-    const rejectedEvents = approvalEvents.filter(ev => ev.finance_status === 'rejected');
+    // --- Sanitized Data Grouping for Approvals ---
+    const getFinStatus = (status) => (status || '').toLowerCase().trim();
 
-    const renderApprovalCard = (ev) => (
-        <div key={ev.id} className="p-4 border border-[#333] rounded bg-[#111] mb-4 last:mb-0 relative">
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center">
+    const pendingEvents = approvalEvents.filter(ev => {
+        const stat = getFinStatus(ev.finance_status);
+        return !stat || stat === 'draft' || stat === 'pending_client';
+    });
+    const approvedEvents = approvalEvents.filter(ev => getFinStatus(ev.finance_status) === 'approved');
+    const rejectedEvents = approvalEvents.filter(ev => getFinStatus(ev.finance_status) === 'rejected');
+
+    const renderApprovalCard = (ev) => {
+        const stat = getFinStatus(ev.finance_status);
+        const isApproved = stat === 'approved';
+        const isPending = stat === 'pending_client';
+        const isRejected = stat === 'rejected';
+
+        return (
+            <div key={ev.id} className="p-4 border border-[#333] rounded bg-[#111] mb-4 last:mb-0">
+                <div className="flex justify-between items-start mb-3">
                     <div>
                         <h4 className="font-bold text-gray-200">{ev.title}</h4>
                         {ev.client && (
@@ -200,96 +192,81 @@ const ManagerSponsorships = ({ activeEvents }) => {
                             </p>
                         )}
                     </div>
-                    {/* Message Popup for Client Comms */}
-                    <MessagePopup 
-                        sentTitle="Your Pitch to Client"
-                        sentMsg={ev.finance_manager_message}
-                        receivedTitle="Client Feedback"
-                        receivedMsg={ev.finance_client_feedback}
-                    />
+                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 shrink-0 ml-3 ${
+                        isApproved ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
+                        isPending ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 
+                        isRejected ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
+                        'bg-[#222] text-gray-400 border-[#444]'
+                    }`}>
+                        {isRejected ? 'Client Rejected' : isPending ? 'Awaiting Client' : isApproved ? 'Approved' : 'Drafting'}
+                    </span>
                 </div>
-                <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 ${
-                    ev.finance_status === 'approved' ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
-                    ev.finance_status === 'pending_client' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 
-                    ev.finance_status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
-                    'bg-[#222] text-gray-400 border-[#444]'
-                }`}>
-                    {ev.finance_status || 'Draft'}
-                </span>
-            </div>
 
-            {ev.sponsorships && ev.sponsorships.length > 0 && (
-                <div className="mt-4 mb-4 p-3 bg-[#0a0a0a] rounded border border-[#222]">
-                    <p className="text-[10px] uppercase font-bold text-[#888] mb-2 tracking-wider">Plan Details ({ev.sponsorships.length})</p>
-                    <div className="space-y-3">
-                        {ev.sponsorships.map(s => (
-                            <div key={s.id} className="flex justify-between items-center border-b border-[#1a1a1a] pb-2 last:border-0 last:pb-0">
-                                <div className="flex flex-col">
-                                    <div className="flex items-center">
-                                        <span className="text-xs text-[#E5E5E5] font-medium">
-                                            {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name || 'Unknown Sponsor'}
+                <InlineThread 
+                    sentTitle="Your Pitch to Client"
+                    sentMsg={ev.finance_manager_message}
+                    receivedTitle="Client Feedback"
+                    receivedMsg={ev.finance_client_feedback}
+                />
+
+                {ev.sponsorships && ev.sponsorships.length > 0 && (
+                    <div className="mt-4 mb-4 p-3 bg-[#0a0a0a] rounded border border-[#222]">
+                        <p className="text-[10px] uppercase font-bold text-[#888] mb-2 tracking-wider">Plan Details ({ev.sponsorships.length})</p>
+                        <div className="space-y-4">
+                            {ev.sponsorships.map(s => (
+                                <div key={s.id} className="border-b border-[#1a1a1a] pb-3 last:border-0 last:pb-0">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-[#E5E5E5] font-medium">
+                                                {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name || 'Unknown Sponsor'}
+                                            </span>
+                                            {s.sponsor?.email && (
+                                                <a href={`mailto:${s.sponsor.email}`} className="text-[10px] text-[#d4af37] hover:underline opacity-80 mt-0.5">
+                                                    ✉️ {s.sponsor.email}
+                                                </a>
+                                            )}
+                                        </div>
+                                        <span className="text-[#d4af37] text-sm font-bold font-mono">
+                                            ${Number(s.amount).toLocaleString()}
                                         </span>
-                                        {/* Message Popup for Sponsor Comms inside Approvals */}
-                                        <MessagePopup 
-                                            sentTitle="Note to Sponsor"
-                                            sentMsg={s.request_note}
-                                            receivedTitle="Sponsor Feedback"
-                                            receivedMsg={s.sponsor_note}
-                                        />
                                     </div>
-                                    {s.sponsor?.email && (
-                                        <a href={`mailto:${s.sponsor.email}`} className="text-[10px] text-[#d4af37] hover:underline opacity-80 mt-0.5">
-                                            ✉️ {s.sponsor.email}
-                                        </a>
-                                    )}
+                                    <InlineThread 
+                                        sentTitle="Note to Sponsor"
+                                        sentMsg={s.request_note}
+                                        receivedTitle="Sponsor Feedback"
+                                        receivedMsg={s.sponsor_note}
+                                    />
                                 </div>
-                                <span className="text-[#d4af37] text-sm font-bold font-mono">
-                                    ${Number(s.amount).toLocaleString()}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {ev.finance_status === 'approved' && (
-                <p className="text-xs text-green-500 font-bold mt-2 border-t border-[#333] pt-3">✅ Client approved. Sponsors notified.</p>
-            )}
-
-            {ev.finance_status === 'pending_client' && (
-                <p className="text-xs text-yellow-500 font-bold mt-2 border-t border-[#333] pt-3">⏳ Waiting for client response...</p>
-            )}
-
-            {(!ev.finance_status || ev.finance_status === 'draft' || ev.finance_status === 'rejected') && (
-                <div className="mt-3 border-t border-[#333] pt-3">
-                    {ev.finance_status === 'rejected' && (
-                        <div className="mb-3 p-2 bg-red-900/20 border-l-2 border-red-500 text-red-300 text-xs">
-                            <strong className="block text-red-400 mb-1">Client Feedback:</strong>
-                            {ev.finance_client_feedback}
+                            ))}
                         </div>
-                    )}
-                    
-                    <textarea 
-                        className="dash-input w-full h-16 text-sm mb-2" 
-                        placeholder="Add a message to the client explaining the sponsorships..."
-                        value={financeMsgs[ev.id] || ''} 
-                        onChange={e => handleFinanceMsgChange(ev.id, e.target.value)}
-                    />
-                    <button 
-                        disabled={submitting} 
-                        onClick={() => handleFinanceSubmit(ev.id)} 
-                        className="dash-btn w-full !py-2 !text-sm"
-                    >
-                        Send Plan to Client
-                    </button>
-                </div>
-            )}
-        </div>
-    );
+                    </div>
+                )}
+
+                {isApproved && <p className="text-xs text-green-500 font-bold mt-2 border-t border-[#333] pt-3">✅ Client approved. Sponsors notified.</p>}
+                {isPending && <p className="text-xs text-yellow-500 font-bold mt-2 border-t border-[#333] pt-3">⏳ Waiting for client response...</p>}
+
+                {(!stat || stat === 'draft' || isRejected) && (
+                    <div className="mt-3 border-t border-[#333] pt-3">
+                        {isRejected && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider mb-2">Re-submit Revised Plan:</p>}
+                        <textarea 
+                            className="dash-input w-full h-16 text-sm mb-2" 
+                            placeholder="Add a message to the client explaining the sponsorships..."
+                            value={financeMsgs[ev.id] || ''} 
+                            onChange={e => handleFinanceMsgChange(ev.id, e.target.value)}
+                        />
+                        <button disabled={submitting} onClick={() => handleFinanceSubmit(ev.id)} className="dash-btn w-full !py-2 !text-sm">
+                            Send Plan to Client
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const filterOptions = [
         { id: 'all', label: 'All History' },
         { id: 'awaiting_client', label: 'Awaiting Client' },
+        { id: 'rejected_client', label: 'Rejected by Client' },
         { id: 'pending', label: 'Pending Sponsor' },
         { id: 'negotiating', label: 'Negotiating' },
         { id: 'accepted', label: 'Accepted' },
@@ -297,10 +274,13 @@ const ManagerSponsorships = ({ activeEvents }) => {
     ];
 
     const filteredHistory = history.filter(req => {
-        const isApprovedByClient = req.events?.finance_status === 'approved';
+        const finStatus = getFinStatus(req.events?.finance_status);
+        
         if (historyFilter === 'all') return true;
-        if (historyFilter === 'awaiting_client') return !isApprovedByClient;
-        if (!isApprovedByClient) return false; 
+        if (historyFilter === 'awaiting_client') return finStatus === 'pending_client' || !finStatus || finStatus === 'draft';
+        if (historyFilter === 'rejected_client') return finStatus === 'rejected';
+        
+        if (finStatus !== 'approved') return false; 
         return req.status === historyFilter;
     });
 
@@ -308,7 +288,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
 
     return (
         <div className="space-y-8">
-            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 {/* --- CREATE REQUEST FORM --- */}
@@ -323,19 +302,13 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 {(activeEvents || []).map(ev => {
                                     const canWrite = ev.assigned_manager_id === managerId;
                                     return (
-                                        <option 
-                                            key={ev.id} 
-                                            value={ev.id} 
-                                            disabled={!canWrite}
-                                            className={canWrite ? "bg-black text-[#d4af37]" : "bg-gray-900 text-gray-600 italic"}
-                                        >
+                                        <option key={ev.id} value={ev.id} disabled={!canWrite} className={canWrite ? "bg-black text-[#d4af37]" : "bg-gray-900 text-gray-600 italic"}>
                                             {ev.title} ({ev.subtype_name}) {canWrite ? '' : '— [READ-ONLY]'}
                                         </option>
                                     );
                                 })}
                             </select>
                         </div>
-
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Sponsor</label>
                             <select name="sponsor_id" value={formData.sponsor_id} onChange={handleChange} className="dash-input" required>
@@ -347,7 +320,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 ))}
                             </select>
                         </div>
-
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Amount ($)</label>
@@ -358,7 +330,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
                                 <input name="request_note" value={formData.request_note} onChange={handleChange} placeholder="Brief pitch..." className="dash-input" />
                             </div>
                         </div>
-
                         <button disabled={submitting} type="submit" className="dash-btn mt-2">
                             {submitting ? "Saving..." : "Add to Proposed Plan"}
                         </button>
@@ -368,7 +339,6 @@ const ManagerSponsorships = ({ activeEvents }) => {
                 {/* --- CLIENT FINANCE APPROVALS --- */}
                 <div className="dash-card h-fit">
                     <h2 className="text-xl font-bold text-[#d4af37] mb-4">📋 Client Approvals</h2>
-                    
                     {approvalEvents.length === 0 ? (
                         <p className="text-gray-500 italic text-sm">No events currently have sponsorships attached.</p>
                     ) : (
@@ -376,34 +346,28 @@ const ManagerSponsorships = ({ activeEvents }) => {
                             <CollapsibleSection title="⏳ Pending & Draft" count={pendingEvents.length} defaultOpen={true}>
                                 {pendingEvents.length > 0 ? pendingEvents.map(renderApprovalCard) : <p className="text-gray-500 text-xs italic">No pending plans.</p>}
                             </CollapsibleSection>
-
-                            <CollapsibleSection title="❌ Rejected Plans" count={rejectedEvents.length}>
+                            <CollapsibleSection title="❌ Rejected Plans" count={rejectedEvents.length} defaultOpen={true}>
                                 {rejectedEvents.length > 0 ? rejectedEvents.map(renderApprovalCard) : <p className="text-gray-500 text-xs italic">No rejected plans.</p>}
                             </CollapsibleSection>
-
                             <CollapsibleSection title="✅ Approved Plans" count={approvedEvents.length}>
                                 {approvedEvents.length > 0 ? approvedEvents.map(renderApprovalCard) : <p className="text-gray-500 text-xs italic">No approved plans.</p>}
                             </CollapsibleSection>
                         </div>
                     )}
                 </div>
-
             </div>
 
             {/* --- HISTORY & NEGOTIATIONS --- */}
             <div className="dash-card">
                 <h3 className="text-lg font-bold text-[#d4af37] mb-4">Sponsorship History</h3>
                 
-                {/* Filter Pills */}
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
                     {filterOptions.map(opt => (
                         <button
                             key={opt.id}
                             onClick={() => setHistoryFilter(opt.id)}
                             className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border ${
-                                historyFilter === opt.id 
-                                ? 'bg-[#d4af37] text-black border-[#d4af37]' 
-                                : 'bg-[#111] text-gray-400 border-[#333] hover:border-[#555]'
+                                historyFilter === opt.id ? 'bg-[#d4af37] text-black border-[#d4af37]' : 'bg-[#111] text-gray-400 border-[#333] hover:border-[#555]'
                             }`}
                         >
                             {opt.label}
@@ -417,102 +381,72 @@ const ManagerSponsorships = ({ activeEvents }) => {
                     )}
                     
                     {filteredHistory.map(req => {
-                        const isApprovedByClient = req.events?.finance_status === 'approved';
+                        const finStatus = getFinStatus(req.events?.finance_status);
+                        const isApprovedByClient = finStatus === 'approved';
+
+                        let badgeText = req.status; 
+                        let badgeClass = 'bg-[#222] text-gray-400 border-[#444]'; 
+                        
+                        if (finStatus === 'rejected') {
+                            badgeText = 'Client Rejected';
+                            badgeClass = 'bg-red-900/20 text-red-400 border-red-800';
+                        } else if (!isApprovedByClient) {
+                            badgeText = finStatus === 'pending_client' ? 'Awaiting Client' : 'Drafting Plan';
+                            badgeClass = 'bg-gray-800 text-gray-400 border-gray-600';
+                        } else {
+                            if (req.status === 'negotiating') badgeClass = 'bg-orange-500/20 text-orange-400 border-orange-500/50';
+                            else if (req.status === 'accepted') badgeClass = 'bg-green-500/20 text-green-400 border-green-500/50';
+                            else if (req.status === 'rejected') badgeClass = 'bg-red-500/20 text-red-400 border-red-500/50';
+                            else if (req.status === 'pending') badgeClass = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
+                        }
 
                         return (
                             <div key={req.id} className={`p-4 border rounded shadow-sm ${
-                                req.status === 'negotiating' ? 'bg-[#1a1300] border-orange-500/50' : 'bg-[#0a0a0a] border-[#333]'
+                                req.status === 'negotiating' && isApprovedByClient ? 'bg-[#1a1300] border-orange-500/50' : 'bg-[#0a0a0a] border-[#333]'
                             }`}>
                                 <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center">
-                                        <div>
-                                            <span className="font-bold text-gray-200 block text-lg">{req.events?.title}</span>
-                                            
-                                            {/* Sponsor Display */}
-                                            <div className="text-xs text-gray-400 flex items-center flex-wrap mt-1">
-                                                <span className="mr-1">🏢 Sponsor:</span>
-                                                {req.profiles?.company_name ? (
-                                                    <>
-                                                        <span className="font-semibold text-gray-300">{req.profiles.company_name}</span>
-                                                        <span className="text-gray-500 ml-1">({req.profiles.full_name})</span>
-                                                    </>
-                                                ) : (
-                                                    <span className="font-semibold text-gray-300">{req.profiles?.full_name}</span>
-                                                )}
-                                                
-                                                {req.profiles?.email && (
-                                                    <span className="ml-2 text-[#d4af37] opacity-80">
-                                                        • ✉️ <a href={`mailto:${req.profiles.email}`} className="hover:underline">{req.profiles.email}</a>
-                                                    </span>
-                                                )}
-                                            </div>
-                                            
-                                            {/* Client Display */}
-                                            {req.events?.client && (
-                                                <div className="text-[11px] text-gray-500 mt-1 flex items-center flex-wrap">
-                                                    <span className="mr-1">👤 Client:</span> 
-                                                    <span className="text-gray-300 font-medium">{req.events.client.full_name}</span>
-                                                    {req.events.client.email && (
-                                                        <span className="ml-2 text-[#d4af37] opacity-80">
-                                                            • ✉️ <a href={`mailto:${req.events.client.email}`} className="hover:underline">{req.events.client.email}</a>
-                                                        </span>
-                                                    )}
-                                                    
-                                                    {/* Message Popup for Client Comms inside History */}
-                                                    <MessagePopup 
-                                                        sentTitle="Your Pitch to Client"
-                                                        sentMsg={req.events?.finance_manager_message}
-                                                        receivedTitle="Client Feedback"
-                                                        receivedMsg={req.events?.finance_client_feedback}
-                                                    />
-                                                </div>
-                                            )}
+                                    <div>
+                                        <span className="font-bold text-gray-200 block text-lg">{req.events?.title}</span>
+                                        <div className="text-xs text-gray-400 flex items-center flex-wrap mt-1">
+                                            <span className="mr-1">🏢 Sponsor:</span>
+                                            <span className="font-semibold text-gray-300">{req.profiles?.company_name || req.profiles?.full_name}</span>
                                         </div>
-
-                                        {/* Message Popup for Sponsor Comms */}
-                                        <MessagePopup 
-                                            sentTitle="Note to Sponsor"
-                                            sentMsg={req.request_note}
-                                            receivedTitle="Sponsor Terms/Feedback"
-                                            receivedMsg={req.sponsor_note}
-                                        />
+                                        {req.events?.client && (
+                                            <div className="text-[11px] text-gray-500 mt-1 flex items-center flex-wrap">
+                                                <span className="mr-1">👤 Client:</span> 
+                                                <span className="text-gray-300 font-medium">{req.events.client.full_name}</span>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Status Badge */}
-                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 shrink-0 ml-2 ${
-                                        !isApprovedByClient ? 'bg-gray-800 text-gray-400 border-gray-600' :
-                                        req.status === 'negotiating' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 
-                                        req.status === 'accepted' ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
-                                        req.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
-                                        'bg-[#222] text-gray-400 border-[#444]'
-                                    }`}>
-                                        {!isApprovedByClient ? 'Draft (Awaiting Client)' : req.status}
+                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border mt-1 shrink-0 ml-3 ${badgeClass}`}>
+                                        {badgeText.replace('_', ' ')}
                                     </span>
                                 </div>
-
-                                <div className="flex justify-between items-center mt-3">
+                                
+                                <div className="flex justify-between items-center mt-3 mb-2">
                                     <span className="text-xl font-bold text-[#d4af37]">${req.amount}</span>
                                 </div>
 
-                                {/* Negotiating Action Block */}
+                                <InlineThread 
+                                    sentTitle="Note to Sponsor" sentMsg={req.request_note}
+                                    receivedTitle="Sponsor Terms/Feedback" receivedMsg={req.sponsor_note}
+                                />
+                                <InlineThread 
+                                    sentTitle="Your Pitch to Client" sentMsg={req.events?.finance_manager_message}
+                                    receivedTitle="Client Feedback" receivedMsg={req.events?.finance_client_feedback}
+                                />
+
                                 {req.status === 'negotiating' && isApprovedByClient && (
                                     <div className="mt-4 p-4 bg-[#111] border border-orange-500/30 rounded-sm">
-                                        <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">Counter-Offer Received</p>
-                                        
+                                        <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">Action Required: Respond to Counter</p>
                                         {!editingId || editingId !== req.id ? (
                                             <div className="flex gap-2 flex-wrap">
-                                                <button onClick={() => handleAcceptOffer(req)} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-bold transition">
-                                                    Accept Offer
-                                                </button>
-                                                <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="bg-[#04305c] hover:bg-[#054482] text-white px-4 py-2 rounded text-xs font-bold transition">
-                                                    Counter Again
-                                                </button>
-                                                <button onClick={() => handleRejectOffer(req)} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-xs font-bold transition">
-                                                    Reject Offer
-                                                </button>
+                                                <button onClick={() => handleAcceptOffer(req)} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-bold transition">Accept Offer</button>
+                                                <button onClick={() => { setEditingId(req.id); setEditForm({ amount: req.amount, note: '' }); }} className="bg-[#04305c] hover:bg-[#054482] text-white px-4 py-2 rounded text-xs font-bold transition">Counter Again</button>
+                                                <button onClick={() => handleRejectOffer(req)} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-xs font-bold transition">Reject Offer</button>
                                             </div>
                                         ) : (
-                                            /* Counter Form */
                                             <div className="mt-2 p-4 bg-[#050505] border border-[#333] rounded shadow-inner animate-fade-in">
                                                 <p className="text-xs font-bold text-[#d4af37] mb-2 uppercase tracking-wider">Your Counter Proposal:</p>
                                                 <input type="number" className="dash-input mb-3 !p-2" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})} placeholder="New Amount" />

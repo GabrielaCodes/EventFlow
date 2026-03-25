@@ -4,6 +4,7 @@ import { supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import TicketManager from '../../components/manager/TicketManager';
 import EventMessaging from '../../components/common/EventMessaging';
+import EventSponsorshipManager from './EventSponsorshipManager';
 import '../../styles/DashboardStyles.css';
 
 // Reusable Collapsible for this page
@@ -11,16 +12,18 @@ const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
         <div className="border border-[#2A2A2A] rounded-sm mb-6 bg-[#0B0B0B] overflow-hidden">
-            <div 
+            <div
                 className="p-4 flex justify-between items-center cursor-pointer bg-[#121212] hover:bg-[#181818] transition-colors border-b border-[#2A2A2A]"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <h3 className="text-sm font-medium text-[#C5A46D] uppercase tracking-wider mb-0">{title}</h3>
                 <div className="text-[#C5A46D] transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
                 </div>
             </div>
-            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="p-6">
                     {children}
                 </div>
@@ -31,17 +34,14 @@ const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
 
 const EventModifications = () => {
     const { id } = useParams();
-    const { role, user } = useAuth(); 
+    const { role, user } = useAuth();
     const navigate = useNavigate();
 
-    const [event, setEvent] = useState(null);
+    const [event,    setEvent]    = useState(null);
     const [requests, setRequests] = useState([]);
-    const [venues, setVenues] = useState([]);
+    const [venues,   setVenues]   = useState([]);
     const [hasSponsorships, setHasSponsorships] = useState(false);
-    
-    // 👇 NEW: State to hold the detailed list of sponsorships for this event
-    const [sponsorshipsList, setSponsorshipsList] = useState([]);
-    
+
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState({ date: '', venue_id: '', notes: '' });
 
@@ -51,27 +51,28 @@ const EventModifications = () => {
         try {
             setLoading(true);
             const [ev, reqs, vens, spons] = await Promise.all([
-                supabase.from('events').select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email), client:profiles!events_client_id_fkey(full_name, email)').eq('id', id).single(),
-                supabase.from('modification_requests').select('*, venues:proposed_venue_id(name)').eq('event_id', id).order('created_at', { ascending: false }),
-                supabase.from('venues').select('id, name'),
-                // 👇 UPDATED: Fetch full sponsorship data, not just the ID
-                supabase.from('sponsorships')
-                    .select('*, sponsor:profiles!sponsorships_sponsor_id_fkey(full_name, company_name, email)')
+                supabase
+                    .from('events')
+                    .select('*, venues(name), manager:profiles!events_assigned_manager_id_fkey(full_name, email), client:profiles!events_client_id_fkey(full_name, email)')
+                    .eq('id', id)
+                    .single(),
+                supabase
+                    .from('modification_requests')
+                    .select('*, venues:proposed_venue_id(name)')
                     .eq('event_id', id)
+                    .order('created_at', { ascending: false }),
+                supabase.from('venues').select('id, name'),
+                supabase.from('sponsorships').select('id').eq('event_id', id),
             ]);
-            
-            if (ev.data) setEvent(ev.data);
-            if (reqs.data) setRequests(reqs.data);
-            if (vens.data) setVenues(vens.data);
-            
-            if (spons.data && spons.data.length > 0) {
-                setHasSponsorships(true);
-                setSponsorshipsList(spons.data); // Store the data for rendering
-            }
-        } catch (err) { 
-            console.error("Fetch error:", err); 
-        } finally { 
-            setLoading(false); 
+
+            if (ev.data)    setEvent(ev.data);
+            if (reqs.data)  setRequests(reqs.data);
+            if (vens.data)  setVenues(vens.data);
+            if (spons.data) setHasSponsorships(spons.data.length > 0);
+        } catch (err) {
+            console.error('Fetch error:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -88,69 +89,66 @@ const EventModifications = () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
-
             const res = await fetch('http://127.0.0.1:5000/api/admin/approve-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ event_id: id })
+                body: JSON.stringify({ event_id: id }),
             });
             const data = await res.json();
-            if (res.ok) { alert("Event approved and moved to In Progress."); navigate('/manager-dashboard'); } 
-            else { alert("Error: " + data.error); }
-        } catch (err) { alert("Network error."); }
+            if (res.ok) { alert('Event approved and moved to In Progress.'); navigate('/manager-dashboard'); }
+            else { alert('Error: ' + data.error); }
+        } catch { alert('Network error.'); }
     };
 
     const handleCompleteEvent = async () => {
-        if (!window.confirm("Are you sure you want to mark this event as Completed?")) return;
+        if (!window.confirm('Are you sure you want to mark this event as Completed?')) return;
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
-
             const res = await fetch('http://127.0.0.1:5000/api/admin/event-status', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ event_id: id, status: 'completed' })
+                body: JSON.stringify({ event_id: id, status: 'completed' }),
             });
-
-            if (res.ok) { alert("Event marked as Completed!"); navigate('/manager-dashboard'); } 
-            else { const data = await res.json(); alert("Error: " + data.error); }
-        } catch (err) { alert("Network Error"); }
+            if (res.ok) { alert('Event marked as Completed!'); navigate('/manager-dashboard'); }
+            else { const data = await res.json(); alert('Error: ' + data.error); }
+        } catch { alert('Network Error'); }
     };
 
     const handleSubmitProposal = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
-
             const res = await fetch('http://127.0.0.1:5000/api/admin/modify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ event_id: id, proposed_date: form.date, proposed_venue_id: form.venue_id, request_details: form.notes })
+                body: JSON.stringify({ event_id: id, proposed_date: form.date, proposed_venue_id: form.venue_id, request_details: form.notes }),
             });
-
             const data = await res.json();
-            if (res.ok) { alert("Modification proposal sent."); setForm({ date: '', venue_id: '', notes: '' }); fetchAllData(); } 
-            else { alert("Error: " + data.error); }
-        } catch (err) { alert("Network error."); }
+            if (res.ok) { alert('Modification proposal sent.'); setForm({ date: '', venue_id: '', notes: '' }); fetchAllData(); }
+            else { alert('Error: ' + data.error); }
+        } catch { alert('Network error.'); }
     };
 
     const handleResponse = async (reqId, action) => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
-
             const res = await fetch('http://127.0.0.1:5000/api/events/respond', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ modification_id: reqId, action })
+                body: JSON.stringify({ modification_id: reqId, action }),
             });
-
-            if (res.ok) { alert(action === 'accept' ? "Changes applied." : "Request rejected."); fetchAllData(); } 
-            else { const data = await res.json(); alert("Error: " + data.error); }
-        } catch (err) { alert("Network error."); }
+            if (res.ok) { alert(action === 'accept' ? 'Changes applied.' : 'Request rejected.'); fetchAllData(); }
+            else { const data = await res.json(); alert('Error: ' + data.error); }
+        } catch { alert('Network error.'); }
     };
 
-    if (loading || !event) return <div className="flex justify-center items-center h-screen text-sm uppercase tracking-widest text-[#B0B0B0]">Loading Details...</div>;
+    if (loading || !event) return (
+        <div className="flex justify-center items-center h-screen text-sm uppercase tracking-widest text-[#B0B0B0]">
+            Loading Details...
+        </div>
+    );
 
     return (
         <div className="dash-wrapper p-6">
@@ -160,10 +158,13 @@ const EventModifications = () => {
                 </button>
 
                 <h1 className="dash-title">Manage Event: <span>{event.title}</span></h1>
-                
-                <div className="text-[#B0B0B0] mb-4 border-b border-[#2A2A2A] pb-4 flex items-center">
-                    Current:&nbsp;<strong className="text-[#E5E5E5]">{new Date(event.event_date).toDateString()}</strong>&nbsp;at&nbsp;<strong className="text-[#E5E5E5]">{event.venues?.name || 'Unassigned'}</strong>
-                    <span className="ml-4 px-2 py-1 text-[10px] font-bold uppercase rounded border border-[#C5A46D] text-[#C5A46D] tracking-wider">
+
+                <div className="text-[#B0B0B0] mb-4 border-b border-[#2A2A2A] pb-4 flex items-center flex-wrap gap-2">
+                    Current:&nbsp;
+                    <strong className="text-[#E5E5E5]">{new Date(event.event_date).toDateString()}</strong>
+                    &nbsp;at&nbsp;
+                    <strong className="text-[#E5E5E5]">{event.venues?.name || 'Unassigned'}</strong>
+                    <span className="ml-2 px-2 py-1 text-[10px] font-bold uppercase rounded border border-[#C5A46D] text-[#C5A46D] tracking-wider">
                         {event.status.replace('_', ' ')}
                     </span>
                 </div>
@@ -173,26 +174,25 @@ const EventModifications = () => {
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#B0B0B0] mb-1">
                             Client Notes / Instructions
                         </h4>
-                        <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">
-                            {event.client_notes}
-                        </p>
+                        <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{event.client_notes}</p>
                     </div>
                 )}
 
                 <div className="space-y-6">
-                    {/* 1. OPERATIONS & MODIFICATIONS */}
+
+                    {/* 1. EVENT LOGISTICS & MODIFICATIONS */}
                     <CollapsibleSection title="Event Logistics & Modifications" defaultOpen={true}>
                         {requests.length > 0 && (
                             <div className="space-y-4 mb-8">
                                 {requests.map(req => (
                                     <div key={req.id} className={`p-4 rounded-sm border-l-2 bg-[#121212] ${
-                                        req.status === 'pending' ? 'border-yellow-500' : 
-                                        req.status === 'accepted' ? 'border-green-500' : 'border-red-500'
+                                        req.status === 'pending'  ? 'border-yellow-500' :
+                                        req.status === 'accepted' ? 'border-green-500'  : 'border-red-500'
                                     }`}>
                                         <p className="font-medium text-[#B0B0B0] text-sm">Venue: <span className="text-[#E5E5E5]">{req.venues?.name}</span></p>
                                         <p className="text-sm text-[#B0B0B0]">Date: {new Date(req.proposed_date).toDateString()}</p>
                                         <p className="text-sm italic text-[#B0B0B0] mt-1">"{req.request_details}"</p>
-                                        
+
                                         {req.status === 'pending' && role === 'client' && (
                                             <div className="mt-4 flex gap-3">
                                                 <button onClick={() => handleResponse(req.id, 'accept')} className="dash-btn !py-1.5 !px-4 !text-xs">Accept</button>
@@ -211,7 +211,6 @@ const EventModifications = () => {
 
                         {isAssignedManager && !hasPendingRequest && (
                             <div className="bg-[#121212] p-6 rounded-sm border border-[#2A2A2A]">
-                                
                                 {event.status === 'consideration' && (
                                     <div className="mb-8 border-b border-[#2A2A2A] pb-6">
                                         <h3 className="text-sm font-medium text-[#E5E5E5] uppercase tracking-wider mb-2">Option A: Approve Event</h3>
@@ -251,65 +250,26 @@ const EventModifications = () => {
                         )}
                     </CollapsibleSection>
 
-                    {/* 👇 NEW: SPONSORSHIP DETAILS (Visible only if sponsorships exist) 👇 */}
-                    {isAssignedManager && hasSponsorships && (
-                        <CollapsibleSection title="Event Sponsorships" defaultOpen={true}>
-                            <div className="space-y-4">
-                                {sponsorshipsList.map(s => (
-                                    <div key={s.id} className="p-4 rounded-sm border border-[#2A2A2A] bg-[#121212]">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="text-[#E5E5E5] font-bold text-sm">
-                                                    {s.sponsor?.company_name ? `${s.sponsor.company_name} (${s.sponsor.full_name})` : s.sponsor?.full_name}
-                                                </h4>
-                                                {s.sponsor?.email && (
-                                                    <a href={`mailto:${s.sponsor.email}`} className="text-[#C5A46D] text-[11px] hover:underline mt-1 inline-block">
-                                                        ✉️ {s.sponsor.email}
-                                                    </a>
-                                                )}
-                                            </div>
-                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border ${
-                                                s.status === 'accepted' ? 'bg-green-900/20 text-green-400 border-green-800' :
-                                                s.status === 'rejected' ? 'bg-red-900/20 text-red-400 border-red-800' :
-                                                s.status === 'negotiating' ? 'bg-orange-900/20 text-orange-400 border-orange-800' :
-                                                'bg-[#222] text-[#B0B0B0] border-[#444]'
-                                            }`}>
-                                                {s.status}
-                                            </span>
-                                        </div>
-                                        
-                                        <div className="flex justify-between items-center mt-3 border-t border-[#2A2A2A] pt-3">
-                                            <span className="text-[#B0B0B0] text-xs uppercase tracking-wider">Amount:</span>
-                                            <span className="text-[#C5A46D] font-mono font-bold">${Number(s.amount).toLocaleString()}</span>
-                                        </div>
-
-                                        {/* Display notes if they exist */}
-                                        {(s.request_note || s.sponsor_note) && (
-                                            <div className="mt-3 space-y-2">
-                                                {s.request_note && (
-                                                    <p className="text-xs text-[#B0B0B0]"><span className="text-[#888] uppercase font-bold">Your Note:</span> {s.request_note}</p>
-                                                )}
-                                                {s.sponsor_note && (
-                                                    <p className="text-xs text-orange-400"><span className="uppercase font-bold">Sponsor Note:</span> {s.sponsor_note}</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                    {/* 2. SPONSORSHIP MANAGEMENT — always visible to assigned manager */}
+                    {isAssignedManager && (
+                        <CollapsibleSection title="Sponsorship Management" defaultOpen={hasSponsorships}>
+                            <EventSponsorshipManager
+                                eventId={event.id}
+                                managerId={user?.id}
+                            />
                         </CollapsibleSection>
                     )}
 
-                    {/* 3. TICKET ALLOCATIONS & FINANCE (Visible only if sponsorships exist) */}
+                    {/* 3. TICKET ALLOCATIONS & FINANCE — only once sponsorships exist */}
                     {isAssignedManager && hasSponsorships && (
-                        <CollapsibleSection title="Ticket Allocations & Finance" defaultOpen={true}>
+                        <CollapsibleSection title="Ticket Allocations & Finance" defaultOpen={false}>
                             <TicketManager eventId={event.id} />
                         </CollapsibleSection>
                     )}
 
-                    {/* 4. EVENT DISCUSSION & NOTES (Visible only if sponsorships exist) */}
+                    {/* 4. SPONSOR DISCUSSION & NOTES — only once sponsorships exist */}
                     {isAssignedManager && hasSponsorships && (
-                        <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={true}>
+                        <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={false}>
                             <EventMessaging eventId={event.id} currentUserId={user?.id} />
                         </CollapsibleSection>
                     )}
@@ -333,7 +293,7 @@ const EventModifications = () => {
                         <p className="text-[#B0B0B0] text-sm mb-5">
                             Your assigned manager, <strong className="text-[#E5E5E5]">{event.manager.full_name}</strong>, is here to assist with any questions or modifications.
                         </p>
-                        <a 
+                        <a
                             href={`mailto:${event.manager.email}?subject=Question regarding event: ${event.title}`}
                             className="dash-btn inline-block !px-6"
                         >
@@ -351,7 +311,7 @@ const EventModifications = () => {
                         <p className="text-[#B0B0B0] text-sm mb-5">
                             You can reach out to the client, <strong className="text-[#E5E5E5]">{event.client.full_name}</strong>, directly for any updates.
                         </p>
-                        <a 
+                        <a
                             href={`mailto:${event.client.email}?subject=Update regarding event: ${event.title}`}
                             className="dash-btn inline-block !px-6"
                         >

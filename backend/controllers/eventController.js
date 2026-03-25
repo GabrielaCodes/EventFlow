@@ -202,6 +202,7 @@ export const updateEvent = async (req, res) => {
     }
 };
 
+
 // --------------------------------------------------------
 // 8. MANAGER: Submit Finance Plan to Client
 // --------------------------------------------------------
@@ -214,14 +215,17 @@ export const submitFinancePlan = async (req, res) => {
             .from('events')
             .update({ 
                 finance_status: 'pending_client', 
-                finance_manager_message: message 
+                finance_manager_message: message || '',
+                finance_client_feedback: null // 👈 CRITICAL: Clears out any old rejection notes
             })
             .eq('id', id)
             .select();
 
         if (error) throw error;
         res.status(200).json(data[0]);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 };
 
 // --------------------------------------------------------
@@ -230,7 +234,7 @@ export const submitFinancePlan = async (req, res) => {
 export const respondToFinancePlan = async (req, res) => {
     try {
         const { id } = req.params;
-        const { action, feedback } = req.body; // action: 'approve' or 'reject'
+        const { action, feedback } = req.body; 
         
         const status = action === 'approve' ? 'approved' : 'rejected';
 
