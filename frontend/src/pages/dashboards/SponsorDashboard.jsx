@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import TicketViewer from '../../components/common/TicketViewer';
@@ -115,8 +115,6 @@ const NegotiationForm = ({ negForm, setNegForm, onSubmit, onCancel }) => (
                     padding: '10px 0', borderRadius: 8, border: 'none',
                     cursor: 'pointer', transition: 'opacity 0.15s',
                 }}
-                onMouseEnter={e => e.target.style.opacity = 0.85}
-                onMouseLeave={e => e.target.style.opacity = 1}
             >
                 Submit Counter
             </button>
@@ -125,10 +123,8 @@ const NegotiationForm = ({ negForm, setNegForm, onSubmit, onCancel }) => (
                 style={{
                     padding: '10px 16px', borderRadius: 8, background: 'transparent',
                     border: '1px solid #444', color: '#B0B0B0',
-                    fontSize: 12, cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
+                    fontSize: 12, cursor: 'pointer',
                 }}
-                onMouseEnter={e => { e.target.style.color = '#FFF'; e.target.style.borderColor = '#666'; }}
-                onMouseLeave={e => { e.target.style.color = '#B0B0B0'; e.target.style.borderColor = '#444'; }}
             >
                 Cancel
             </button>
@@ -158,10 +154,8 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
             onMouseEnter={e => { if (!isRejected) e.currentTarget.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
         >
-            {/* ── top accent bar ── */}
             <div style={{ height: 3, background: `linear-gradient(90deg, ${accentColor}, transparent)` }} />
 
-            {/* ── header ── */}
             <div style={{
                 padding: '16px 20px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -179,16 +173,22 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                         {req.events?.event_date ? new Date(req.events.event_date).toDateString() : '—'}
                     </p>
                     
+                    {/* MANAGER NAME DISPLAY */}
+                    {req.events?.manager && (
+                        <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 6 }}>
+                            <span style={{ opacity: 0.7 }}>Manager:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.manager.full_name}</span>
+                        </p>
+                    )}
+
                     {req.events?.client && (
                         <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 4 }}>
-                            <span style={{ opacity: 0.7 }}>Client:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.client.company_name ? `${req.events.client.company_name} (${req.events.client.full_name})` : req.events.client.full_name}</span>
+                            <span style={{ opacity: 0.7 }}>Client:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.client.company_name || req.events.client.full_name}</span>
                         </p>
                     )}
                 </div>
                 <StatusPill status={req.status} />
             </div>
 
-            {/* ── body ── */}
             <div style={{ padding: '4px 20px 20px' }}>
                 {isNegotiating ? (
                     <NegotiationForm
@@ -200,104 +200,73 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                 ) : (
                     <>
                         <AmountDisplay amount={req.amount} />
-
-                        {/* Notes */}
                         {req.request_note && <NoteBlock label="Event Memo" text={req.request_note} />}
                         {req.sponsor_note && <NoteBlock label="Your Terms" text={req.sponsor_note} align="right" accent="#7c3aed" />}
 
-                        {/* ── action buttons ── */}
                         {!isRejected && !isAccepted && (
                             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                                 <button
                                     onClick={() => onAction(req.id, 'accepted')}
                                     style={{
-                                        flex: 1,
-                                        background: 'linear-gradient(135deg, #059669, #047857)',
+                                        flex: 1, background: 'linear-gradient(135deg, #059669, #047857)',
                                         color: '#ecfdf5', fontWeight: 700, fontSize: 11,
                                         letterSpacing: '0.08em', textTransform: 'uppercase',
                                         padding: '9px 0', borderRadius: 8, border: 'none',
                                         cursor: 'pointer', transition: 'opacity 0.15s',
                                     }}
-                                    onMouseEnter={e => e.target.style.opacity = 0.85}
-                                    onMouseLeave={e => e.target.style.opacity = 1}
                                 >
                                     ✓ Approve
                                 </button>
-
                                 <button
                                     onClick={() => onNegotiate(req)}
                                     style={{
-                                        flex: 1,
-                                        background: 'transparent',
-                                        border: '1px solid #333',
+                                        flex: 1, background: 'transparent', border: '1px solid #333',
                                         color: '#d4af37', fontWeight: 700, fontSize: 11,
                                         letterSpacing: '0.08em', textTransform: 'uppercase',
-                                        padding: '9px 0', borderRadius: 8,
-                                        cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s',
+                                        padding: '9px 0', borderRadius: 8, cursor: 'pointer',
                                     }}
-                                    onMouseEnter={e => { e.target.style.background = '#1a1a1a'; e.target.style.borderColor = '#d4af37'; }}
-                                    onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.borderColor = '#333'; }}
                                 >
                                     ↩ Counter
                                 </button>
-                                
                                 <button
                                     onClick={() => onAction(req.id, 'rejected')}
                                     style={{
-                                        padding: '9px 14px', borderRadius: 8,
-                                        background: 'transparent', border: '1px solid #dc262650',
-                                        color: '#f87171', fontSize: 11, fontWeight: 700,
-                                        cursor: 'pointer', transition: 'background 0.15s',
-                                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        padding: '9px 14px', borderRadius: 8, background: 'transparent',
+                                        border: '1px solid #dc262650', color: '#f87171', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                                     }}
-                                    onMouseEnter={e => e.target.style.background = '#dc262618'}
-                                    onMouseLeave={e => e.target.style.background = 'transparent'}
                                 >
                                     ✕
                                 </button>
                             </div>
                         )}
 
-                        {/* ── rejected: review counter ── */}
                         {isRejected && (
                             <button
                                 onClick={() => onNegotiate(req)}
                                 style={{
-                                    width: '100%', marginTop: 16,
-                                    background: 'transparent', border: '1px solid #333',
-                                    color: '#888', fontWeight: 700, fontSize: 11,
-                                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                                    padding: '9px 0', borderRadius: 8,
-                                    cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
+                                    width: '100%', marginTop: 16, background: 'transparent', border: '1px solid #333',
+                                    color: '#888', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', padding: '9px 0', borderRadius: 8, cursor: 'pointer',
                                 }}
-                                onMouseEnter={e => { e.target.style.color = '#d4af37'; e.target.style.borderColor = '#d4af37'; }}
-                                onMouseLeave={e => { e.target.style.color = '#888'; e.target.style.borderColor = '#333'; }}
                             >
                                 Reconsider / Counter
                             </button>
                         )}
 
-                        {/* ── tickets & chat toggle ── */}
                         <div style={{ borderTop: '1px solid #1a1a1a', marginTop: 20, paddingTop: 14 }}>
                             <button
                                 onClick={() => setExpandedEventId(isExpanded ? null : req.events?.id)}
                                 style={{
-                                    width: '100%', background: 'transparent', border: 'none',
-                                    color: isExpanded ? '#d4af37' : '#888',
-                                    fontSize: 10, fontWeight: 800, letterSpacing: '0.14em',
-                                    textTransform: 'uppercase', cursor: 'pointer',
-                                    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
-                                    transition: 'color 0.2s', padding: '2px 0',
+                                    width: '100%', background: 'transparent', border: 'none', color: isExpanded ? '#d4af37' : '#888',
+                                    fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer',
+                                    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, transition: 'color 0.2s', padding: '2px 0',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#d4af37'}
-                                onMouseLeave={e => e.currentTarget.style.color = isExpanded ? '#d4af37' : '#888'}
                             >
                                 <span style={{ display: 'inline-block', transition: 'transform 0.25s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
                                 {isExpanded ? 'Hide Details' : 'Tickets & Chat'}
                             </button>
 
                             {isExpanded && (
-                                <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeSlideIn 0.22s ease' }}>
+                                <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 20 }}>
                                     <TicketViewer eventId={req.events?.id} />
                                     <EventMessaging eventId={req.events?.id} currentUserId={user?.id} />
                                 </div>
@@ -306,6 +275,44 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                     </>
                 )}
             </div>
+        </div>
+    );
+};
+
+/* ─── FilterBar ────────────────────────────────────────────────── */
+const FilterBar = ({ filters, setFilters, requestCounts }) => {
+    const amountRanges = [
+        { label: 'All Amounts', value: 'all' },
+        { label: '< $1,000', value: '0-1000' },
+        { label: '$1,000 - $5,000', value: '1000-5000' },
+        { label: '$5,000 - $10,000', value: '5000-10000' },
+        { label: '$10,000 - $50,000', value: '10000-50000' },
+        { label: '> $50,000', value: '50000-999999999' },
+    ];
+
+    return (
+        <div style={{ background: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: 12, padding: '20px 24px', marginBottom: 32 }}>
+            <p style={{ fontSize: 9, color: '#888', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16 }}>Filters</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div>
+                    <label style={{ fontSize: 9, color: '#d4af37', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Amount Range</label>
+                    <select value={filters.amountRange} onChange={e => setFilters({ ...filters, amountRange: e.target.value })} style={{ width: '100%', background: '#111', border: '1px solid #333', padding: '10px 12px', borderRadius: 8, color: '#E5E5E5', fontSize: 13, outline: 'none', cursor: 'pointer' }}>
+                        {amountRanges.map(range => <option key={range.value} value={range.value}>{range.label}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label style={{ fontSize: 9, color: '#10b981', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Status</label>
+                    <select value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ width: '100%', background: '#111', border: '1px solid #333', padding: '10px 12px', borderRadius: 8, color: '#E5E5E5', fontSize: 13, outline: 'none', cursor: 'pointer' }}>
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending ({requestCounts.pending})</option>
+                        <option value="negotiating">Negotiating ({requestCounts.negotiating})</option>
+                        <option value="accepted">Accepted ({requestCounts.accepted})</option>
+                    </select>
+                </div>
+            </div>
+            {(filters.amountRange !== 'all' || filters.status !== 'all') && (
+                <button onClick={() => setFilters({ amountRange: 'all', status: 'all' })} style={{ marginTop: 16, background: 'transparent', border: '1px solid #444', color: '#888', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Clear All Filters</button>
+            )}
         </div>
     );
 };
@@ -319,6 +326,7 @@ const SponsorDashboard = () => {
     const [negForm, setNegForm] = useState({ amount: '', note: '' });
     const [expandedEventId, setExpandedEventId] = useState(null);
     const [showRejected, setShowRejected] = useState(false);
+    const [filters, setFilters] = useState({ amountRange: 'all', status: 'all' });
 
     useEffect(() => { fetchRequests(); }, []);
 
@@ -326,11 +334,8 @@ const SponsorDashboard = () => {
         try {
             const { data } = await api.get('/sponsors/requests');
             setRequests(data || []);
-        } catch (err) {
-            console.error("Failed to load", err);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { console.error("Failed to load", err); }
+        finally { setLoading(false); }
     };
 
     const handleAction = async (id, action) => {
@@ -348,9 +353,31 @@ const SponsorDashboard = () => {
     };
 
     const startNegotiation = (req) => {
-        if (req === null) { setNegotiatingId(null); return; }
+        if (!req) { setNegotiatingId(null); return; }
         setNegotiatingId(req.id);
         setNegForm({ amount: req.amount, note: '' });
+    };
+
+    const filteredRequests = useMemo(() => {
+        return requests.filter(req => {
+            if (filters.status !== 'all' && req.status !== filters.status) return false;
+            if (filters.amountRange !== 'all') {
+                const [min, max] = filters.amountRange.split('-').map(Number);
+                const amt = Number(req.amount);
+                if (amt < min || amt > max) return false;
+            }
+            return true;
+        });
+    }, [requests, filters]);
+
+    const activeRequests = filteredRequests.filter(r => r.status !== 'rejected');
+    const rejectedRequests = filteredRequests.filter(r => r.status === 'rejected');
+
+    const requestCounts = {
+        pending: requests.filter(r => r.status === 'pending').length,
+        accepted: requests.filter(r => r.status === 'accepted').length,
+        negotiating: requests.filter(r => r.status === 'negotiating').length,
+        rejected: requests.filter(r => r.status === 'rejected').length,
     };
 
     if (loading) return (
@@ -362,55 +389,31 @@ const SponsorDashboard = () => {
         </div>
     );
 
-    const activeRequests = requests.filter(r => r.status !== 'rejected');
-    const rejectedRequests = requests.filter(r => r.status === 'rejected');
-
-    const sharedCardProps = {
-        user, negotiatingId, negForm, setNegForm,
-        onAction: handleAction,
-        onNegotiate: startNegotiation,
-        expandedEventId, setExpandedEventId,
-    };
+    const sharedCardProps = { user, negotiatingId, negForm, setNegForm, onAction: handleAction, onNegotiate: startNegotiation, expandedEventId, setExpandedEventId };
 
     return (
         <>
             <style>{`
-                @keyframes fadeSlideIn {
-                    from { opacity: 0; transform: translateY(-8px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
+                @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes spin { to { transform: rotate(360deg); } }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
             `}</style>
 
             <div style={{ minHeight: '100vh', background: '#050505', padding: '36px 24px', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
-                    {/* ── Page Header ── */}
+                    {/* Header Section */}
                     <div style={{ marginBottom: 40, paddingBottom: 28, borderBottom: '1px solid #1a1a1a' }}>
-                        <p style={{ fontSize: 10, color: '#888', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10 }}>
-                            Sponsor Portal
-                        </p>
-                        <h1 style={{
-                            fontSize: 'clamp(28px, 4vw, 42px)',
-                            fontWeight: 300,
-                            color: '#E5E5E5',
-                            letterSpacing: '-0.02em',
-                            fontFamily: "'Georgia', serif",
-                            lineHeight: 1.1,
-                        }}>
+                        <p style={{ fontSize: 10, color: '#888', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10 }}>Sponsor Portal</p>
+                        <h1 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 300, color: '#E5E5E5', letterSpacing: '-0.02em', fontFamily: "'Georgia', serif", lineHeight: 1.1 }}>
                             Sponsorship <span style={{ color: '#d4af37', fontStyle: 'italic' }}>Requests</span>
                         </h1>
-
-                        {/* ── summary counts ── */}
                         <div style={{ display: 'flex', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
                             {[
-                                { label: 'Pending',     count: requests.filter(r => r.status === 'pending').length,     color: '#888888' },
-                                { label: 'Accepted',    count: requests.filter(r => r.status === 'accepted').length,    color: '#10b981' },
-                                { label: 'Negotiating', count: requests.filter(r => r.status === 'negotiating').length, color: '#d4af37' },
-                                { label: 'Declined',    count: rejectedRequests.length,                                  color: '#ef4444' },
+                                { label: 'Pending', count: requestCounts.pending, color: '#888888' },
+                                { label: 'Accepted', count: requestCounts.accepted, color: '#10b981' },
+                                { label: 'Negotiating', count: requestCounts.negotiating, color: '#d4af37' },
+                                { label: 'Declined', count: requestCounts.rejected, color: '#ef4444' },
                             ].map(({ label, count, color }) => (
                                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
@@ -422,69 +425,34 @@ const SponsorDashboard = () => {
                         </div>
                     </div>
 
-                    {/* ── Active Requests Grid ── */}
+                    <FilterBar filters={filters} setFilters={setFilters} requestCounts={requestCounts} />
+
                     {activeRequests.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '60px 0', color: '#555' }}>
-                            <p style={{ fontSize: 14, fontWeight: 600 }}>No active sponsorship requests</p>
+                            <p style={{ fontSize: 14, fontWeight: 600 }}>No requests match your filters</p>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24, marginBottom: 40 }}>
-                            {activeRequests.map(req => (
-                                <SponsorCard key={req.id} req={req} {...sharedCardProps} />
-                            ))}
+                            {activeRequests.map(req => <SponsorCard key={req.id} req={req} {...sharedCardProps} />)}
                         </div>
                     )}
 
-                    {/* ── Rejected Section with toggle ── */}
                     {rejectedRequests.length > 0 && (
                         <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 28 }}>
-                            <button
-                                onClick={() => setShowRejected(v => !v)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 12,
-                                    background: 'transparent', border: 'none',
-                                    cursor: 'pointer', marginBottom: showRejected ? 24 : 0,
-                                    padding: 0,
-                                }}
-                            >
-                                {/* toggle pill */}
-                                <div style={{
-                                    width: 36, height: 20, borderRadius: 10,
-                                    background: showRejected ? '#dc262620' : '#111',
-                                    border: `1px solid ${showRejected ? '#dc262650' : '#333'}`,
-                                    position: 'relative', transition: 'background 0.25s, border-color 0.25s',
-                                    flexShrink: 0,
-                                }}>
-                                    <div style={{
-                                        position: 'absolute', top: 2,
-                                        left: showRejected ? 17 : 2,
-                                        width: 14, height: 14, borderRadius: '50%',
-                                        background: showRejected ? '#f87171' : '#888',
-                                        transition: 'left 0.25s, background 0.25s',
-                                    }} />
+                            <button onClick={() => setShowRejected(!showRejected)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'transparent', border: 'none', cursor: 'pointer', marginBottom: showRejected ? 24 : 0, padding: 0 }}>
+                                <div style={{ width: 36, height: 20, borderRadius: 10, background: showRejected ? '#dc262620' : '#111', border: `1px solid ${showRejected ? '#dc262650' : '#333'}`, position: 'relative', transition: 'background 0.25s, border-color 0.25s', flexShrink: 0 }}>
+                                    <div style={{ position: 'absolute', top: 2, left: showRejected ? 17 : 2, width: 14, height: 14, borderRadius: '50%', background: showRejected ? '#f87171' : '#888', transition: 'left 0.25s' }} />
                                 </div>
-                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: showRejected ? '#f87171' : '#888', transition: 'color 0.2s' }}>
-                                    {showRejected ? 'Hide' : 'Show'} Declined Requests
-                                </span>
-                                <span style={{
-                                    fontSize: 10, fontWeight: 800, color: '#dc2626',
-                                    background: '#dc262620', border: '1px solid #dc262640',
-                                    borderRadius: 4, padding: '2px 7px',
-                                }}>
-                                    {rejectedRequests.length}
-                                </span>
+                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: showRejected ? '#f87171' : '#888' }}>{showRejected ? 'Hide' : 'Show'} Declined Requests</span>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: '#dc2626', background: '#dc262620', border: '1px solid #dc262640', borderRadius: 4, padding: '2px 7px' }}>{rejectedRequests.length}</span>
                             </button>
-
                             {showRejected && (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24, animation: 'fadeSlideIn 0.25s ease' }}>
-                                    {rejectedRequests.map(req => (
-                                        <SponsorCard key={req.id} req={req} {...sharedCardProps} />
-                                    ))}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+                                    {rejectedRequests.map(req => <SponsorCard key={req.id} req={req} {...sharedCardProps} />)}
                                 </div>
                             )}
                         </div>
                     )}
-
                 </div>
             </div>
         </>
