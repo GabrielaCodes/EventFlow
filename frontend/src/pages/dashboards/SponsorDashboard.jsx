@@ -174,12 +174,9 @@ const SponsorCard = ({ req, user, negotiatingId, negForm, setNegForm, onAction, 
                     </p>
                     
                     {/* MANAGER NAME DISPLAY */}
-                    {req.events?.manager && (
-                        <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 6 }}>
-                            <span style={{ opacity: 0.7 }}>Manager:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.manager.full_name}</span>
-                        </p>
-                    )}
-
+                    <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 6 }}>
+                        <span style={{ opacity: 0.7 }}>Manager:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events?.manager?.full_name || 'Not Assigned'}</span>
+                    </p>
                     {req.events?.client && (
                         <p style={{ fontSize: 11, color: '#B0B0B0', marginTop: 4 }}>
                             <span style={{ opacity: 0.7 }}>Client:</span> <span style={{ color: '#E5E5E5', fontWeight: 600 }}>{req.events.client.company_name || req.events.client.full_name}</span>

@@ -119,18 +119,18 @@ export const getSponsorRequests = async (req, res) => {
         const sponsorId = req.user.id;
 
         const { data, error } = await supabase
-            .from('sponsorships')
-            .select(`
-                id, amount, status, request_note, sponsor_note, created_at,
-                events!inner (
-                    id, title, event_date, description, finance_status, 
-                    venues (name, location),
-                    client:profiles!events_client_id_fkey (full_name, company_name)
-                )
-            `)
-            .eq('sponsor_id', sponsorId)
-            .eq('events.finance_status', 'approved') 
-            .order('created_at', { ascending: false });
+    .from('sponsorships')
+    .select(`
+        id, amount, status, request_note, sponsor_note, created_at,
+        events!inner (
+            id, title, event_date, description, finance_status, 
+            venues (name, location),
+            manager:profiles!events_assigned_manager_id_fkey (full_name),
+            client:profiles!events_client_id_fkey (full_name, company_name)
+        )
+    `)
+    .eq('sponsor_id', sponsorId)
+    .eq('events.finance_status', 'approved');
 
         if (error) throw error;
         res.json(data);
