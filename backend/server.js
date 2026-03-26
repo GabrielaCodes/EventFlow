@@ -20,7 +20,11 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'], 
     credentials: true
 }));
-app.use(express.json());
+
+// 👇 THIS IS THE FIX 👇
+// Increased the JSON payload limit to handle Base64 image strings
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.use('/api/events', eventRoutes);
@@ -29,6 +33,7 @@ app.use('/api/sponsors', sponsorRoutes);
 app.use('/api/employee', employeeRoutes); 
 app.use('/api/coordinator', coordinatorRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
 // Health check
 app.get('/', (req, res) => {
   res.send('Event Management System API is running...');

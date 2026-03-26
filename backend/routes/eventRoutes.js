@@ -6,6 +6,7 @@ import {
     requestModification,
     respondToModification, 
     updateEvent,
+    suggestEventTheme,
     getEventModifications 
 } from '../controllers/eventController.js';
 
@@ -29,4 +30,6 @@ router.get('/:event_id/modifications', authenticate, getEventModifications);
 router.get('/assigned', authenticate, authorize(['employee']), getAssignedEvents);
 router.post('/modify', authenticate, authorize(['employee']), requestModification);
 
+// Add this new AI route
+router.post('/ai-suggest-theme', suggestEventTheme);
 export default router;
