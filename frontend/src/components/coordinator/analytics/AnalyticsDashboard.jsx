@@ -5,6 +5,8 @@ import {
 } from 'recharts';
 import api from '../../../services/api';
 
+import AnalyticsLoader from './AnalyticsLoader';
+
 // Reverted to a classic, vibrant data visualization palette
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6666'];
 
@@ -26,7 +28,13 @@ const AnalyticsDashboard = () => {
         fetchAnalytics();
     }, []);
 
-    if (loading) return <div className="p-10 text-center" style={{ color: 'var(--text-primary)' }}>Loading Analytics...</div>;
+    if (loading) {
+    return (
+        <div className="flex justify-center items-center w-full min-h-[400px]">
+            <AnalyticsLoader />
+        </div>
+    );
+}
     if (!data) return <div className="p-10 text-center" style={{ color: 'var(--text-primary)' }}>No data available</div>;
 
     const { overview, categories, trends, statusDistribution } = data;
