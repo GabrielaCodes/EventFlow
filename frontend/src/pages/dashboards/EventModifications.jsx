@@ -268,11 +268,11 @@ const EventModifications = () => {
                     )}
 
                     {/* 4. SPONSOR DISCUSSION & NOTES — only once sponsorships exist */}
-                    {isAssignedManager && hasSponsorships && (
-                        <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={false}>
-                            <EventMessaging eventId={event.id} currentUserId={user?.id} />
-                        </CollapsibleSection>
-                    )}
+{isAssignedManager && hasSponsorships && (
+    <CollapsibleSection title="Sponsor Discussion & Notes" defaultOpen={true}>
+        <EventMessaging eventId={event.id} currentUserId={user?.id} />
+    </CollapsibleSection>
+)}
 
                 </div>
 
