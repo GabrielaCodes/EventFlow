@@ -8,7 +8,7 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Gallery from './pages/Gallery';
-
+import About from './pages/About';
 // Dashboards
 import CoordinatorRoute from './routes/CoordinatorRoute';
 import ChiefCoordinatorDashboard from './pages/dashboards/ChiefCoordinatorDashboard';
@@ -78,6 +78,7 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/dashboard" element={<DashboardRedirect />} />
                 
