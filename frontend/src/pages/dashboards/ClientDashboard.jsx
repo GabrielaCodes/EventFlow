@@ -134,8 +134,7 @@ const ClientDashboard = () => {
         setExpandedTickets(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Dashboard...</div>;
-
+    if (loading) return <div className="flex justify-center items-center min-h-screen"><Loader /></div>;
     return (
         <div className="p-6 max-w-4xl mx-auto min-h-screen">
             <h1 className="text-3xl font-bold mb-6 text-[var(--gold-main)]">Client Dashboard</h1>

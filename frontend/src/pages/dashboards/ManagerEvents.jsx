@@ -1,3 +1,5 @@
+import Loader from '../../components/common/Loader';
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../services/api';
@@ -156,12 +158,12 @@ const ManagerEvents = ({ filterStatus }) => {
     };
 
     if (loading) {
-        return (
-            <div className="p-6 text-center text-xs uppercase tracking-widest text-[#B0B0B0]">
-                Loading events...
-            </div>
-        );
-    }
+    return (
+        <div className="flex justify-center items-center py-10">
+            <Loader />
+        </div>
+    );
+}
 
     // --- LOGIC TO SPLIT CONSIDERATION EVENTS ---
     const visibleConsideration = consideration.filter(e => !e.is_hidden);

@@ -1,3 +1,5 @@
+import Loader from '../../components/common/Loader';
+
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api, { supabase } from '../../services/api';
@@ -148,7 +150,7 @@ const EmployeeDashboard = () => {
         }
     };
 
-    if (loading) return <div className="p-10 text-center text-[var(--text-secondary)]">Loading Workspace...</div>;
+   if (loading) return <div className="flex justify-center items-center min-h-screen"><Loader /></div>;
 
     const pendingTasks = tasks.filter(t => t.status === 'pending');
     const acceptedTasks = tasks.filter(t => t.status === 'accepted');

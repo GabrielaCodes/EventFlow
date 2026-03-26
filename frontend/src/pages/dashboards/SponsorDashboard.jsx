@@ -1,3 +1,5 @@
+import Loader from '../../components/common/Loader';
+
 import { useEffect, useState, useMemo } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -255,13 +257,10 @@ const SponsorDashboard = () => {
     };
 
     if (loading) return (
-        <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ width: 36, height: 36, border: '2px solid #d4af3740', borderTop: '2px solid #d4af37', borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 16px' }} />
-                <p style={{ color: '#d4af37', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Loading Portal</p>
-            </div>
-        </div>
-    );
+    <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader />
+    </div>
+);
 
     return (
         <>

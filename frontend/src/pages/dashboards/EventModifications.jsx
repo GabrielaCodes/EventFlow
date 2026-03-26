@@ -1,3 +1,5 @@
+import Loader from '../../components/common/Loader';
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api';
@@ -145,9 +147,9 @@ const EventModifications = () => {
     };
 
     if (loading || !event) return (
-        <div className="flex justify-center items-center h-screen text-sm uppercase tracking-widest text-[#B0B0B0]">
-            Loading Details...
-        </div>
+    <div className="flex justify-center items-center h-screen">
+        <Loader />
+    </div>
     );
 
     return (

@@ -1,3 +1,5 @@
+import Loader from '../../components/common/Loader';
+
 import { useEffect, useState } from 'react';
 import api, { supabase } from '../../services/api'; 
 import { useAuth } from '../../context/AuthContext';
@@ -228,7 +230,7 @@ const ManagerDashboard = () => {
         document.getElementById('assign-staff-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    if (loading) return <div className="dash-wrapper flex justify-center items-center text-sm uppercase tracking-widest text-[#B0B0B0]">Loading Dashboard...</div>;
+    if (loading) return <div className="flex justify-center items-center min-h-screen"><Loader /></div>;
 
     // Categorise leave requests
     const pendingLeaves = leaveRequests.filter(l => l.status === 'pending');

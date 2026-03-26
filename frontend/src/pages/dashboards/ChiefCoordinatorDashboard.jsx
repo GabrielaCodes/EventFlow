@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCoordinatorStats } from '../../services/coordinatorService';
+import Loader from '../../components/common/Loader'; // <-- Imported Loader
 
 // Child Components
 import UserApprovals from '../../components/coordinator/UserApprovals';
@@ -12,9 +13,11 @@ import CoordinatorLanding from '../../components/coordinator/CoordinatorLanding'
 
 //assigned manager
 import ManagerWorkloads from '../../components/coordinator/ManagerWorkloads';
+
 const ChiefCoordinatorDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true); // <-- 1. Added loading state
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -28,6 +31,8 @@ const ChiefCoordinatorDashboard = () => {
             setStats(data);
         } catch (err) {
             console.error("Failed to load stats", err);
+        } finally {
+            setLoading(false); // <-- 2. Turn off loader when fetch finishes (success or fail)
         }
     };
 
@@ -50,6 +55,15 @@ const ChiefCoordinatorDashboard = () => {
             default: return <div style={{ color: 'var(--text-primary)' }}>Select a tab</div>;
         }
     };
+
+    // <-- 3. Show hamster while loading is true
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <Loader />
+            </div>
+        );
+    }
 
     return (
         // Removed bg-gray-100 to let the theme.css dark background take over
