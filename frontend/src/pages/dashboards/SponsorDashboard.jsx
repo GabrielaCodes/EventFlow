@@ -1,5 +1,4 @@
 import Loader from '../../components/common/Loader';
-
 import { useEffect, useState, useMemo } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +9,6 @@ import EventMessaging from '../../components/common/EventMessaging';
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 });
 const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
-// NEW HELPER: Safely extracts the Category and Subtype from the nested Supabase query
 const getEventCategory = (req) => {
     const category = req.events?.event_subtypes?.event_categories?.name;
     const subtype = req.events?.event_subtypes?.name;
@@ -171,7 +169,6 @@ const SponsorCard = ({ req, onClick }) => {
     );
 };
 
-
 /* ─── SponsorDashboard ─────────────────────────────────────────── */
 const SponsorDashboard = () => {
     const { user } = useAuth();
@@ -179,16 +176,27 @@ const SponsorDashboard = () => {
     const [loading, setLoading] = useState(true);
     
     // UI State
-    const [selectedRequest, setSelectedRequest] = useState(null); // For Slide Panel
-    const [expandedEventId, setExpandedEventId] = useState(null); // For Tickets & Chat
+    const [selectedRequest, setSelectedRequest] = useState(null); 
+    const [expandedEventId, setExpandedEventId] = useState(null); 
     const [showRejected, setShowRejected] = useState(false);
     
+    // Custom Counter-Offer Form State
+    const [showCounterForm, setShowCounterForm] = useState(false);
+    const [counterData, setCounterData] = useState({ amount: '', note: '' });
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
     // Filter State
     const [filters, setFilters] = useState({ 
         search: '', amountRange: 'all', status: 'all', category: 'all', eventDate: '', requestDate: '' 
     });
 
     useEffect(() => { fetchRequests(); }, []);
+
+    // Reset inline form when panel changes
+    useEffect(() => {
+        setShowCounterForm(false);
+        setCounterData({ amount: '', note: '' });
+    }, [selectedRequest]);
 
     const fetchRequests = async () => {
         try {
@@ -207,16 +215,42 @@ const SponsorDashboard = () => {
                 payload.sponsor_note = customNote;
             }
             await api.patch('/sponsors/respond', payload);
-            fetchRequests(); // Refresh data
+            fetchRequests(); 
+            setSelectedRequest(null); // Close panel on success
         } catch { alert('Error processing request'); }
+    };
+
+    // --- NEW: AI Analyze Pitch ---
+    const handleAICounter = async (req) => {
+        setIsAnalyzing(true);
+        try {
+            const response = await api.post('/ad/analyze-proposal', {
+                event_title: req.events?.title,
+                category: getEventCategory(req),
+                request_note: req.request_note,
+                requested_amount: req.amount
+            });
+            
+            const { suggested_amount, counter_note } = response.data;
+            
+            setCounterData({ 
+                amount: suggested_amount || req.amount, 
+                note: counter_note || '' 
+            });
+            setShowCounterForm(true); // Open the inline form with autofilled data
+            
+        } catch (error) {
+            console.error(error);
+            alert("Failed to generate AI analysis. Please try again.");
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     // Filter Logic
     const filteredRequests = useMemo(() => {
         return requests.filter(req => {
             if (filters.status !== 'all' && req.status !== filters.status) return false;
-            
-            // Replaced event_type with getEventCategory
             if (filters.category !== 'all' && getEventCategory(req) !== filters.category) return false;
             
             if (filters.search) {
@@ -246,7 +280,6 @@ const SponsorDashboard = () => {
     const activeRequests = filteredRequests.filter(r => r.status !== 'rejected');
     const rejectedRequests = filteredRequests.filter(r => r.status === 'rejected');
     
-    // Extracted Unique Categories based on the new nested schema helper
     const uniqueCategoriesRaw = [...new Set(requests.map(r => getEventCategory(r)).filter(c => c !== 'Uncategorized'))];
 
     const requestCounts = {
@@ -378,7 +411,7 @@ const SponsorDashboard = () => {
 
             {/* Panel */}
             <div className="panel-scroll" style={{
-                position: 'fixed', top: 0, right: 0, width: '100%', maxWidth: 480, height: '100vh',
+                position: 'fixed', top: 0, right: 0, width: '100%', maxWidth: 520, height: '100vh',
                 background: '#0a0a0a', borderLeft: '1px solid #222', zIndex: 100,
                 transform: selectedRequest ? 'translateX(0)' : 'translateX(100%)',
                 transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -435,7 +468,7 @@ const SponsorDashboard = () => {
                                             <p style={{ fontSize: 12, color: '#555', marginTop: 4 }}>No email provided</p>
                                         )}
                                     </div>
-                                    <div>
+                                    <div style={{ marginTop: 16 }}>
                                         <p style={{ fontSize: 10, color: '#888', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Chief Coordinator (Client)</p>
                                         <p style={{ fontSize: 14, color: '#E5E5E5', fontWeight: 600 }}>{req.events?.client?.company_name || req.events?.client?.full_name || 'Not Assigned'}</p>
                                         {req.events?.client?.email ? (
@@ -454,35 +487,78 @@ const SponsorDashboard = () => {
                                         <p style={{ fontSize: 13, color: '#ccc', fontStyle: 'italic', marginTop: 4 }}>"{req.request_note}"</p>
                                     </div>
                                 )}
-                                {req.sponsor_note && (
+                                {req.sponsor_note && !showCounterForm && (
                                     <div style={{ background: '#7c3aed0a', borderRight: '3px solid #7c3aed', padding: 12, borderRadius: 6, textAlign: 'right' }}>
                                         <p style={{ fontSize: 9, color: '#7c3aed', fontWeight: 700, textTransform: 'uppercase' }}>Your Counter Terms</p>
                                         <p style={{ fontSize: 13, color: '#ccc', fontStyle: 'italic', marginTop: 4 }}>"{req.sponsor_note}"</p>
                                     </div>
                                 )}
+
+                                {/* --- INLINE COUNTER OFFER FORM --- */}
+                                {showCounterForm && (
+                                    <div style={{ background: '#111', border: '1px solid #333', borderRadius: 8, padding: 16, marginTop: 24, animation: 'fadeSlideIn 0.3s ease' }}>
+                                        <h4 style={{ color: '#d4af37', fontSize: 14, marginBottom: 16 }}>Prepare Counter-Offer</h4>
+                                        <div style={{ marginBottom: 16 }}>
+                                            <label style={{ display: 'block', fontSize: 10, color: '#888', textTransform: 'uppercase', marginBottom: 6 }}>Counter Amount ($)</label>
+                                            <input 
+                                                type="number" 
+                                                value={counterData.amount} 
+                                                onChange={e => setCounterData({...counterData, amount: e.target.value})}
+                                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #444', color: '#fff', borderRadius: 6 }}
+                                            />
+                                        </div>
+                                        <div style={{ marginBottom: 20 }}>
+                                            <label style={{ display: 'block', fontSize: 10, color: '#888', textTransform: 'uppercase', marginBottom: 6 }}>Negotiation Note</label>
+                                            <textarea 
+                                                rows="4" 
+                                                value={counterData.note} 
+                                                onChange={e => setCounterData({...counterData, note: e.target.value})}
+                                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #444', color: '#fff', borderRadius: 6, resize: 'vertical' }}
+                                                placeholder="e.g., We are willing to sponsor $X if we receive premium logo placement..."
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12 }}>
+                                            <button 
+                                                onClick={() => handleAction(req.id, 'negotiating', counterData.amount, counterData.note)}
+                                                style={{ flex: 1, background: '#d4af37', color: '#000', border: 'none', padding: '10px', borderRadius: 6, fontWeight: 700, cursor: 'pointer' }}
+                                            >Submit Counter</button>
+                                            <button 
+                                                onClick={() => setShowCounterForm(false)}
+                                                style={{ background: 'transparent', color: '#888', border: '1px solid #444', padding: '10px 16px', borderRadius: 6, cursor: 'pointer' }}
+                                            >Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+
                             </div>
 
                             {/* Panel Actions / Footer */}
                             <div style={{ padding: '20px 24px', background: '#111', borderTop: '1px solid #1a1a1a' }}>
-                                {(req.status === 'pending' || req.status === 'negotiating') && (
-                                    <div style={{ display: 'flex', gap: 12 }}>
+                                {(req.status === 'pending' || req.status === 'negotiating') && !showCounterForm && (
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         <button 
                                             onClick={() => handleAction(req.id, 'accepted')}
-                                            style={{ flex: 1, background: '#059669', color: '#fff', border: 'none', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
-                                        >✓ Accept Terms</button>
+                                            style={{ flex: '1 1 30%', background: '#059669', color: '#fff', border: 'none', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+                                        >✓ Accept</button>
+                                        
                                         <button 
                                             onClick={() => {
-                                                const amt = prompt("Enter Counter Amount:", req.amount);
-                                                if(amt === null) return;
-                                                const note = prompt("Enter conditions/remarks (optional):", "");
-                                                handleAction(req.id, 'negotiating', amt, note);
+                                                setCounterData({ amount: req.amount, note: '' });
+                                                setShowCounterForm(true);
                                             }}
-                                            style={{ flex: 1, background: 'transparent', border: '1px solid #d4af37', color: '#d4af37', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
-                                        >↩ Counter Offer</button>
+                                            style={{ flex: '1 1 30%', background: 'transparent', border: '1px solid #888', color: '#ccc', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+                                        >↩ Manual Counter</button>
+                                        
+                                        <button 
+                                            onClick={() => handleAICounter(req)}
+                                            disabled={isAnalyzing}
+                                            style={{ flex: '1 1 100%', background: 'transparent', border: '1px solid #d4af37', color: '#d4af37', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: isAnalyzing ? 'wait' : 'pointer', opacity: isAnalyzing ? 0.7 : 1 }}
+                                        >{isAnalyzing ? 'Analyzing Data...' : '✨ Auto-Negotiate (AI)'}</button>
+
                                         <button 
                                             onClick={() => handleAction(req.id, 'rejected')}
-                                            style={{ background: 'transparent', border: '1px solid #dc262650', color: '#f87171', padding: '12px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
-                                        >✕</button>
+                                            style={{ flex: '1 1 100%', background: 'transparent', border: '1px solid #dc262650', color: '#f87171', padding: '12px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}
+                                        >✕ Decline Request</button>
                                     </div>
                                 )}
 
