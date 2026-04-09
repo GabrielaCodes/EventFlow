@@ -7,7 +7,7 @@ import TicketViewer from '../../components/common/TicketViewer';
 // --- AI QUIZ CONFIGURATION ---
 const QUIZ_DATA = {
     'wedding': {
-        buttonText: "Let's Pick Your Theme",
+        buttonText: "Let's Pick Your Wedding Theme",
         questions: [
             { id: 'q1', label: 'Describe your wedding aesthetic in exactly 3 words.', type: 'text' },
             { id: 'q2', label: 'What type of venue setting do you prefer?', type: 'select', options: ['Indoor ballroom', 'Outdoor garden', 'Rooftop / terrace', 'Auditorium / hall', 'Conference-style venue'] },
@@ -32,11 +32,55 @@ const QUIZ_DATA = {
         buttonText: "Let's Plan Your Party Style",
         questions: [
             { id: 'q1', label: 'Describe your party vibe in exactly 3 words.', type: 'text' },
-            { id: 'q2', label: 'What type of party are you hosting?', type: 'select', options: ['Birthday party', 'Anniversary celebration', 'Friends gathering', 'Family celebration', 'Corporate party'] },
+            { id: 'q2', label: 'What type of party are you hosting?', type: 'select', options: ['Birthday party', 'Anniversary celebration', 'Friends gathering', 'Family celebration', 'VIP/Exclusive party'] },
             { id: 'q3', label: 'What atmosphere do you want?', type: 'select', options: ['Fun and energetic', 'Relaxed and cozy', 'Elegant and classy', 'Loud and lively', 'Premium and luxurious'] },
             { id: 'q4', label: 'What is the main activity?', type: 'select', options: ['Dance and music', 'Dining and socializing', 'Games and entertainment', 'Celebration ceremony', 'Networking'] },
             { id: 'q5', label: 'What time will the party happen?', type: 'select', options: ['Morning', 'Afternoon', 'Evening', 'Night'] },
             { id: 'q6', label: 'What matters most for your party?', type: 'select', options: ['Entertainment', 'Comfort', 'Budget', 'Ambience', 'Privacy'] }
+        ]
+    },
+    'corporate': {
+        buttonText: "Let's Design Your Corporate Event",
+        questions: [
+            { id: 'q1', label: 'Describe your corporate event in exactly 3 words.', type: 'text' },
+            { id: 'q2', label: 'What is the primary goal of this event?', type: 'select', options: ['Networking & Connections', 'Team Building & Culture', 'Product Launch/Promo', 'Award Ceremony/Gala', 'Training & Seminar'] },
+            { id: 'q3', label: 'What atmosphere are you aiming for?', type: 'select', options: ['Professional & Formal', 'Modern & Innovative', 'Relaxed & Social', 'High-energy & Engaging'] },
+            { id: 'q4', label: 'What style of seating/layout works best?', type: 'select', options: ['Conference/Theater style', 'Round tables (Banquet)', 'Open floor (Standing/Mingle)', 'Classroom style'] },
+            { id: 'q5', label: 'What is the expected duration?', type: 'select', options: ['Half day', 'Full day', 'Evening only', 'Multi-day retreat'] },
+            { id: 'q6', label: 'What matters most to your company?', type: 'select', options: ['AV & Tech capabilities', 'Catering & Food quality', 'Guest networking ops', 'Brand visibility'] }
+        ]
+    },
+    'concert': {
+        buttonText: "Let's Set the Concert Vibe",
+        questions: [
+            { id: 'q1', label: 'Describe the concert vibe in exactly 3 words.', type: 'text' },
+            { id: 'q2', label: 'What genre of music or performance is this?', type: 'select', options: ['Rock / Pop', 'Classical / Jazz', 'EDM / DJ / Hip-hop', 'Acoustic / Indie', 'Cultural / Folk'] },
+            { id: 'q3', label: 'What venue style do you prefer?', type: 'select', options: ['Indoor Arena/Hall', 'Outdoor Amphitheater', 'Intimate Club/Lounge', 'Stadium'] },
+            { id: 'q4', label: 'What type of crowd experience do you want?', type: 'select', options: ['Standing room / Mosh pit', 'Assigned seating', 'Lawn seating / Picnic style', 'VIP lounge areas'] },
+            { id: 'q5', label: 'When will the main performance take place?', type: 'select', options: ['Afternoon festival', 'Sunset show', 'Night concert'] },
+            { id: 'q6', label: 'What is the absolute top priority?', type: 'select', options: ['Sound acoustics', 'Lighting & Visuals', 'Crowd safety & flow', 'Stage size & backstage'] }
+        ]
+    },
+    'entertainment': {
+        buttonText: "Let's Plan Your Entertainment Event",
+        questions: [
+            { id: 'q1', label: 'Describe the show/event in exactly 3 words.', type: 'text' },
+            { id: 'q2', label: 'What type of show is this?', type: 'select', options: ['Comedy / Stand-up', 'Theater / Play', 'Magic / Illusion', 'Talent Show / Showcase', 'Live Podcast / Interview'] },
+            { id: 'q3', label: 'What atmosphere are you aiming for?', type: 'select', options: ['Intimate & Cozy', 'Grand & Theatrical', 'Loud & Hilarious', 'Family-friendly & Safe'] },
+            { id: 'q4', label: 'What is your seating preference?', type: 'select', options: ['Standard theater seating', 'Cabaret style (tables)', 'Floor seating / Mats', 'No seating required'] },
+            { id: 'q5', label: 'What is the expected level of audience interaction?', type: 'select', options: ['High (Audience participation)', 'Medium (Q&A/Cheering)', 'Low (Strictly viewing)'] },
+            { id: 'q6', label: 'What matters most for this show?', type: 'select', options: ['Stage visibility', 'Acoustics/Audio clarity', 'Lighting & FX', 'Backstage facilities'] }
+        ]
+    },
+    'general': {
+        buttonText: "Let's Discover Your Event Theme",
+        questions: [
+            { id: 'q1', label: 'Describe your event in exactly 3 words.', type: 'text' },
+            { id: 'q2', label: 'What best describes the size of your event?', type: 'select', options: ['Intimate (Under 50)', 'Medium (50 - 200)', 'Large (200 - 500)', 'Massive (500+)'] },
+            { id: 'q3', label: 'What vibe are you going for?', type: 'select', options: ['Formal & Professional', 'Casual & Relaxed', 'High-Energy & Fun', 'Elegant & Luxurious'] },
+            { id: 'q4', label: 'Will there be food and drinks?', type: 'select', options: ['Full catered meal', 'Light snacks & appetizers', 'Drinks & Bar only', 'No food or drinks'] },
+            { id: 'q5', label: 'What is the main focus of the event?', type: 'select', options: ['Listening / Watching', 'Socializing / Networking', 'Dancing / Celebrating', 'Learning / Working'] },
+            { id: 'q6', label: 'What is your biggest priority?', type: 'select', options: ['Staying on budget', 'Aesthetics & Decor', 'Guest comfort & flow', 'Entertainment quality'] }
         ]
     }
 };
@@ -109,11 +153,19 @@ const ClientDashboard = () => {
     
     // Smart matcher to ensure categories or subtypes trigger the right quiz
     const getActiveQuizConfig = (searchString) => {
-        if (!searchString || !searchString.trim()) return null;
-        if (searchString.includes('wedding')) return QUIZ_DATA['wedding'];
-        if (searchString.includes('graduation')) return QUIZ_DATA['graduation'];
-        if (searchString.includes('private') || searchString.includes('party')) return QUIZ_DATA['private party'];
-        return null;
+        if (!searchString || !searchString.trim()) return null; // No category selected yet
+        
+        const s = searchString.toLowerCase();
+        
+        if (s.includes('wedding')) return QUIZ_DATA['wedding'];
+        if (s.includes('graduation')) return QUIZ_DATA['graduation'];
+        if (s.includes('corporate') || s.includes('business')) return QUIZ_DATA['corporate'];
+        if (s.includes('concert') || s.includes('music')) return QUIZ_DATA['concert'];
+        if (s.includes('entertainment') || s.includes('show') || s.includes('comedy')) return QUIZ_DATA['entertainment'];
+        if (s.includes('private') || s.includes('party')) return QUIZ_DATA['private party'];
+        
+        // If they select a category/subtype that doesn't match above, give them the General quiz!
+        return QUIZ_DATA['general'];
     };
 
     const activeQuizConfig = getActiveQuizConfig(combinedSelectionText);
@@ -174,7 +226,7 @@ const ClientDashboard = () => {
 
         try {
             // Pass the combined selection text so the backend AI knows exactly what the event is
-            const response = await api.post('/events/ai-suggest-theme', {
+            const response = await api.post('/quiz/ai-suggest-theme', {
                 category: combinedSelectionText, 
                 answers: quizAnswers,
                 imageBase64: imageBase64 

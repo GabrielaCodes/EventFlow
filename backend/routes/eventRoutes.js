@@ -6,13 +6,14 @@ import {
     requestModification,
     respondToModification, 
     updateEvent,
-    suggestEventTheme,
-    getEventModifications 
+    getEventModifications,
+    submitFinancePlan, 
+    respondToFinancePlan
 } from '../controllers/eventController.js';
 
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { submitFinancePlan, respondToFinancePlan } from '../controllers/eventController.js';
+
 const router = express.Router();
 
 // --- Client Routes ---
@@ -22,14 +23,12 @@ router.post('/respond', authenticate, authorize(['client']), respondToModificati
 router.patch('/:id', authenticate, authorize(['client']), updateEvent);
 router.post('/:id/finance/submit', authenticate, authorize(['manager']), submitFinancePlan);
 router.post('/:id/finance/respond', authenticate, authorize(['client']), respondToFinancePlan);
+
 // --- Shared/General Routes ---
-// Allow authenticated users (Clients/Employees/Admins) to view modification status if they have access
 router.get('/:event_id/modifications', authenticate, getEventModifications);
 
 // --- Employee Routes ---
 router.get('/assigned', authenticate, authorize(['employee']), getAssignedEvents);
 router.post('/modify', authenticate, authorize(['employee']), requestModification);
 
-// Add this new AI route
-router.post('/ai-suggest-theme', suggestEventTheme);
 export default router;

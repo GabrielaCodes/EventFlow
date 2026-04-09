@@ -1,6 +1,5 @@
 import supabase from '../config/supabaseClient.js';
 import { sendEventConfirmation } from '../services/emailService.js'; 
-import Groq from 'groq-sdk';
 
 // --------------------------------------------------------
 // 1. CLIENT: Create a New Event 
@@ -75,7 +74,7 @@ export const getMyEvents = async (req, res) => {
                     id, amount, status,
                     sponsor:profiles!sponsorships_sponsor_id_fkey (full_name, company_name)
                 ),
-                manager:profiles!events_assigned_manager_id_fkey (full_name, email) /* 👈 NEW: Fetch Manager Data */
+                manager:profiles!events_assigned_manager_id_fkey (full_name, email)
             `)
             .eq('client_id', userId)
             .order('created_at', { ascending: false });
@@ -92,6 +91,7 @@ export const getMyEvents = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
 // --------------------------------------------------------
 // 4. SHARED: Get Event Modifications
 // --------------------------------------------------------
@@ -144,9 +144,7 @@ export const respondToModification = async (req, res) => {
         }
 
         // 3. Handle Acceptance (calls the "apply_modification" SQL Function)
-        // It atomically updates the event AND the request status
         if (action === 'accept') {
-        
             const { error: rpcError } = await supabase.rpc('apply_modification', {
                 mod_id: modification_id
             });
@@ -172,8 +170,6 @@ export const updateEvent = async (req, res) => {
         const clientId = req.user.id;
         const updates = req.body;
 
-        // The database RLS policy will enforce the 'consideration' rule automatically,
-        // but adding the .eq('status', 'consideration') here acts as a nice double-check.
         const { data, error } = await supabase
             .from('events')
             .update({
@@ -191,7 +187,6 @@ export const updateEvent = async (req, res) => {
 
         if (error) throw error;
 
-        // If data is empty, it means the RLS blocked it (wrong status or not the owner)
         if (!data || data.length === 0) {
             return res.status(403).json({ error: "Cannot edit this event. It is already being processed or assigned to a manager." });
         }
@@ -217,7 +212,7 @@ export const submitFinancePlan = async (req, res) => {
             .update({ 
                 finance_status: 'pending_client', 
                 finance_manager_message: message || '',
-                finance_client_feedback: null // 👈 CRITICAL: Clears out any old rejection notes
+                finance_client_feedback: null 
             })
             .eq('id', id)
             .select();
@@ -251,70 +246,4 @@ export const respondToFinancePlan = async (req, res) => {
         if (error) throw error;
         res.status(200).json(data[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
-};
-
-
-//GROQ
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-export const suggestEventTheme = async (req, res) => {
-    try {
-        // We now expect an optional imageBase64 string from the frontend
-        const { category, answers, imageBase64 } = req.body;
-
-        if (!category || !answers) {
-            return res.status(400).json({ error: "Category and answers are required." });
-        }
-
-        let venueGrouping = "";
-        if (category.toLowerCase() === 'wedding') {
-            venueGrouping = `Royal Traditional: Grand Ballroom, Don Bosco Auditorium\nGarden Elegant: Sunset Garden, Rooftop Terrace\nModern Professional: Conference Hall A\nCultural Traditional: St Peters Auditorium, SS Hall`;
-        } else if (category.toLowerCase() === 'graduation party') {
-            venueGrouping = `Formal Graduation Ceremony: Don Bosco Auditorium, St Peters Auditorium\nCelebration Party: Grand Ballroom, SS Hall\nOutdoor Graduation Bash: Sunset Garden, Rooftop Terrace\nAcademic Professional Event: Conference Hall A`;
-        } else if (category.toLowerCase() === 'private party') {
-            venueGrouping = `Luxury Party: Grand Ballroom\nOutdoor Party: Sunset Garden, Rooftop Terrace\nFamily / Community Party: SS Hall, St Peters Auditorium\nSmall / Professional Gathering: Conference Hall A, Don Bosco Auditorium`;
-        }
-
-        const instructions = `You are an elite event planner. Suggest an event theme and a suitable venue based on user quiz answers.
-        RULES:
-        1. You must ONLY select a venue from the provided list below. Do NOT invent new venues.
-        2. Return ONLY a valid JSON object.
-        AVAILABLE VENUES FOR ${category.toUpperCase()}: ${venueGrouping}
-        REQUIRED JSON FORMAT: { "theme_name": "Name of theme", "suggested_venue": "Exact Name of Venue from list" }`;
-
-        let messages;
-        let modelToUse;
-
-        // DYNAMIC ROUTING: Choose model and format based on image presence
-        if (imageBase64) {
-            modelToUse = "meta-llama/llama-4-scout-17b-16e-instruct"; // NEW Vision Model
-            messages = [{
-                role: "user",
-                content: [
-                    { type: "text", text: `${instructions}\n\nCategory: ${category}\nAnswers:\n${JSON.stringify(answers, null, 2)}\n\nPlease also analyze the style, layout, and mood of the attached inspiration image to influence your theme suggestion.` },
-                    { type: "image_url", image_url: { url: imageBase64 } } // Expected format: "data:image/jpeg;base64,..."
-                ]
-            }];
-        } else {
-            modelToUse = "llama-3.1-8b-instant"; // Fast Text Model
-            messages = [
-                { role: "system", content: instructions },
-                { role: "user", content: `Category: ${category}\nAnswers:\n${JSON.stringify(answers)}` }
-            ];
-        }
-
-        const completion = await groq.chat.completions.create({
-            messages: messages,
-            model: modelToUse,
-            temperature: 0.2,
-            response_format: { type: "json_object" }
-        });
-
-        const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-        res.status(200).json(result);
-
-    } catch (err) {
-        console.error("AI Suggestion Error:", err);
-        res.status(500).json({ error: "Failed to generate AI suggestion." });
-    }
 };
