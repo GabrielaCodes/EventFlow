@@ -17,7 +17,7 @@ const QUIZ_DATA = {
             { id: 'q6', label: 'What matters most to you?', type: 'select', options: ['Photography aesthetics', 'Guest comfort', 'Cultural rituals', 'Budget management', 'Visual beauty'] }
         ]
     },
-    'graduation party': {
+    'graduation': {
         buttonText: "Let's Pick Your Graduation Style",
         questions: [
             { id: 'q1', label: 'Describe your graduation celebration in exactly 3 words.', type: 'text' },
@@ -99,8 +99,24 @@ const ClientDashboard = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [quizImage, setQuizImage] = useState(null);
 
+    // --- SMART EVENT MATCHING LOGIC ---
+    // Get both Category and Subtype Names
     const selectedCategoryName = categories.find(c => c.id === selectedCategory)?.name?.toLowerCase() || '';
-    const activeQuizConfig = QUIZ_DATA[selectedCategoryName];
+    const selectedSubtypeName = subtypes.find(s => s.id === formData.subtype_id)?.name?.toLowerCase() || '';
+    
+    // Combine them so the AI trigger searches both fields (e.g., "education graduation")
+    const combinedSelectionText = `${selectedCategoryName} ${selectedSubtypeName}`;
+    
+    // Smart matcher to ensure categories or subtypes trigger the right quiz
+    const getActiveQuizConfig = (searchString) => {
+        if (!searchString || !searchString.trim()) return null;
+        if (searchString.includes('wedding')) return QUIZ_DATA['wedding'];
+        if (searchString.includes('graduation')) return QUIZ_DATA['graduation'];
+        if (searchString.includes('private') || searchString.includes('party')) return QUIZ_DATA['private party'];
+        return null;
+    };
+
+    const activeQuizConfig = getActiveQuizConfig(combinedSelectionText);
 
     useEffect(() => {
         if (!loading && user?.id) fetchData();
@@ -157,8 +173,9 @@ const ClientDashboard = () => {
         }
 
         try {
+            // Pass the combined selection text so the backend AI knows exactly what the event is
             const response = await api.post('/events/ai-suggest-theme', {
-                category: selectedCategoryName,
+                category: combinedSelectionText, 
                 answers: quizAnswers,
                 imageBase64: imageBase64 
             });
