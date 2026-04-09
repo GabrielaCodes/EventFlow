@@ -99,23 +99,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    // 1. Clear UI State immediately to trigger ProtectedRoute logic
+    // 1. Sign out of Supabase first so the session is actually killed
+    await supabase.auth.signOut().catch(console.warn);
+
+    // 2. Clear UI State immediately to trigger ProtectedRoute logic
     setUser(null);
     setRole(null);
     setProfile(null);
     
-    // 2. Clear Storage
+    // 3. Clear Storage
     localStorage.clear();
     lastCheckedUserId.current = null;
 
-    // 3. FORCE REDIRECT (This kills the race condition)
-    // Using window.location.href is better than navigate() for 
-    // complex dashboards because it stops all background React processes.
-    window.location.href = '/login';
-
-    // 4. Cleanup Supabase in the background
-    supabase.auth.signOut().catch(console.warn);
+    // NOTE: Removed window.location.href here!
+    // Your Navbar.jsx is already calling navigate('/login') inside its finally{} block,
+    // which handles the routing perfectly without hitting Vercel's 404 page.
 };
+
   return (
     <AuthContext.Provider value={{ user, role, profile, loading, login, logout }}>
       {children}
@@ -124,17 +124,3 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-/* 
-AuthContext.jsx manages authentication state and actions in the frontend UI layer.
-
-It does three main things:
-
-Triggers login/logout actions
-
-Tracks the current authentication session
-
-Provides user/profile data to all React components
-
-However, the actual authentication is still done by Supabase, not by the UI.
-*/
