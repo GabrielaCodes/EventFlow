@@ -72,6 +72,17 @@ const QUIZ_DATA = {
             { id: 'q6', label: 'What matters most for this show?', type: 'select', options: ['Stage visibility', 'Acoustics/Audio clarity', 'Lighting & FX', 'Backstage facilities'] }
         ]
     },
+    'religious': {
+        buttonText: "Let's Plan Your Religious Gathering",
+        questions: [
+            { id: 'q1', label: 'Describe the spirit of your event in exactly 3 words.', type: 'text' },
+            { id: 'q2', label: 'What type of religious event are you hosting?', type: 'select', options: ['Sacrament/Ritual (e.g., Baptism, First Communion)', 'Coming of Age (e.g., Bar/Bat Mitzvah)', 'Holiday Celebration (e.g., Iftar, Diwali)', 'Spiritual Retreat / Seminar', 'Community Prayer / Worship Service'] },
+            { id: 'q3', label: 'What atmosphere are you aiming for?', type: 'select', options: ['Solemn and reflective', 'Joyous and celebratory', 'Family-oriented and warm', 'Large community festival'] },
+            { id: 'q4', label: 'What is the central focus of the gathering?', type: 'select', options: ['Prayer service / Worship', 'Shared meal / Feast', 'Ritual observance', 'Guest speaker / Sermon', 'Music / Choir performance'] },
+            { id: 'q5', label: 'Are there specific catering requirements?', type: 'select', options: ['Strictly Halal / Kosher / Pure Veg', 'Standard catering', 'Potluck / Community brought', 'No food required'] },
+            { id: 'q6', label: 'What matters most for this event?', type: 'select', options: ['Accessibility for elders', 'Audio clarity for speakers/prayers', 'Cultural/Traditional decor', 'Budget constraints'] }
+        ]
+    },
     'general': {
         buttonText: "Let's Discover Your Event Theme",
         questions: [
@@ -162,6 +173,7 @@ const ClientDashboard = () => {
         if (s.includes('corporate') || s.includes('business')) return QUIZ_DATA['corporate'];
         if (s.includes('concert') || s.includes('music')) return QUIZ_DATA['concert'];
         if (s.includes('entertainment') || s.includes('show') || s.includes('comedy')) return QUIZ_DATA['entertainment'];
+        if (s.includes('religious') || s.includes('spiritual') || s.includes('baptism') || s.includes('mitzvah') || s.includes('retreat') || s.includes('church') || s.includes('temple')) return QUIZ_DATA['religious'];
         if (s.includes('private') || s.includes('party')) return QUIZ_DATA['private party'];
         
         // If they select a category/subtype that doesn't match above, give them the General quiz!
@@ -225,7 +237,7 @@ const ClientDashboard = () => {
         }
 
         try {
-            // Pass the combined selection text so the backend AI knows exactly what the event is
+            // Send the API request to the updated AI quiz endpoint
             const response = await api.post('/quiz/ai-suggest-theme', {
                 category: combinedSelectionText, 
                 answers: quizAnswers,
@@ -239,7 +251,7 @@ const ClientDashboard = () => {
                 ...prev,
                 theme: theme_name || prev.theme,
                 venue_id: matchedVenue ? matchedVenue.id : prev.venue_id,
-                client_notes: `AI Suggested Theme: ${theme_name || 'Custom'}\nSuggested Venue: ${suggested_venue || 'TBD'}\n\n${prev.client_notes}`
+                client_notes: `AI Suggested Theme: ${theme_name || 'Custom'}\nSuggested Venue: ${matchedVenue ? matchedVenue.name : (suggested_venue || 'TBD')}\n\n${prev.client_notes}`
             }));
 
             alert("Theme generated and form automatically updated!");
