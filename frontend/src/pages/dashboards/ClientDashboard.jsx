@@ -131,12 +131,167 @@ const MessagePopup = ({ sentTitle, sentMsg, receivedTitle, receivedMsg }) => {
     );
 };
 
+// --- Search & Filter Bar Component ---
+const SearchFilterBar = ({ filters, setFilters, eventSubtypes, onClear }) => {
+    const hasActiveFilters =
+        filters.name ||
+        filters.dateFrom ||
+        filters.dateTo ||
+        filters.eventType ||
+        filters.sponsorStatus !== 'all' ||
+        filters.pitchStatus !== 'all';
+
+    return (
+        <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-[var(--gold-main)] flex items-center gap-2">
+                    <span>🔍</span> Filter Events
+                </h4>
+                {hasActiveFilters && (
+                    <button
+                        onClick={onClear}
+                        className="text-xs text-red-400 hover:text-red-300 border border-red-800 hover:border-red-600 px-2 py-1 rounded transition"
+                    >
+                        ✕ Clear All
+                    </button>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Name Search */}
+                <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Event Name</label>
+                    <input
+                        type="text"
+                        placeholder="Search by name..."
+                        value={filters.name}
+                        onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none placeholder-[#555] transition"
+                    />
+                </div>
+
+                {/* Date From */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Date From</label>
+                    <input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none transition"
+                    />
+                </div>
+
+                {/* Date To */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Date To</label>
+                    <input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none transition"
+                    />
+                </div>
+
+                {/* Event Type */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Event Type</label>
+                    <select
+                        value={filters.eventType}
+                        onChange={e => setFilters(f => ({ ...f, eventType: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none transition"
+                    >
+                        <option value="">All Types</option>
+                        {eventSubtypes.map(st => (
+                            <option key={st.id} value={st.id}>{st.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Sponsor Accepted Status */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Sponsorship Status</label>
+                    <select
+                        value={filters.sponsorStatus}
+                        onChange={e => setFilters(f => ({ ...f, sponsorStatus: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none transition"
+                    >
+                        <option value="all">All</option>
+                        <option value="has_accepted">Has Accepted Sponsors</option>
+                        <option value="has_pending">Has Pending Sponsors</option>
+                        <option value="has_rejected">Has Rejected Sponsors</option>
+                        <option value="no_sponsors">No Sponsors</option>
+                    </select>
+                </div>
+
+                {/* Manager Pitch / Client Action Required */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-bold text-[#666] tracking-wider">Manager Pitch</label>
+                    <select
+                        value={filters.pitchStatus}
+                        onChange={e => setFilters(f => ({ ...f, pitchStatus: e.target.value }))}
+                        className="bg-[#111] border border-[#333] text-white text-sm p-2 rounded focus:border-[var(--gold-main)] outline-none transition"
+                    >
+                        <option value="all">All</option>
+                        <option value="action_required">⚠️ Action Required</option>
+                        <option value="approved">✅ Approved by Me</option>
+                        <option value="rejected">❌ Rejected by Me</option>
+                        <option value="no_pitch">No Pitch Yet</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Active filter pills */}
+            {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#1f1f1f]">
+                    {filters.name && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            Name: "{filters.name}"
+                            <button onClick={() => setFilters(f => ({ ...f, name: '' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                    {filters.dateFrom && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            From: {filters.dateFrom}
+                            <button onClick={() => setFilters(f => ({ ...f, dateFrom: '' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                    {filters.dateTo && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            To: {filters.dateTo}
+                            <button onClick={() => setFilters(f => ({ ...f, dateTo: '' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                    {filters.eventType && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            Type: {eventSubtypes.find(s => s.id === filters.eventType)?.name || filters.eventType}
+                            <button onClick={() => setFilters(f => ({ ...f, eventType: '' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                    {filters.sponsorStatus !== 'all' && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            Sponsor: {filters.sponsorStatus.replace(/_/g, ' ')}
+                            <button onClick={() => setFilters(f => ({ ...f, sponsorStatus: 'all' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                    {filters.pitchStatus !== 'all' && (
+                        <span className="text-[10px] bg-[#1a1a1a] border border-[#333] text-[var(--gold-main)] px-2 py-1 rounded-full flex items-center gap-1">
+                            Pitch: {filters.pitchStatus.replace(/_/g, ' ')}
+                            <button onClick={() => setFilters(f => ({ ...f, pitchStatus: 'all' }))} className="text-[#666] hover:text-red-400 ml-1">✕</button>
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ClientDashboard = () => {
     const { user, loading } = useAuth();
     const [events, setEvents] = useState([]);
     
     const [categories, setCategories] = useState([]);
     const [subtypes, setSubtypes] = useState([]);
+    const [allSubtypes, setAllSubtypes] = useState([]); // for filter dropdown
     const [venues, setVenues] = useState([]);
 
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -148,6 +303,16 @@ const ClientDashboard = () => {
     const [financeFeedback, setFinanceFeedback] = useState({});
     const [expandedTickets, setExpandedTickets] = useState({});
 
+    // --- SEARCH & FILTER STATE ---
+    const [filters, setFilters] = useState({
+        name: '',
+        dateFrom: '',
+        dateTo: '',
+        eventType: '',
+        sponsorStatus: 'all',  // all | has_accepted | has_pending | has_rejected | no_sponsors
+        pitchStatus: 'all',    // all | action_required | approved | rejected | no_pitch
+    });
+
     // --- AI FEATURE STATE ---
     const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
     const [quizAnswers, setQuizAnswers] = useState({});
@@ -155,19 +320,13 @@ const ClientDashboard = () => {
     const [quizImage, setQuizImage] = useState(null);
 
     // --- SMART EVENT MATCHING LOGIC ---
-    // Get both Category and Subtype Names
     const selectedCategoryName = categories.find(c => c.id === selectedCategory)?.name?.toLowerCase() || '';
     const selectedSubtypeName = subtypes.find(s => s.id === formData.subtype_id)?.name?.toLowerCase() || '';
-    
-    // Combine them so the AI trigger searches both fields (e.g., "education graduation")
     const combinedSelectionText = `${selectedCategoryName} ${selectedSubtypeName}`;
     
-    // Smart matcher to ensure categories or subtypes trigger the right quiz
     const getActiveQuizConfig = (searchString) => {
-        if (!searchString || !searchString.trim()) return null; // No category selected yet
-        
+        if (!searchString || !searchString.trim()) return null;
         const s = searchString.toLowerCase();
-        
         if (s.includes('wedding')) return QUIZ_DATA['wedding'];
         if (s.includes('graduation')) return QUIZ_DATA['graduation'];
         if (s.includes('corporate') || s.includes('business')) return QUIZ_DATA['corporate'];
@@ -175,8 +334,6 @@ const ClientDashboard = () => {
         if (s.includes('entertainment') || s.includes('show') || s.includes('comedy')) return QUIZ_DATA['entertainment'];
         if (s.includes('religious') || s.includes('spiritual') || s.includes('baptism') || s.includes('mitzvah') || s.includes('retreat') || s.includes('church') || s.includes('temple')) return QUIZ_DATA['religious'];
         if (s.includes('private') || s.includes('party')) return QUIZ_DATA['private party'];
-        
-        // If they select a category/subtype that doesn't match above, give them the General quiz!
         return QUIZ_DATA['general'];
     };
 
@@ -190,6 +347,10 @@ const ClientDashboard = () => {
         try {
             const { data: catData } = await supabase.from('event_categories').select('*');
             if (catData) setCategories(catData);
+
+            // Fetch all subtypes for the filter dropdown
+            const { data: allSubData } = await supabase.from('event_subtypes').select('*');
+            if (allSubData) setAllSubtypes(allSubData);
 
             const { data: venData } = await supabase.from('venues').select('id, name, capacity');
             if (venData) setVenues(venData);
@@ -212,7 +373,57 @@ const ClientDashboard = () => {
         } else { setSubtypes([]); }
     };
 
-    // Helper to convert image file to Base64
+    // --- FILTERING LOGIC ---
+    const filteredEvents = events.filter(ev => {
+        // Filter by name
+        if (filters.name && !ev.title?.toLowerCase().includes(filters.name.toLowerCase())) return false;
+
+        // Filter by date range
+        if (filters.dateFrom) {
+            const evDate = new Date(ev.event_date);
+            const fromDate = new Date(filters.dateFrom);
+            if (evDate < fromDate) return false;
+        }
+        if (filters.dateTo) {
+            const evDate = new Date(ev.event_date);
+            const toDate = new Date(filters.dateTo);
+            // Include the full "to" day
+            toDate.setHours(23, 59, 59, 999);
+            if (evDate > toDate) return false;
+        }
+
+        // Filter by event type (subtype_id)
+        if (filters.eventType && ev.subtype_id !== filters.eventType) return false;
+
+        // Filter by sponsorship status
+        if (filters.sponsorStatus !== 'all') {
+            const sponsorships = ev.sponsorships || [];
+            if (filters.sponsorStatus === 'has_accepted' && !sponsorships.some(s => s.status === 'accepted')) return false;
+            if (filters.sponsorStatus === 'has_pending' && !sponsorships.some(s => s.status === 'pending' || s.status === 'negotiating')) return false;
+            if (filters.sponsorStatus === 'has_rejected' && !sponsorships.some(s => s.status === 'rejected')) return false;
+            if (filters.sponsorStatus === 'no_sponsors' && sponsorships.length > 0) return false;
+        }
+
+        // Filter by manager pitch / client action status
+        if (filters.pitchStatus !== 'all') {
+            if (filters.pitchStatus === 'action_required' && ev.finance_status !== 'pending_client') return false;
+            if (filters.pitchStatus === 'approved' && ev.finance_status !== 'approved') return false;
+            if (filters.pitchStatus === 'rejected' && ev.finance_status !== 'rejected') return false;
+            if (filters.pitchStatus === 'no_pitch' && ev.finance_status != null) return false;
+        }
+
+        return true;
+    });
+
+    const clearFilters = () => setFilters({
+        name: '',
+        dateFrom: '',
+        dateTo: '',
+        eventType: '',
+        sponsorStatus: 'all',
+        pitchStatus: 'all',
+    });
+
     const fileToBase64 = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -237,7 +448,6 @@ const ClientDashboard = () => {
         }
 
         try {
-            // Send the API request to the updated AI quiz endpoint
             const response = await api.post('/quiz/ai-suggest-theme', {
                 category: combinedSelectionText, 
                 answers: quizAnswers,
@@ -380,155 +590,181 @@ const ClientDashboard = () => {
 
             {/* EVENT LIST */}
             <div className="bg-[var(--surface-color)] p-6 rounded-lg shadow-md border border-[#333]">
-                <h3 className="text-xl font-bold mb-4 text-[var(--gold-main)]">My Events</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-[var(--gold-main)]">My Events</h3>
+                    {events.length > 0 && (
+                        <span className="text-xs text-[#666] font-mono">
+                            {filteredEvents.length} / {events.length} shown
+                        </span>
+                    )}
+                </div>
+
+                {/* SEARCH & FILTER BAR */}
+                {events.length > 0 && (
+                    <SearchFilterBar
+                        filters={filters}
+                        setFilters={setFilters}
+                        eventSubtypes={allSubtypes}
+                        onClear={clearFilters}
+                    />
+                )}
+
                 {Array.isArray(events) && events.length > 0 ? (
-                    <div className="space-y-4">
-                        {events.map(ev => {
-                            const isPlanApproved = ev.finance_status === 'approved';
-                            const allSponsorships = ev.sponsorships || [];
-                            const acceptedSponsorships = allSponsorships.filter(s => s.status === 'accepted');
-                            const pendingSponsorships = allSponsorships.filter(s => s.status === 'pending' || s.status === 'negotiating');
-                            const rejectedSponsorships = allSponsorships.filter(s => s.status === 'rejected');
-                            const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
+                    filteredEvents.length > 0 ? (
+                        <div className="space-y-4">
+                            {filteredEvents.map(ev => {
+                                const isPlanApproved = ev.finance_status === 'approved';
+                                const allSponsorships = ev.sponsorships || [];
+                                const acceptedSponsorships = allSponsorships.filter(s => s.status === 'accepted');
+                                const pendingSponsorships = allSponsorships.filter(s => s.status === 'pending' || s.status === 'negotiating');
+                                const rejectedSponsorships = allSponsorships.filter(s => s.status === 'rejected');
+                                const totalSponsorship = acceptedSponsorships.reduce((sum, s) => sum + Number(s.amount), 0);
 
-                            return (
-                                <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-5 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col gap-4">
-                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                                        <div>
-                                            <div className="flex items-center">
-                                                <h4 className="font-bold text-xl text-[var(--text-primary)] text-white">{ev.title}</h4>
-                                                {(ev.finance_manager_message || ev.finance_client_feedback) && (
-                                                    <MessagePopup 
-                                                        sentTitle="Your Feedback"
-                                                        sentMsg={ev.finance_client_feedback}
-                                                        receivedTitle={`Message from ${ev.manager?.full_name?.split(' ')[0] || 'Manager'}`}
-                                                        receivedMsg={ev.finance_manager_message}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
-                                                <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
-                                                {ev.event_subtypes && <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>}
-                                                {ev.venues && <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>}
-                                                {ev.manager && <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col items-end gap-3">
-                                            <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
-                                                {ev.status.replace('_', ' ')}
-                                            </span>
-                                            
-                                            <div className="flex gap-2 w-full md:w-auto">
-                                                {ev.status === 'consideration' && (
-                                                    <button onClick={() => setEditingEvent(ev)} className="bg-[#333] text-white px-4 py-2 rounded text-sm hover:bg-[#444] font-bold transition w-full md:w-auto border border-[#555]">
-                                                        Edit Details
-                                                    </button>
-                                                )}
-                                                <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition text-center w-full md:w-auto">
-                                                    Manage
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* TICKETS SECTION */}
-                                    {isPlanApproved && (
-                                        <div className="mt-2 pt-4 border-t border-[#333]">
-                                            <button onClick={() => toggleTickets(ev.id)} className="text-[var(--gold-main)] text-sm font-bold tracking-wider uppercase flex items-center gap-2 hover:text-white transition-colors">
-                                                {expandedTickets[ev.id] ? '▼ Hide Ticket Info' : '▶ Show Ticket Info'}
-                                            </button>
-                                            {expandedTickets[ev.id] && (
-                                                <div className="mt-4 bg-[#0a0a0a] border border-[#222] rounded p-4">
-                                                    <TicketViewer eventId={ev.id} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* FINANCE APPROVAL ACTION BLOCK */}
-                                    {ev.finance_status === 'pending_client' && (
-                                        <div className="mt-2 p-4 bg-[#1a1a1a] border border-yellow-600 rounded-sm">
-                                            <h5 className="text-sm font-bold text-yellow-500 mb-3 flex items-center gap-2">⚠️ Action Required: Review Proposed Budget</h5>
-                                            
-                                            <div className="mb-4 p-3 border-l-2 border-yellow-600 bg-[#111]">
-                                                <p className="text-xs uppercase font-bold text-yellow-600 mb-1">Message from {ev.manager?.full_name?.split(' ')[0] || 'Manager'}:</p>
-                                                <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{ev.finance_manager_message}</p>
-                                            </div>
-
-                                            {allSponsorships.length > 0 && (
-                                                <div className="mb-4">
-                                                    <p className="text-xs uppercase font-bold text-[var(--text-secondary)] mb-2">Proposed Sponsorships:</p>
-                                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                        {allSponsorships.map(sponsor => (
-                                                            <li key={sponsor.id} className="bg-[#111] p-2 rounded border border-[#333] flex justify-between items-center text-sm">
-                                                                <span className="truncate pr-2 text-[#ccc]">{sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span>
-                                                                <span className="text-[var(--gold-main)] font-mono">${Number(sponsor.amount).toLocaleString()}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            
-                                            <textarea 
-                                                className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-yellow-600 outline-none text-sm mb-3" 
-                                                placeholder="If rejecting, please explain what needs to be changed..."
-                                                value={financeFeedback[ev.id] || ''} 
-                                                onChange={e => setFinanceFeedback({...financeFeedback, [ev.id]: e.target.value})}
-                                            />
-                                            
-                                            <div className="flex gap-3">
-                                                <button onClick={() => handleFinanceResponse(ev.id, 'approve')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold transition flex-1">Approve Plan</button>
-                                                <button onClick={() => handleFinanceResponse(ev.id, 'reject')} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-sm font-bold transition flex-1">Reject with Feedback</button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Client Rejected Display */}
-                                    {ev.finance_status === 'rejected' && (
-                                        <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20 flex justify-between items-start">
+                                return (
+                                    <div key={ev.id} className="border-l-4 border-[var(--gold-main)] bg-[#111] p-5 rounded shadow-sm hover:bg-[#1a1a1a] transition flex flex-col gap-4">
+                                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                             <div>
-                                                <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
-                                                <p className="text-sm text-red-200 whitespace-pre-wrap">Your Feedback: {ev.finance_client_feedback}</p>
+                                                <div className="flex items-center">
+                                                    <h4 className="font-bold text-xl text-[var(--text-primary)] text-white">{ev.title}</h4>
+                                                    {(ev.finance_manager_message || ev.finance_client_feedback) && (
+                                                        <MessagePopup 
+                                                            sentTitle="Your Feedback"
+                                                            sentMsg={ev.finance_client_feedback}
+                                                            receivedTitle={`Message from ${ev.manager?.full_name?.split(' ')[0] || 'Manager'}`}
+                                                            receivedMsg={ev.finance_manager_message}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-1.5">
+                                                    <p>📅 <span className="text-[#ccc]">{new Date(ev.event_date).toDateString()}</span></p>
+                                                    {ev.event_subtypes && <p>📌 Type: <span className="font-medium text-[var(--gold-main)]">{ev.event_subtypes.name}</span></p>}
+                                                    {ev.venues && <p>📍 Venue: <span className="text-[#ccc]">{ev.venues.name}, {ev.venues.location}</span></p>}
+                                                    {ev.manager && <p>👨‍💼 Manager: <span className="font-medium text-blue-400">{ev.manager.full_name}</span></p>}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-end gap-3">
+                                                <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${statusStyles[ev.status] || 'bg-[#222] text-[var(--text-secondary)]'}`}>
+                                                    {ev.status.replace('_', ' ')}
+                                                </span>
+                                                
+                                                <div className="flex gap-2 w-full md:w-auto">
+                                                    {ev.status === 'consideration' && (
+                                                        <button onClick={() => setEditingEvent(ev)} className="bg-[#333] text-white px-4 py-2 rounded text-sm hover:bg-[#444] font-bold transition w-full md:w-auto border border-[#555]">
+                                                            Edit Details
+                                                        </button>
+                                                    )}
+                                                    <Link to={`/event-modifications/${ev.id}`} className="bg-[var(--gold-main)] text-[var(--bg-color)] px-4 py-2 rounded text-sm hover:bg-[var(--gold-hover)] font-bold transition text-center w-full md:w-auto">
+                                                        Manage
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
 
-                                    {/* APPROVED PLAN TRACKING */}
-                                    {isPlanApproved && (
-                                        <div className="mt-2 pt-4 border-t border-[#333]">
-                                            <h5 className="text-sm font-bold text-[var(--gold-main)] mb-3 uppercase tracking-wider">Sponsorship Status</h5>
-                                            <ul className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                {acceptedSponsorships.map(sponsor => (
-                                                    <li key={sponsor.id} className="bg-[#052e16] p-2 rounded border border-[#047857] flex justify-between items-center">
-                                                        <span className="truncate pr-2 font-medium text-green-100 flex items-center gap-1.5"><span className="text-[10px]">✅</span> {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span>
-                                                        <span className="text-green-400 font-mono font-bold">${Number(sponsor.amount).toLocaleString()}</span>
-                                                    </li>
-                                                ))}
-                                                {pendingSponsorships.map(sponsor => (
-                                                    <li key={sponsor.id} className="bg-[#1a1a1a] p-2 rounded border border-[#333] flex justify-between items-center">
-                                                        <span className="truncate pr-2 font-medium text-gray-300 flex items-center gap-1.5"><span className="text-[10px]">✅</span> {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'} <span className="ml-2 text-[9px] uppercase text-yellow-500 font-bold border border-yellow-600/50 bg-yellow-900/20 px-1.5 py-0.5 rounded tracking-wider">Awaiting Sponsor</span></span>
-                                                        <span className="text-[var(--gold-main)] font-mono opacity-80">${Number(sponsor.amount).toLocaleString()}</span>
-                                                    </li>
-                                                ))}
-                                                {rejectedSponsorships.map(sponsor => (
-                                                    <li key={sponsor.id} className="bg-[#3b0712] p-2 rounded border border-[#7f1d1d] flex justify-between items-center">
-                                                        <span className="truncate pr-2 font-medium text-red-200 flex items-center gap-1.5 opacity-70"><span className="text-[10px]">❌</span> <span className="line-through">{sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span> <span className="ml-2 text-[9px] uppercase text-red-400 font-bold border border-red-800 bg-red-950/50 px-1.5 py-0.5 rounded tracking-wider">Declined</span></span>
-                                                        <span className="text-red-400 font-mono line-through opacity-70">${Number(sponsor.amount).toLocaleString()}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                            {totalSponsorship > 0 && (
-                                                <div className="mt-4 text-right">
-                                                    <span className="text-green-400 font-mono font-bold bg-green-900/20 px-3 py-1.5 rounded border border-green-800 uppercase text-xs tracking-wider">Total Secured: ${totalSponsorship.toLocaleString()}</span>
+                                        {/* TICKETS SECTION */}
+                                        {isPlanApproved && (
+                                            <div className="mt-2 pt-4 border-t border-[#333]">
+                                                <button onClick={() => toggleTickets(ev.id)} className="text-[var(--gold-main)] text-sm font-bold tracking-wider uppercase flex items-center gap-2 hover:text-white transition-colors">
+                                                    {expandedTickets[ev.id] ? '▼ Hide Ticket Info' : '▶ Show Ticket Info'}
+                                                </button>
+                                                {expandedTickets[ev.id] && (
+                                                    <div className="mt-4 bg-[#0a0a0a] border border-[#222] rounded p-4">
+                                                        <TicketViewer eventId={ev.id} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* FINANCE APPROVAL ACTION BLOCK */}
+                                        {ev.finance_status === 'pending_client' && (
+                                            <div className="mt-2 p-4 bg-[#1a1a1a] border border-yellow-600 rounded-sm">
+                                                <h5 className="text-sm font-bold text-yellow-500 mb-3 flex items-center gap-2">⚠️ Action Required: Review Proposed Budget</h5>
+                                                
+                                                <div className="mb-4 p-3 border-l-2 border-yellow-600 bg-[#111]">
+                                                    <p className="text-xs uppercase font-bold text-yellow-600 mb-1">Message from {ev.manager?.full_name?.split(' ')[0] || 'Manager'}:</p>
+                                                    <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{ev.finance_manager_message}</p>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+
+                                                {allSponsorships.length > 0 && (
+                                                    <div className="mb-4">
+                                                        <p className="text-xs uppercase font-bold text-[var(--text-secondary)] mb-2">Proposed Sponsorships:</p>
+                                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                            {allSponsorships.map(sponsor => (
+                                                                <li key={sponsor.id} className="bg-[#111] p-2 rounded border border-[#333] flex justify-between items-center text-sm">
+                                                                    <span className="truncate pr-2 text-[#ccc]">{sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span>
+                                                                    <span className="text-[var(--gold-main)] font-mono">${Number(sponsor.amount).toLocaleString()}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                
+                                                <textarea 
+                                                    className="w-full bg-[#111] border border-[#444] p-2 rounded text-white focus:border-yellow-600 outline-none text-sm mb-3" 
+                                                    placeholder="If rejecting, please explain what needs to be changed..."
+                                                    value={financeFeedback[ev.id] || ''} 
+                                                    onChange={e => setFinanceFeedback({...financeFeedback, [ev.id]: e.target.value})}
+                                                />
+                                                
+                                                <div className="flex gap-3">
+                                                    <button onClick={() => handleFinanceResponse(ev.id, 'approve')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold transition flex-1">Approve Plan</button>
+                                                    <button onClick={() => handleFinanceResponse(ev.id, 'reject')} className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 px-4 py-2 rounded text-sm font-bold transition flex-1">Reject with Feedback</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Client Rejected Display */}
+                                        {ev.finance_status === 'rejected' && (
+                                            <div className="mt-2 p-3 border-l-2 border-red-500 bg-red-900/20 flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-xs uppercase font-bold text-red-400 mb-1">You Rejected This Plan. Awaiting Manager Revision.</p>
+                                                    <p className="text-sm text-red-200 whitespace-pre-wrap">Your Feedback: {ev.finance_client_feedback}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* APPROVED PLAN TRACKING */}
+                                        {isPlanApproved && (
+                                            <div className="mt-2 pt-4 border-t border-[#333]">
+                                                <h5 className="text-sm font-bold text-[var(--gold-main)] mb-3 uppercase tracking-wider">Sponsorship Status</h5>
+                                                <ul className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {acceptedSponsorships.map(sponsor => (
+                                                        <li key={sponsor.id} className="bg-[#052e16] p-2 rounded border border-[#047857] flex justify-between items-center">
+                                                            <span className="truncate pr-2 font-medium text-green-100 flex items-center gap-1.5"><span className="text-[10px]">✅</span> {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span>
+                                                            <span className="text-green-400 font-mono font-bold">${Number(sponsor.amount).toLocaleString()}</span>
+                                                        </li>
+                                                    ))}
+                                                    {pendingSponsorships.map(sponsor => (
+                                                        <li key={sponsor.id} className="bg-[#1a1a1a] p-2 rounded border border-[#333] flex justify-between items-center">
+                                                            <span className="truncate pr-2 font-medium text-gray-300 flex items-center gap-1.5"><span className="text-[10px]">✅</span> {sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'} <span className="ml-2 text-[9px] uppercase text-yellow-500 font-bold border border-yellow-600/50 bg-yellow-900/20 px-1.5 py-0.5 rounded tracking-wider">Awaiting Sponsor</span></span>
+                                                            <span className="text-[var(--gold-main)] font-mono opacity-80">${Number(sponsor.amount).toLocaleString()}</span>
+                                                        </li>
+                                                    ))}
+                                                    {rejectedSponsorships.map(sponsor => (
+                                                        <li key={sponsor.id} className="bg-[#3b0712] p-2 rounded border border-[#7f1d1d] flex justify-between items-center">
+                                                            <span className="truncate pr-2 font-medium text-red-200 flex items-center gap-1.5 opacity-70"><span className="text-[10px]">❌</span> <span className="line-through">{sponsor.sponsor?.company_name || sponsor.sponsor?.full_name || 'Sponsor'}</span> <span className="ml-2 text-[9px] uppercase text-red-400 font-bold border border-red-800 bg-red-950/50 px-1.5 py-0.5 rounded tracking-wider">Declined</span></span>
+                                                            <span className="text-red-400 font-mono line-through opacity-70">${Number(sponsor.amount).toLocaleString()}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                                {totalSponsorship > 0 && (
+                                                    <div className="mt-4 text-right">
+                                                        <span className="text-green-400 font-mono font-bold bg-green-900/20 px-3 py-1.5 rounded border border-green-800 uppercase text-xs tracking-wider">Total Secured: ${totalSponsorship.toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10">
+                            <p className="text-4xl mb-3">🔍</p>
+                            <p className="text-[var(--text-secondary)] font-medium">No events match your filters.</p>
+                            <button onClick={clearFilters} className="mt-3 text-sm text-[var(--gold-main)] hover:underline">Clear filters</button>
+                        </div>
+                    )
                 ) : (
                     <div className="text-center py-8 text-[var(--text-secondary)] italic">No events booked yet.</div>
                 )}
